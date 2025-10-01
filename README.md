@@ -45,11 +45,12 @@ Start the backend server in one terminal and the frontend development server in 
 # Terminal 1 - Backend
 cd backend
 source .venv/bin/activate #(if not in virtual environment)
-python main.py
+python main.py #access backend through localhost:8000
 
 # Terminal 2 - Frontend  
 cd frontend
-npm run dev
+npm run dev 
+#access frontend through localhost:5173(default port of vite) or 5174
 ```
 
 ## Tech Stack
