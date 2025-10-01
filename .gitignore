@@ -1,11 +1,4 @@
 # ==========================================
-# MathCup AI Tutor - Root .gitignore
-# ==========================================
-# This file tells Git which files and folders to ignore
-# Never commit sensitive data, dependencies, or generated files
-
-
-# ==========================================
 # Security & Secrets
 # ==========================================
 # Environment variables containing API keys and sensitive data
