@@ -9,7 +9,7 @@ interface Message {
 function App() {
     const [messages, setMessages] = useState<Message[]>([
         {
-            text: "Hi! I'm your AI math tutor. I'll help you learn by asking questions and guiding you step by step. Try asking me about any math problem! 🎯",
+            text: "Hi! I'm your Math tutor. I'll guide you through your questions and help you learn math concepts.What question do you have?",
             sender: 'ai'
         }
     ]);
@@ -17,7 +17,7 @@ function App() {
     const [isLoading, setIsLoading] = useState(false);
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    // 自动滚动到底部
+    // auto scroll to the bottom
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -29,13 +29,13 @@ function App() {
 
         const userMessage = input.trim();
 
-        // 添加用户消息
+        // add user msg
         setMessages(prev => [...prev, { text: userMessage, sender: 'user' }]);
         setInput('');
         setIsLoading(true);
 
         try {
-            // 构建对话历史 (排除第一条欢迎消息)
+            // create chat history
             const conversationHistory = messages.slice(1).map(msg => ({
                 role: msg.sender === 'user' ? 'user' : 'assistant',
                 content: msg.text
@@ -48,7 +48,7 @@ function App() {
                 },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: conversationHistory  // 发送对话历史
+                    history: conversationHistory
                 })
             });
 
@@ -58,12 +58,12 @@ function App() {
 
             const data = await response.json();
 
-            // 添加AI回复
+            // ai reply
             setMessages(prev => [...prev, { text: data.reply, sender: 'ai' }]);
         } catch (error) {
             console.error('Error:', error);
             setMessages(prev => [...prev, {
-                text: 'Sorry, I encountered an error. Please make sure the backend server is running on localhost:8000!',
+                text: 'Sorry, I encountered an error. Please make sure the backend server is running!',
                 sender: 'ai'
             }]);
         } finally {
@@ -85,7 +85,7 @@ function App() {
         <div className="app">
             <div className="container">
                 <div className="header">
-                    <h1>🧮 MathCup AI Tutor</h1>
+                    <h1>Math AI Tutor</h1>
                     <p className="subtitle">Learn math through guided discovery and Socratic questioning</p>
                 </div>
 
