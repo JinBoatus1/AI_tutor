@@ -292,4 +292,117 @@ input[type="text"]:disabled {
       padding: 40px;
     }
 
-}
+    }.nav-buttons {
+       display: flex;
+       gap: 15px;
+     }
+
+     .btn-nav {
+       padding: 8px 18px;
+       background: #5A45FF;
+       color: white;
+       border-radius: 8px;
+       text-decoration: none;
+       font-size: 14px;
+       font-weight: 500;
+       transition: 0.2s;
+     }
+
+     .btn-nav:hover {
+       background: #6f5cff;
+       transform: translateY(-2px);
+     }
+
+    /* ---- Page Layout ---- */
+    .page-container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    .page-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #6456FF;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ---- Input Boxes ---- */
+    .input-box {
+      width: 100%;
+      min-height: 80px;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+      resize: vertical;
+      transition: 0.2s;
+    }
+
+    .input-box:focus {
+      outline: none;
+      border-color: #7A6BFF;
+      box-shadow: 0 0 8px rgba(122, 107, 255, 0.3);
+    }
+
+    /* ---- File Upload ---- */
+    .file-upload {
+      font-size: 15px;
+      padding: 5px;
+      cursor: pointer;
+    }
+
+    /* ---- Primary Button ---- */
+    .btn-primary {
+      align-self: center;
+      background: linear-gradient(135deg, #6A4DFF, #8A6BFF);
+      color: white;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(123, 97, 255, 0.3);
+    }
+
+    /* ---- Result Box ---- */
+    .result-box {
+      margin-top: 25px;
+      background: #f9f7ff;
+      border-left: 6px solid #6A4DFF;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    .preview-container {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .preview-img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }

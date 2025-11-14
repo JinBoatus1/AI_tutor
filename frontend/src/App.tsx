@@ -9,12 +9,13 @@ function App() {
     <Router>
       <div className="app-container">
         <nav className="navbar">
-          <h2>🎓 AI Tutor Demo</h2>
-          <div className="nav-links">
-            <Link to="/">Home</Link>
-            <Link to="/autograder">Auto Grader</Link>
-            <Link to="/learning">Learning Model</Link>
-          </div>
+          <h2> AI Tutor Demo</h2>
+            <div className="nav-buttons">
+                <Link to="/" className="btn-nav">Home</Link>
+                <Link to="/autograder" className="btn-nav">Auto Grader</Link>
+                <Link to="/learning" className="btn-nav">Learning Model</Link>
+            </div>
+
         </nav>
 
         <div className="content">
