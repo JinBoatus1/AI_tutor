@@ -1,0 +1,256 @@
+import streamlit as st
+from openai import OpenAI
+import base64
+
+# ========== Basic Setup ==========
+st.set_page_config(page_title="AI Tutor Demo", page_icon="🎓", layout="centered")
+client = OpenAI(api_key="YOUR_OPENAI_API_KEY")  # ← replace with your key
+
+# ---------- Helper: render LLM output with LaTeX ----------
+def render_response(text: str):
+    """Render LLM responses with Markdown + LaTeX support."""
+    if not text:
+        return
+    text = text.replace("\\(", "$").replace("\\)", "$")
+    text = text.replace("\\[", "$$").replace("\\]", "$$")
+    st.markdown(text, unsafe_allow_html=True)
+
+# ---------- Global reset ----------
+def reset_all():
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.session_state.page = "home"
+    st.rerun()
+
+# ========== Page Navigation ==========
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+def go_home(): st.session_state.page = "home"
+def go_auto(): st.session_state.page = "auto"
+def go_learning(): st.session_state.page = "learning"
+
+# ========== Home Page ==========
+if st.session_state.page == "home":
+    st.markdown("<h1 style='text-align:center;'>🎓 AI Tutor System Demo</h1>", unsafe_allow_html=True)
+    st.markdown("<h4 style='text-align:center;color:gray;'>Empowering Math Learning through AI-guided Teaching and Auto Grading</h4>", unsafe_allow_html=True)
+    st.markdown("---")
+
+    col_left, col_right = st.columns(2, gap="large")
+
+    with col_left:
+        st.subheader("📘 Learning Model")
+        st.write(
+            "Based on **Polya’s Four-Step Method** (Understand → Plan → Execute → Review), "
+            "this module helps students analyze problems step by step, plan solutions, and identify mistakes. "
+            "It supports multi-turn teaching, guided reasoning, and interactive feedback."
+        )
+        st.button("Enter Learning Model ▶", on_click=go_learning, use_container_width=True)
+
+    with col_right:
+        st.subheader("🧮 Auto Grader")
+        st.write(
+            "Uses the LLM to perform **semantic grading and feedback** on students’ answers. "
+            "You can customize the grading prompt. "
+            "Supports multi-question grading, error explanation, and improvement suggestions."
+        )
+        st.button("Enter Auto Grader ▶", on_click=go_auto, use_container_width=True)
+
+    st.markdown("---")
+    st.info("💡 This demo is an educational prototype. Future versions will integrate student profiling, adaptive question banks, and conversational assessments.")
+    st.caption("© 2025 Bo Jin | AI Tutor Research Project | Streamlit v0.4.3")
+    st.button("♻️ Reset Session", on_click=reset_all)
+
+# ========== Auto Grader Page (Text + Image Upload) ==========
+elif st.session_state.page == "auto":
+    st.header("🧮 Auto Grader Module")
+    st.write("Upload an image (optional) and/or enter text to grade.")
+
+    prompt = st.text_area(
+        "✍️ Grading policy (System)",
+        key="auto_prompt",
+        height=100,
+        placeholder="Example: You are a strict grading teacher. Give a score (0–100) and detailed feedback based on the rubric."
+    )
+
+    question = st.text_area(
+        "📘 Student Text Input:",
+        key="auto_question",
+        placeholder="Enter your text answer or explanation here..."
+    )
+
+    uploaded_image = st.file_uploader(
+        "📷 Upload an image (optional):",
+        type=["jpg", "jpeg", "png"],
+        key="auto_image",
+        help="Upload a photo of a handwritten solution or problem."
+    )
+
+    image_data = None
+    if uploaded_image is not None:
+        image_bytes = uploaded_image.read()
+        image_data = base64.b64encode(image_bytes).decode("utf-8")
+        st.image(uploaded_image, caption="📸 Uploaded Image", use_column_width=True)
+
+    if st.button("Run Auto Grader", key="auto_run"):
+        if not prompt and not question and uploaded_image is None:
+            st.warning("Please provide either text, an image, or both before running.")
+        else:
+            with st.spinner("Grading in progress..."):
+                try:
+                    user_content = []
+                    if question.strip():
+                        user_content.append({"type": "text", "text": question})
+                    if image_data:
+                        user_content.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{image_data}"}
+                        })
+
+                    resp = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": prompt or "You are a helpful grading assistant."},
+                            {"role": "user", "content": user_content}
+                        ],
+                    )
+                    st.success("✅ Grading Result:")
+                    render_response(resp.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"⚠️ Error during grading: {e}")
+
+    st.markdown("---")
+    colh1, colh2 = st.columns(2)
+    colh1.button("🏠 Back to Home", on_click=go_home, key="auto_home")
+    colh2.button("♻️ Reset Session", on_click=reset_all, key="auto_reset")
+
+# ========== Learning Model Page (Polya Method) ==========
+elif st.session_state.page == "learning":
+    # --- State Initialization Guard ---
+    if "lm_conversation" not in st.session_state:
+        st.session_state.lm_conversation = []
+    if "lm_step" not in st.session_state or st.session_state.lm_step not in ["ask_problem", "ask_reason", "tutor_response"]:
+        st.session_state.lm_step = "ask_problem"
+    if "lm_finished" not in st.session_state:
+        st.session_state.lm_finished = False
+
+    st.header("📘 Learning Model Module")
+    st.write("Enter your question → choose where you're stuck → keep asking until you click 'I Understand'.")
+
+    # --- System Prompt ---
+    if "lm_sys_prompt" not in st.session_state:
+        st.session_state.lm_sys_prompt = (
+            "You are a patient math tutor. Follow Polya’s method (Understand → Plan → Execute → Review) "
+            "to teach step by step, and include a short check question at each stage."
+        )
+    with st.expander("⚙️ Optional: System Prompt", expanded=False):
+        st.session_state.lm_sys_prompt = st.text_area(
+            "System Prompt:", value=st.session_state.lm_sys_prompt, key="lm_sys_prompt_input"
+        )
+
+    # --- Step 1 : Input Problem ---
+    if st.session_state.lm_step == "ask_problem":
+        q = st.text_area("✏️ Enter your math problem or question:", key="lm_q_input",
+                         placeholder="Example: I don’t know how to solve x² + 3x + 2 = 0")
+        if st.button("Submit Question", key="lm_submit_q"):
+            if not q.strip():
+                st.warning("Please enter a question.")
+            else:
+                st.session_state.lm_conversation = [{"role": "user", "content": q}]
+                st.session_state.lm_step = "ask_reason"
+                st.rerun()
+
+    # --- Step 2 : Select Difficulty Type ---
+    elif st.session_state.lm_step == "ask_reason":
+        st.info("Which part are you struggling with? (Polya’s first three steps)")
+        col1, col2, col3 = st.columns(3)
+        c1 = col1.button("① Don’t understand the problem", key="lm_reason_1")
+        c2 = col2.button("② Don’t know how to start", key="lm_reason_2")
+        c3 = col3.button("③ Made mistakes in solving", key="lm_reason_3")
+
+        choice = None
+        if c1: choice = "I don’t understand what the problem is asking."
+        if c2: choice = "I understand the problem but don’t know how to start solving it."
+        if c3: choice = "I tried to solve it but made mistakes and don’t know why."
+
+        if choice:
+            st.session_state.lm_conversation.append({"role": "user", "content": f"Student’s self-assessment: {choice}"})
+            try:
+                with st.spinner("AI Tutor is preparing the first explanation..."):
+                    resp = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "system", "content": st.session_state.lm_sys_prompt}] +
+                                 st.session_state.lm_conversation
+                    )
+                    ans = resp.choices[0].message.content
+                    st.session_state.lm_conversation.append({"role": "assistant", "content": ans})
+                    st.session_state.lm_step = "tutor_response"
+                    st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Error: {e}")
+
+    # --- Step 3 : Dialogue Loop ---
+    elif st.session_state.lm_step == "tutor_response":
+        st.subheader("🧠 Teaching Dialogue")
+        for msg in st.session_state.lm_conversation:
+            if msg["role"] == "user":
+                st.markdown(f"👩‍🎓 **Student:** {msg['content']}")
+            else:
+                render_response(f"🤖 **AI Tutor:** {msg['content']}")
+
+        follow = st.text_input("💬 Continue asking (optional):", key="lm_follow_input",
+                               placeholder="Example: Could you explain that step in more detail?")
+        colA, colB, colC = st.columns([1.6, 1, 1])
+
+        if colA.button("Send Follow-up", key="lm_send_follow"):
+            if follow.strip():
+                st.session_state.lm_conversation.append({"role": "user", "content": follow})
+                try:
+                    with st.spinner("AI Tutor is replying..."):
+                        resp = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "system", "content": st.session_state.lm_sys_prompt}] +
+                                     st.session_state.lm_conversation
+                        )
+                        ans = resp.choices[0].message.content
+                        st.session_state.lm_conversation.append({"role": "assistant", "content": ans})
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"⚠️ Error: {e}")
+
+        if colB.button("✅ I understand this step", key="lm_understood_step"):
+            st.session_state.lm_conversation.append(
+                {"role": "user", "content": "I understand this step. Please guide me to the next one."}
+            )
+            try:
+                with st.spinner("Moving to next step..."):
+                    resp = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "system", "content": st.session_state.lm_sys_prompt}] +
+                                 st.session_state.lm_conversation
+                    )
+                    ans = resp.choices[0].message.content
+                    st.session_state.lm_conversation.append({"role": "assistant", "content": ans})
+                    st.rerun()
+            except Exception as e:
+                st.error(f"⚠️ Error: {e}")
+
+        if colC.button("🏁 I fully understand, end this question", key="lm_finish_all"):
+            st.session_state.lm_conversation.append(
+                {"role": "user", "content": "I fully understand this problem. Let's end or start a new one."}
+            )
+            st.session_state.lm_finished = True
+            st.rerun()
+
+    st.markdown("---")
+    colh1, colh2 = st.columns(2)
+    colh1.button("🏠 Back to Home", on_click=go_home, key="lm_home_button")
+    colh2.button("♻️ Reset Session", on_click=reset_all, key="lm_reset_button")
+
+    if st.session_state.lm_finished:
+        st.success("👏 Great job! You’ve completed this problem.")
+        if st.button("Start a New Problem", key="lm_new_problem"):
+            st.session_state.lm_conversation = []
+            st.session_state.lm_step = "ask_problem"
+            st.session_state.lm_finished = False
+            st.rerun()

@@ -1,0 +1,122 @@
+questions,answer
+"What is the least positive integer divisible by \(4, 5, 6,\) and \(9\)?",180
+What is the smallest positive integer with exactly \(7\) factors?,64
+Eleven members of the Middle School Math Club each paid the same amount for a guest speaker to talk about problem solving at their math club meeting. They paid their guest speaker \(\$1A2\). What is the missing digit \(A\) of this three-digit number?,3
+How many positive factors does \(72\) have?,12
+"A number is said to \textit{deny} another number if the remainder after dividing the first number by the second number is exactly \(4\). For instance, \(39\) denies \(7\), because when \(39\) is divided by \(7\), the quotient is \(5\) and the remainder is \(4\). How many whole numbers between \(200\) and \(300\) deny \(6\)?",17
+"A \textit A funny number is a number that is the product of two consecutive primes (neighboring numbers when all numbers other than primes are taken out), such as 5 ¡Á 7=35. What is the least common multiple of the 3 smallest ¡°funny¡± numbers?",210
+Jake is selling cheesecakes in boxes of 5 and 12. What is the greatest number of cheesecakes that you are unable to obtain by purchasing whole boxes?,43
+For how many positive integer values of \(x\) is \(4^{x} - 1\) prime?,1
+Find the largest prime divisor of \(25^3 + 1\).,601
+How many zeros are at the end of \(30!\) (30 factorial)?,7
+Jacques uses a calculator to compute the product \(31 \times 30 \times 29 \times \dots \times 3 \times 2 \times 1\). He then adds the digits of the product. He then adds the digits of the new result. He keeps on adding the digits of the results until he gets a single digit number. What is the single digit number?,9
+What is the sum of all factors of \(1000\)?,2340
+What is the greatest prime factor of \(9^{18} - 3^{32}\)?,5
+What is the remainder when \(2^{107}\) is divided by \(7\)?,4
+"When \(1999^{2000}\) is divided by \(5\), the remainder is \(\_\_\_\)?",1
+What is the tens digit of \(7^{2011}\)?,4
+How many integers from \(1\) to \(100\) are relatively prime to \(140\)?,34
+"If \(98! + 97!\) is divisible by \(3^n\), what is the largest integer \(n\)?",48
+"A positive integer \(n\) satisfies the equation     \[        (n+1)! + (n+2)! = 440 \cdot n!.    \]    What is the sum of the digits of \(n\)? \text{(A) } 2 \quad
+        \text{(B) } 5 \quad
+        \text{(C) } 10 \quad
+        \text{(D) } 12 \quad
+        \text{(E) } 15",C
+"If \(15! - 2*(5!)^{2}\) is divisible by \(10^n\), what is the greatest value of \(n\)?",2
+"If \(100!\) is divisible by \(7^n\), what is the largest possible value of \(n\)?",16
+"The least common multiple of \(a\) and \(b\) is \(12\), and the least common multiple of \(b\) and \(c\) is \(15\). What is the least possible value of the least common multiple of \(a\) and \(c\)?               \text{(A) } 20 \quad
+\text{(B) } 30 \quad
+\text{(C) } 60 \quad
+\text{(D) } 120 \quad
+\text{(E) } 180",A
+"When I add 9 to my favorite number and triple the result, I get the fourth power of the smallest odd prime number. What is half of my favorite number?",9
+How many of the first 1000 positive integers are multiples of both 4 and 5 but not of 6?,34
+"What is the tens digit of \(2015^{2016} - 2017?\)    \[
+    \text{(A) } 0 \quad
+    \text{(B) } 1 \quad
+    \text{(C) } 3 \quad
+    \text{(D) } 5 \quad
+    \text{(E) } 8
+    \]",A
+"For some positive integer \( k \), the repeating base-\( k \) representation of the (base-ten) fraction     \[
+    \frac{7}{51} = 0.\overline{23}_k = 0.232323\ldots_k.
+    \] 
+    What is \( k \)? 
+    \[
+    \text{(A) } 13 \quad
+    \text{(B) } 14 \quad
+    \text{(C) } 15 \quad
+    \text{(D) } 16 \quad
+    \text{(E) } 17
+    \]",D
+"The number obtained from the last two nonzero digits of \( 90! \) is equal to \( n \). What is \( n \)?     \[
+    \text{(A) } 12 \quad
+    \text{(B) } 32 \quad
+    \text{(C) } 48 \quad
+    \text{(D) } 52 \quad
+    \text{(E) } 68
+    \]",A
+"The positive integer \( N \) satisfies \[N_8 + N_9 = 2017_{10},\]where the subscripts signify number bases. What is the sum of the digits of \( N \)?    \[
+    \text{(A) } 5 \quad
+    \text{(B) } 6 \quad
+    \text{(C) } 7 \quad
+    \text{(D) } 8 \quad
+    \text{(E) } 9
+    \]",E
+"The number \( n \) can be written in base \( 14 \) as \( a \, b \, c \), can be written in base \( 15 \) as \( a \, c \, b \), and can be written in base \( 6 \) as \( a \, c \, a \, c \), where \( a > 0 \). Find the base-10 representation of \( n \). ",925
+"(AIME 1987) Find \( 3x^2 y^2 \) if \( x \) and \( y \) are integers such that     \[
+    y^2 + 3x^2 y^2 = 30x^2 + 517.
+    \] ",588
+How many numbers less than \( 2016 \) have exactly \( 3 \) factors? ,14
+"Find the remainder when     \[
+    1 + 2 + 4 + 8 + \cdots + 2^{2015}
+    \]     is divided by \( 7 \). 
+",0
+"Consider the base 10 number     \[
+    N = 2016(2016(2016(\ldots (2016(2016 + 1))\ldots))),
+    \]    which contains \( 2015 \) instances of \( 2016 \). How many \( 1 \)'s are in the base \( 2016 \) representation of \( N \)?
+",2
+"In some base \( b \),     \[
+    23_b + 23_b = 101_b.
+    \]     What is \( b \)?
+",5
+"Nick puts a certain number of apples into piles. Nick notices that if he puts the apples in piles of \( 10 \), there are \( 9 \) left; if he puts the apples in piles of \( 9 \), there are \( 8 \) left; if he puts the apples in piles of \( 8 \), there are \( 7 \) left. Find the minimum number of apples.",359
+Shasta's phone passcode is \( 4 \) digits long. The number's digits add up to \( 15 \) and the number is also divisible by \( 15 \). The numbers formed by the first two digits and last two digits form two consecutive even numbers. What is her passcode?,3840
+"Let \( a_0 = 2 \), \( a_1 = 5 \), and \( a_2 = 8 \), and for \( n > 2 \) define \( a_n \) recursively to be the remainder when     \[
+    4(a_{n-1} + a_{n-2} + a_{n-3})
+    \]
+    is divided by \( 11 \). Find \( a_{2018} \cdot a_{2020} \cdot a_{2022} \).",112
+"How many integers from \( 1 \) to \( 1000 \), inclusive, are divisible by neither \( 2 \) nor \( 5 \)?",400
+"Positive integer \( n \) is the smallest possible integer that has remainder \( 1 \) when divided by \( 2 \), remainder \( 2 \) when divided by \( 3 \), remainder \( 3 \) when divided by \( 4 \), remainder \( 4 \) when divided by \( 5 \), remainder \( 5 \) when divided by \( 6 \), remainder \( 6 \) when divided by \( 7 \), and remainder \( 7 \) when divided by \( 8 \). What is the sum of the digits of \( n \)?",20
+How many prime numbers \( n \) are there such that \( n^2 - 1 \) is also prime?,1
+How many integers from \( 1 \) to \( 100 \) are multiples of either \( 3 \) or \( 4 \) but not \( 12 \)?,42
+"What is the largest value of \( n \) such that     \[
+    n^2 - 6n - 55
+    \]
+    is prime?",12
+"Which of the following numbers is a perfect square?    \[
+    \text{(A) } 98! \cdot 99! \quad
+    \text{(B) } 98! \cdot 100! \quad
+    \text{(C) } 99! \cdot 100! \quad
+    \text{(D) } 99! \cdot 101! \quad
+    \text{(E) } 100! \cdot 101!
+    \]",C
+"Marvin had a birthday on Tuesday, May 27 in the leap year \( 2008 \). In what year will his birthday next fall on a Saturday?    \[
+    \text{(A) } 2011 \quad
+    \text{(B) } 2012 \quad
+    \text{(C) } 2013 \quad
+    \text{(D) } 2015 \quad
+    \text{(E) } 2017
+    \]",E
+"Consider an \( 8 \)-digit number using each of the digits \( 1 - 8 \) exactly once, with the following conditions: The greatest common factor of the first two digits is greater than \( 1 \). The next two digits are both prime numbers. The next two digits are both perfect squares. The last two digits are both triangular numbers. What is the smallest number that satisfies the given conditions?",28571436
+"The digits \( 4, 5, 6, \) and \( 7 \) are permuted to create a four-digit number. What is the probability that this number is divisible by \( 4 \)? (write in decimal)",0.25
+Yoonjoo wants to sell \( 60 \) identical pencils in groups of \( 5 \) or \( 2 \). In how many ways can the pencils be grouped?,7
+"Let \( N \) be the number of ways to write \( 2010 \) in the form     \[
+    2010 = a_3 \cdot 10^3 + a_2 \cdot 10^2 + a_1 \cdot 10 + a_0,
+    \]     where the \( a_i \)'s are integers, and \( 0 \leq a_i \leq 99 \). An example of such a representation is 
+    \[
+    1 \cdot 10^3 + 3 \cdot 10^2 + 67 \cdot 10^1 + 40 \cdot 10^0.
+    \]
+    Find \( N \).",202
+"Find the least positive integer \( n \) such that when \( 3^n \) is written in base \( 143 \), its two right-most digits in base \( 143 \) are \( 01 \).",195
+Find the sum of all positive integers \( b < 1000 \) such that the base-\( b \) integer \( 36_b \) is a perfect square and the base-\( b \) integer \( 27_b \) is a perfect cube.,371
