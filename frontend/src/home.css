@@ -110,3 +110,16 @@
   color: #aaa;
   font-size: 14px;
 }
+
+.btn.tertiary {
+  background: #e0e0e0;
+  color: #333;
+  padding: 12px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.btn.tertiary:hover {
+  background: #cfcfcf;
+}

@@ -7,14 +7,17 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="hero">
-        <h1 className="title"> AI Tutor System Demo</h1>
+        <h1 className="title">AI Tutor Demo</h1>
         <p className="subtitle">
           Empowering Math Learning with AI-guided Teaching, Polya Reasoning, and Auto Grading.
         </p>
 
         <div className="hero-buttons">
-          <Link to="/learning" className="btn primary"> Go to Learning Model</Link>
-          <Link to="/autograder" className="btn secondary"> Go to Auto Grader</Link>
+          <Link to="/learning" className="btn primary">Go to Learning Model</Link>
+          <Link to="/autograder" className="btn secondary">Go to Auto Grader</Link>
+
+          {/* ★ Add Upload Textbook Button Here */}
+          <Link to="/upload" className="btn tertiary">Upload Textbook</Link>
         </div>
       </section>
 
@@ -29,13 +32,13 @@ export default function Home() {
         <div className="feature-card">
           <img src="https://cdn-icons-png.flaticon.com/512/2907/2907300.png" />
           <h3>Auto Grading</h3>
-          <p>Upload answers or images, and receive instant AI grading.</p>
+          <p>Upload multiple answers or images and receive instant AI grading.</p>
         </div>
 
         <div className="feature-card">
           <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" />
           <h3>Adaptive Learning</h3>
-          <p>Future versions support student profiles & personalized tasks.</p>
+          <p>Instant response and personalized learning database.</p>
         </div>
       </section>
 
