@@ -2,11 +2,24 @@ import { useState } from "react";
 import { useCurriculum } from "./context/CurriculumContext";
 
 export default function UploadTextbook() {
-  const { setCurriculumTree } = useCurriculum();
+  const { curriculumTree, setCurriculumTree } = useCurriculum();
 
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState("");
+
+  // 控制折叠
+  const [openTopics, setOpenTopics] = useState<Record<number, boolean>>({});
+  const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
+
+  const toggleTopic = (i: number) => {
+    setOpenTopics((prev) => ({ ...prev, [i]: !prev[i] }));
+  };
+
+  const toggleChapter = (topicIndex: number, chapterIndex: number) => {
+    const key = `${topicIndex}-${chapterIndex}`;
+    setOpenChapters((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -20,12 +33,9 @@ export default function UploadTextbook() {
     }
 
     setLoading(true);
-
     const formData = new FormData();
     formData.append("subject", subject);
-    formData.append("file", file); // VERY IMPORTANT! This must be “file”
-
-    console.log("Sending file:", file);
+    formData.append("file", file);
 
     const resp = await fetch("http://127.0.0.1:8000/api/upload_textbook", {
       method: "POST",
@@ -34,22 +44,13 @@ export default function UploadTextbook() {
 
     const data = await resp.json();
     setLoading(false);
-    console.log("BACKEND RESPONSE:", data);
 
-    if (!data.tree) {
-      alert("Failed to parse uploaded textbook. Try a different file.");
-      return;
+    if (data.tree) {
+      setCurriculumTree(data.tree);
+      console.log("📚 Curriculum Tree Saved:", data.tree);
+    } else {
+      alert("Failed to build tree.");
     }
-
-    try {
-      const parsed = JSON.parse(data.tree);
-      setCurriculumTree(parsed);
-    } catch (err) {
-      console.error("❌ JSON parse failed:", err);
-      alert("Text extracted but cannot form valid curriculum JSON.");
-    }
-
-    alert("📚 Curriculum Tree Created Successfully!");
   };
 
   return (
@@ -70,13 +71,59 @@ export default function UploadTextbook() {
         className="file-upload"
       />
 
-      {file && (
-        <div className="pdf-preview">📄 {file.name}</div>
-      )}
+      {file && <div className="pdf-preview">📄 {file.name}</div>}
 
       <button className="btn-primary" onClick={handleBuildTree} disabled={loading}>
-        {loading ? "Building Curriculum Tree..." : "Generate Curriculum Tree"}
+        {loading ? "Building..." : "Generate Curriculum Tree"}
       </button>
+
+      {/* 分割线 */}
+      <hr style={{ margin: "30px 0" }} />
+
+      {/* 树形结构 */}
+      {curriculumTree ? (
+        <>
+          <h2>🌳 Curriculum Tree</h2>
+
+          <div style={{ background: "#fafafa", padding: "15px", borderRadius: 12 }}>
+            {curriculumTree.topics?.map((t: any, i: number) => (
+              <div key={i} style={{ marginBottom: 10 }}>
+                <div
+                  style={{ cursor: "pointer", fontWeight: 600 }}
+                  onClick={() => toggleTopic(i)}
+                >
+                  {openTopics[i] ? "" : ""} {t.topic}
+                </div>
+
+                {openTopics[i] &&
+                  t.chapters.map((c: any, j: number) => {
+                    const chapKey = `${i}-${j}`;
+                    return (
+                      <div key={j} style={{ marginLeft: 20 }}>
+                        <div
+                          style={{ cursor: "pointer", color: "#333" }}
+                          onClick={() => toggleChapter(i, j)}
+                        >
+                          {openChapters[chapKey] ? "▼" : "▶"} {c.chapter}
+                        </div>
+
+                        {openChapters[chapKey] && (
+                          <ul style={{ marginLeft: 30, color: "#555" }}>
+                            {c.key_points.map((kp: string, k: number) => (
+                              <li key={k}>• {kp}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p>⬆ Upload textbook to see tree</p>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export default function Home() {
         </p>
 
         <div className="hero-buttons">
-          <Link to="/learning" className="btn primary">Go to Learning Model</Link>
+          <Link to="/learning" className="btn primary">Go to Learning Mode</Link>
           <Link to="/autograder" className="btn secondary">Go to Auto Grader</Link>
 
           {/* ★ Add Upload Textbook Button Here */}

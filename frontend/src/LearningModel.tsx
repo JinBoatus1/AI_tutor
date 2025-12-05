@@ -19,6 +19,7 @@ export default function LearningModel() {
   };
 
   const addAIMessage = (text: string) => {
+    if (typeof text !== "string") text = String(text || "");
     setMessages((prev) => [...prev, { sender: "ai", text }]);
   };
 
@@ -32,7 +33,7 @@ export default function LearningModel() {
     setProblem(input);
     setInput("");
 
-    // WAIT FOR POLYA
+    // WAIT FOR POLYA CHOICE
     setWaitingForPolyaChoice(true);
   };
 
@@ -45,17 +46,21 @@ export default function LearningModel() {
     addAIMessage(`📘 You selected: ${choice}. Let me help you step by step.`);
 
     // call backend
-    const resp = await fetch("http://127.0.0.1:8000/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: `${choice}\nStudent problem: ${problem}`,
-        history: messages,
-      }),
-    });
+    try {
+      const resp = await fetch("http://127.0.0.1:8000/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `${choice}\nStudent problem: ${problem}`,
+          history: messages,
+        }),
+      });
 
-    const data = await resp.json();
-    addAIMessage(data.reply);
+      const data = await resp.json();
+      addAIMessage(data.reply || "[Empty reply]");
+    } catch (err) {
+      addAIMessage("Error: Could not reach backend.");
+    }
 
     // match curriculum
     if (curriculumTree) {
@@ -67,19 +72,27 @@ export default function LearningModel() {
   // MATCH CURRICULUM SECTION
   // ============================
   const matchCurriculum = (question: string) => {
-    if (!curriculumTree || !curriculumTree.topics) return;
+    if (
+      !curriculumTree ||
+      typeof curriculumTree !== "object" ||
+      !Array.isArray(curriculumTree.topics)
+    ) {
+      return;
+    }
 
-    let best = null;
+    let best: any = null;
     let score = 0;
 
     curriculumTree.topics.forEach((t: any) => {
+      if (!Array.isArray(t.chapters)) return;
+
       t.chapters.forEach((c: any) => {
         const text = (c.chapter + " " + c.key_points.join(" ")).toLowerCase();
         const q = question.toLowerCase();
 
         let s = 0;
         q.split(" ").forEach((w) => {
-          if (text.includes(w)) s += 1;
+          if (text.includes(w)) s++;
         });
 
         if (s > score) {
@@ -99,10 +112,11 @@ export default function LearningModel() {
     setMessages([]);
     setWaitingForPolyaChoice(false);
     setProblem("");
+    setMatchedSection(null);
   };
 
   // ============================
-  // UI COMPONENTS
+  // POLYA UI COMPONENT
   // ============================
   const PolyaSelector = () => {
     if (!waitingForPolyaChoice) return null;
@@ -129,7 +143,7 @@ export default function LearningModel() {
     <div className="learning-layout">
       {/* LEFT CHAT AREA */}
       <div className="chat-panel">
-        <h1 className="title">Learning Model</h1>
+        <h1 className="title">Learning Mode</h1>
 
         {/* Reset button */}
         <div className="reset-box">
@@ -142,11 +156,10 @@ export default function LearningModel() {
         <div className="chat-box">
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              {m.text}
+              <p style={{ whiteSpace: "pre-wrap" }}>{m.text}</p>
             </div>
           ))}
 
-          {/* Polya shown only when waiting */}
           <PolyaSelector />
         </div>
 
@@ -161,12 +174,10 @@ export default function LearningModel() {
         </div>
       </div>
 
-      {/* RIGHT PANEL: Curriculum */}
-      {/* RIGHT PANEL: Curriculum */}
+      {/* RIGHT PANEL */}
       <div className="right-panel">
         <h3>📚 Related Section</h3>
 
-        {/* If matched section exists */}
         {matchedSection ? (
           <div className="match-box">
             <h4>🔍 Topic: {matchedSection.topic}</h4>
@@ -185,16 +196,13 @@ export default function LearningModel() {
 
         <h3>📖 Curriculum Overview</h3>
 
-        {/* Pretty tree structure */}
-        {curriculumTree ? (
+        {curriculumTree?.topics ? (
           <div className="tree-scroll">
             {curriculumTree.topics.map((t: any, i: number) => (
               <div key={i} className="topic-box">
                 <strong>📌 {t.topic}</strong>
                 {t.chapters.map((c: any, j: number) => (
-                  <div key={j} className="chapter-box">
-                    ┗ 📘 {c.chapter}
-                  </div>
+                  <div key={j} className="chappter-box">┗ 📘 {c.chapter}</div>
                 ))}
               </div>
             ))}
@@ -203,8 +211,6 @@ export default function LearningModel() {
           <p className="note">Upload textbook to build curriculum tree →</p>
         )}
       </div>
-
-
     </div>
   );
 }
