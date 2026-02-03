@@ -44,8 +44,8 @@ Start the backend server in one terminal and the frontend development server in 
 ```bash
 # Terminal 1 - Backend
 cd backend
-source .venv/bin/activate #(if not in virtual environment)
-python main.py #access backend through localhost:8000
+source .venv/bin/activate (windows .venv\Scripts\activate)
+uvicorn main:app --reload #access backend through localhost:8000
 
 # Terminal 2 - Frontend  
 cd frontend
