@@ -57,7 +57,15 @@ export default function LearningModel() {
       });
 
       const data = await resp.json();
-      addAIMessage(data.reply || "[Empty reply]");
+      const reply = data.reply || "[Empty reply]";
+      const conf =
+        typeof data.confidence === "number" ? data.confidence : null;
+
+      if (conf === null) {
+        addAIMessage(reply);
+      } else {
+        addAIMessage(`${reply}\n\nConfidence: ${conf}/100`);
+      }
     } catch (err) {
       addAIMessage("Error: Could not reach backend.");
     }
