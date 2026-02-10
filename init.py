@@ -1,5 +1,6 @@
 # Utility to run both backend and frontend in parallel using available tooling.
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -38,12 +39,30 @@ def find_local_npm() -> Path | None:
 	return None
 
 
+def find_env_npm() -> Path | None:
+	npm_name = "npm.cmd" if os.name == "nt" else "npm"
+	for env_var in ("NODE_HOME", "NODEJS_HOME", "NVM_HOME"):
+		node_dir = os.environ.get(env_var)
+		if not node_dir:
+			continue
+		node_path = Path(node_dir)
+		for candidate_dir in (node_path, node_path / "bin"):
+			candidate = candidate_dir / npm_name
+			if candidate.is_file():
+				return candidate
+	return None
+
+
 def resolve_npm_path(user_path: str | None) -> Path:
 	if user_path:
 		path = Path(user_path)
 		if not path.is_file():
 			raise RuntimeError(f"Specified npm path does not exist: {path}")
 		return path
+
+	env_npm = find_env_npm()
+	if env_npm:
+		return env_npm
 
 	local = find_local_npm()
 	if local:
