@@ -42,7 +42,7 @@ def resolve_npm_path(user_path: str | None) -> Path:
 	if user_path:
 		path = Path(user_path)
 		if not path.is_file():
-			raise RuntimeError(f"指定的 npm 路径不存在：{path}")
+			raise RuntimeError(f"Specified npm path does not exist: {path}")
 		return path
 
 	local = find_local_npm()
@@ -54,7 +54,7 @@ def resolve_npm_path(user_path: str | None) -> Path:
 		return Path(which)
 
 	raise RuntimeError(
-		"npm 可执行文件不可用。请解压 Node.js 到 frontend/node.js，或者安装 Node 并将 npm 加入 PATH。"
+		"npm executable not available. Please extract Node.js into frontend/node.js or install Node.js and add npm to PATH."
 	)
 
 

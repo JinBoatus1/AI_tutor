@@ -7,7 +7,6 @@
       conda env create -f environment.yml
       conda activate py312-api
       ```
-      `environment.yml` 现在将 `PyMuPDF>=1.26.0` 作为依赖，Conda/pip 会自动下载一个支持 Python 3.12 的预编译 wheel，无需再手动安装 1.22.1 或编译源码。
    2. 如果你不通过 `conda env create`，也可以手动安装后端依赖：
       ```powershell
       cd backend
@@ -41,7 +40,6 @@
       conda env create -f environment.yml
       conda activate py312-api
       ```
-      The environment file now installs `PyMuPDF>=1.26.0`, so Conda/Pip picks a wheel that already supports Python 3.12 or newer. There is no need to force-install 1.22.1 and build it from source.
    2. If you prefer to install manually, grab the backend dependencies separately:
       ```powershell
       cd backend
