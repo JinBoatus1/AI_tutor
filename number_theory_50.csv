@@ -1,0 +1,51 @@
+questions,answer
+A list contains exactly 6 different counting numbers. No number in the list is a multiple of any other in the list. What is the least possible total of these 6 numbers?,41
+Find the remainder when 1 + 2 + 4 + 8 + ... + 2^2015 is divided by 7.,0
+The four-digit number A7A8 is divisible by 9. What digit does A represent?,6
+Let N = (13 ¡Á 17) + (19 ¡Á 23). What is the smallest prime number that is a divisor of N?,2
+What is the remainder when 123456 is divided by 5?,1
+What is the thousands digit of 20!?,0
+"Positive integer n is the smallest possible integer that has remainder 1 when divided by 2, remainder 2 when divided by 3, remainder 3 when divided by 4, remainder 4 when divided by 5, remainder 5 when divided by 6, remainder 6 when divided by 7, and remainder 7 when divided by 8. What is the sum of the digits of n?",20
+How many pairs of prime numbers have a sum of 40?,3
+Marsha adds all but one of the first ten positive integers. Her sum is a square number. Which one of the first ten positive integers did Marsha not include?,6
+What is the remainder when 2^107 is divided by 7?,4
+The remainder when the product 1492¡¤1776¡¤1812¡¤1996 is divided by 5 is,4
+The year 2002 is a palindrome. What is the product of the digits of the next year after 2002 that is a palindrome?,4
+How many positive integers less than 48 are relatively prime to 48?,16
+What is the remainder when 3^2013 is divided by 16?,3
+What is the last digit of 1337^101?,7
+How many integers from 1 to 100 are relatively prime to 140?,34
+Challenge: David and Zuming are dividing thirty apples. David only wants a multiple of two apples while Zuming only wants a multiple of three apples. Each wants at least one apple. How many ways can they divide the apples so that no apples are left over?,4
+How many numbers less than 38 are relatively prime to 38?,18
+What is the units digit of the product 7^23 ¡Á 8^105 ¡Á 3^182?,6
+What is the greatest common factor of 24 and 64?,8
+"a, b, c are all primes, only c is a one-digit prime, and a ¡Á b + c = 223. What is a+b+c?",32
+"Find the pattern in the sequence 1, 4, 9, 16, 25, n, 49, 64. What is n?",36
+"Knowing 30^2 = 900, what is 29^2?",841
+"A positive integer is 3 more than a multiple of 4, and 4 more than a multiple of 5. What is the least integer it can be?",19
+"I have 60 pencils. If I separate them into 7 equal groups, how many are left over?",4
+A three digit number has three distinct nonzero digits. What is the least possible value of the sum of its digits?,6
+"Jason¡¯s math score is between 1 and 100 and divisible by both 12 and 32, what is his score?",96
+"A box contains gold coins. If divided among 6 people, 4 left over. If among 5 people, 3 left over. If it is the smallest such number, how many left when divided among 7 people?",0
+How many ways can positive integers a ¡Ü b ¡Ü c be chosen such that a+b+c=10?,8
+"A ticket to a school play costs x dollars. A group of 9th graders spends $48, a group of 10th graders spends $64. How many values for x are possible?",5
+How many distinct four-digit numbers are divisible by 3 and have 23 as their last two digits?,30
+"Soda is sold in packs of 6, 12 and 24 cans. What is the minimum packs needed to buy exactly 90 cans?",5
+"When 1999^2000 is divided by 5, the remainder is",1
+"Find the least positive integer n such that when 3^n is written in base 143, its two right-most digits are 01.",195
+A positive integer n satisfies (n+1)!+(n+2)!=440¡¤n!. What is the sum of the digits of n?,10
+Compute 11!/8!.,990
+"Arrange the digits 1,3,9,0,6 to form the biggest 5-digit number divisible by 4. What is it?",93160
+"A basket of apples: if divided among 3 friends, 2 left. Among 5 friends, 3 left. Among 15 friends, how many left?",8
+How many ways can positive integers a ¡Ü b ¡Ü c be chosen such that a+b+c=10?,8
+A number between 60 and 90 leaves remainder 2 mod 9 and 4 mod 5. What is it?,74
+A number 342x5 is divisible by 25. What are the possible x?,"2,7"
+"The number xy854 is divisible by 9, x¡Ù0,y¡Ù0, x?y=2. What is xy?",64
+What is the remainder when (2018^1001?1)/2017 is divided by 2017?,1001
+How many non-congruent right triangles with integer leg lengths have area = 3¡Áperimeter?,6
+Find the sum of all positive two-digit integers that are divisible by each of their digits.,630
+There exist unique positive integers x and y that satisfy the equation x^2+84x+2008=y2. Find x+y.,80
+"When I add 9 to my favorite number and triple the result, I get the fourth power of the smallest odd prime number. What is half of my favorite number?",9
+There is a prime number p such that 16p+1 is the cube of a positive integer. Find p.,307
+"Find the number of rational numbers r, 0<r<1,?such that when r is written as a fraction in lowest terms, the numerator and the denominator have a sum of 1000.",200
+"In multiplying two positive integers a and b, Ron reversed the digits of the two-digit number a. His erroneous product was 161. What is the correct value of the product of a and b?",224

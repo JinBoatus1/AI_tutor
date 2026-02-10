@@ -1,0 +1,153 @@
+RCOS Proposal: MathCup AI Tutor (Web-first, then App) 
+September 18, 2025 
+Objectives 
+1. Build an AI-driven math tutoring system that helps students learn through Socratic questioning instead of directly giving answers. 
+2. Integrate the MathCup problem database via REST API for problem retrieval and structured tutoring. 
+3. Ensure tutoring responses are pedagogically sound, safe, and adaptive to student progress. 
+4. Start with a fully functional web application, and then transition into a mobile app interface in the final stage. 
+Architecture 
+1. Frontend 
+• Web-first progressive web app for students to input problems (text, handwriting, or photo). 
+• Interactive Q&A chat with math rendering (KaTeX/MathJax). 
+• Phase 2: Dashboard with progress tracking and mastery visualization. 
+2. Backend 
+• LLM API orchestration for parsing, classification, and Socratic tutoring. • Integration with MathCup REST API to retrieve relevant problems/exemplars. • Response engine that decides: explain → guide → check answer. 
+3. Analytics (Future Work, Phase 2) 
+• Store student interaction records in DB. 
+• Bayesian Knowledge Tracing (BKT) for modeling mastery and suggesting review problems. 
+1
+Tutoring Flow 
+1. Student Input: Student enters or uploads a problem. 
+2. LLM Analysis: Parse → classify → retrieve relevant problems. 3. Response Generation: Scaffolded explanation, hints, or alternative strategies. 
+4. Follow-up: Tutor checks student attempt, gives feedback, and asks next-step ques tions. 
+5. Progress Tracking (Phase 2): Mastery model updates and problem recommen dations. 
+2
+Implementation Timeline (9 Weeks) 
+Weeks 
+Tasks
+Weeks 1–2
+• Project setup: repositories, CI/CD pipeline, and basic web frontend skeleton. 
+• Connect mock API to MathCup REST API. 
+• Build initial web chat interface with math rendering (Ka TeX/MathJax).
+Weeks 3–4
+• Implement parsing and classification module (topic, subtopic, difficulty). 
+• Develop retrieval system to access MathCup problem database.
+Weeks 5–6
+• Design Socratic tutoring loop (hint-first, scaffolded steps, multi-strategy support). 
+• Integrate correctness checker for student responses. • Establish basic safety rules (e.g., avoid final-answer dumping).
+Weeks 7–8
+• Refine tutoring engine: adaptive hints (multi-level), response planner (decide explain/guide/check). 
+• Add safety filters (math verification, inappropriate content refusal). 
+• Improve web interaction design: “I’m stuck” button, alternative strategies.
+Week 9
+• Integrate all components into a stable web tutoring system. • Conduct pilot testing with a sample of math problems. • Debugging, polish UI/UX, finalize demo and documentation. 
+• Wrap web version into a mobile app (PWA/React Native) for deployment.
+
+
+
+3
+Short time target for individually
+
+Bo Jin will give a simple evaluation of the study mode of Gemini-2.5 and GPT-5, based on the functions of education. Also evaluate and provide one Main Features of AI tutor. This will be done by 10/15.
+
+Vaibhav Patel will work on designing basic AI instruction prompt planner and basic answer equivalence check from weeks 1-5. Weeks 5-8, he will design the socratic tutoring loop prototypes. Weeks 8-10, he will assist in AI evaluation.
+
+Shijun Liu will work on the evaluate and provide one Main Features of AI tutor, and keep working on building the demo website that could add those future features.
+
+Marcus Chan will work on parsing and retrieval and then help build a correctness checker with basic rules. He will also help build and refine a response planner for a tutoring engine.
+
+
+
+
+After our brainstorming session, we will select a few feasible ideas and work on them for the rest of the semester.
+Does everyone agree that this is a good idea?
+Is this idea practically feasible?
+Who will be responsible for this idea?
+
+
+
+Main Features suggestion
+Helpful example question generation (Bo)
+Detection errors in the solution steps (Bo)
+Two modes: Solver and TA  (Vaibhav)
+Socratic tutoring loop
+
+Students’ historical dialogue, context, memory (private database), containing data such as error pattern(shijun liu)
+Customized range, such as grades(6-9), levels(basic, advanced, competition)
+
+User-constrained reasoning based on user provided inputs? (Marcus Chan)
+Teacher can provide inputs to assist in auto grading
+
+
+?Cut off (If LLMs don’t know the answer, we should say that we don’t know instead of give misdirect solution and instructions)
+
+Figure of functions
+
+
+
+Generating exams for instructors
+
+Two methods:
+Using TRAG, pick questions from database using cosine similarity
+Using prompting, let LLMs generate good practice questions
+
+labeling subtopics wrong, what is the rate, do a 50 questions evaluation.
+more subtopics containing in one question
+
+
+Grader: Error detection
+Detect wrong steps of polya’s method
+
+
+
+*Figure of workflow
+
+
+10/05/2025
+1. Test on Gemini compare to fin-GPT search agent
+2.  Finish paper results for Math Tutor in 
+table 1: Improve the performance of prompting(collaborate with Jaisial) 
+table 2: Finish 3 round evaluation
+3. Find the ratio of LLMs’ error with labeling subtopics, do an evaluation on a set of 50 questions.
+
+
+
+10/10/2025
+Practice questions generations
+Pick standard for good practice questions(same knowledge, slightly harder)
+	1. The questions are in same subtopic
+		2. The questions are in same knowledge point
+		3. The questions are not same with only change values
+		4. The difficulty of practice questions are similar or slightly harder
+		5. The questions are going further in the same knowledge point (future)
+Design prompts for systematic generation(start from 5 questions)
+Benchmark 3 best prompts under bigger dataset(50/100)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Private Database:
+MongoDB? 
+Size:
+Seach time.
+
+2 parts,
+Level by difficulties
+personal record of questions made error 
+Realtime or manual tag(like ask agent to generate questions that made error and save
+

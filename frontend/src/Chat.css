@@ -1,0 +1,68 @@
+.learning-layout {
+  display: flex;
+  gap: 20px;
+}
+
+.chat-panel {
+  flex: 1;
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.sidebar {
+  width: 280px;
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.chat-box {
+  height: 350px;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.msg-user {
+  text-align: right;
+  color: #2c7be5;
+  margin: 6px 0;
+}
+
+.msg-ai {
+  text-align: left;
+  color: #333;
+  margin: 6px 0;
+}
+
+.polya-container {
+  margin-top: 12px;
+  padding: 10px;
+  background: #eef6ff;
+  border-radius: 6px;
+}
+
+.polya-container button {
+  display: block;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 8px;
+}
+
+.section-box {
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 6px;
+}
