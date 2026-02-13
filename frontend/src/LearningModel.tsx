@@ -10,6 +10,11 @@ export default function LearningModel() {
   const { curriculumTree } = useCurriculum();
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
+  const [dataMatchedTopic, setDataMatchedTopic] = useState<{
+    name: string;
+    start: number;
+    end: number;
+  } | null>(null);
 
   // ============================
   // UTILS
@@ -60,6 +65,14 @@ export default function LearningModel() {
       const reply = data.reply || "[Empty reply]";
       const conf =
         typeof data.confidence === "number" ? data.confidence : null;
+
+      if (data.matched_topic) {
+        setDataMatchedTopic({
+          name: data.matched_topic.name,
+          start: data.matched_topic.start,
+          end: data.matched_topic.end,
+        });
+      }
 
       if (conf === null) {
         addAIMessage(reply);
@@ -121,6 +134,7 @@ export default function LearningModel() {
     setWaitingForPolyaChoice(false);
     setProblem("");
     setMatchedSection(null);
+    setDataMatchedTopic(null);
   };
 
   // ============================
@@ -186,7 +200,12 @@ export default function LearningModel() {
       <div className="right-panel">
         <h3>📚 Related Section</h3>
 
-        {matchedSection ? (
+        {dataMatchedTopic ? (
+          <div className="match-box">
+            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
+            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
+          </div>
+        ) : matchedSection ? (
           <div className="match-box">
             <h4>🔍 Topic: {matchedSection.topic}</h4>
             <h5>📘 Chapter: {matchedSection.chapter}</h5>
@@ -197,7 +216,7 @@ export default function LearningModel() {
             </ul>
           </div>
         ) : (
-          <p>No related topic yet. Ask a question!</p>
+          <p>No related topic yet. Ask a question and select a Polya option!</p>
         )}
 
         <hr />

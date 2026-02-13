@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 
 import os
+import json
 import base64
 import fitz               # PyMuPDF
 import tempfile
@@ -57,6 +58,108 @@ client = OpenAI(api_key=API_KEY)
 app = FastAPI()
 # 全局缓存：当前教材的段落
 TEXTBOOK_PARAGRAPHS: list[dict] = []
+
+# ================================
+# DATA: FOCS.json + PDF (Learning Mode)
+# ================================
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+FOCS_JSON_PATH = os.path.join(DATA_DIR, "FOCS.json")
+FOCS_PDF_PATH = os.path.join(DATA_DIR, "FOCS.pdf")  # 或 data 下首个 .pdf
+
+_topic_list: list[dict] = []  # [{name, start, end}, ...]
+_focs_pdf_bytes: bytes | None = None
+
+
+def _load_focs_topic_list():
+    """从 FOCS.json 解析出所有有页码的 topic。"""
+    global _topic_list
+    if _topic_list:
+        return _topic_list
+    if not os.path.exists(FOCS_JSON_PATH):
+        return []
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+
+    def extract_topics(obj: dict, prefix: str = ""):
+        items = []
+        for k, v in obj.items():
+            if k == "_range":
+                continue
+            if isinstance(v, dict):
+                start = v.get("start") or (v.get("_range", {}).get("start"))
+                end = v.get("end") or (v.get("_range", {}).get("end"))
+                if start is not None and end is not None:
+                    try:
+                        s, e = int(start), int(end)
+                        items.append({"name": k, "start": s, "end": e})
+                    except (TypeError, ValueError):
+                        pass
+                items.extend(extract_topics(v, k))
+        return items
+
+    _topic_list = extract_topics(raw)
+    return _topic_list
+
+
+def _load_focs_pdf() -> bytes | None:
+    """加载 data 下的 PDF。优先 FOCS.pdf，否则取首个 .pdf。"""
+    global _focs_pdf_bytes
+    if _focs_pdf_bytes is not None:
+        return _focs_pdf_bytes
+    if os.path.exists(FOCS_PDF_PATH):
+        with open(FOCS_PDF_PATH, "rb") as f:
+            _focs_pdf_bytes = f.read()
+        return _focs_pdf_bytes
+    if os.path.isdir(DATA_DIR):
+        for fn in os.listdir(DATA_DIR):
+            if fn.lower().endswith(".pdf"):
+                path = os.path.join(DATA_DIR, fn)
+                with open(path, "rb") as f:
+                    _focs_pdf_bytes = f.read()
+                return _focs_pdf_bytes
+    return None
+
+
+def _match_topic_with_llm(question: str) -> dict | None:
+    """用 LLM 根据学生问题匹配 FOCS.json 中最相关的 topic。"""
+    topics = _load_focs_topic_list()
+    if not topics:
+        return None
+    names = [t["name"] for t in topics[:120]]  # 限制长度
+    prompt = (
+        f"You are matching a student question to a textbook topic.\n\n"
+        f"Student question: {question}\n\n"
+        f"Available topics (return ONLY one exact topic name):\n"
+        + "\n".join(f"- {n}" for n in names)
+        + "\n\nIf none match well, return the closest one. Reply with ONLY the topic name, no quotes."
+    )
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+    )
+    chosen = (resp.choices[0].message.content or "").strip().strip('"\'')
+    for t in topics:
+        if t["name"] == chosen:
+            return t
+    # 模糊匹配
+    for t in topics:
+        if chosen in t["name"] or t["name"] in chosen:
+            return t
+    return None
+
+
+def _extract_pdf_pages_text(pdf_bytes: bytes, start_page: int, end_page: int, max_chars: int = 15000) -> str:
+    """提取 PDF 指定页码范围（1-based）的整页文本。"""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    text = ""
+    for i in range(start_page - 1, min(end_page, len(doc))):
+        page = doc[i]
+        text += page.get_text() + "\n\n"
+        if len(text) > max_chars:
+            break
+    doc.close()
+    return text.strip()
 
 
 app.add_middleware(
@@ -115,8 +218,30 @@ def extract_pdf_text_safe(file_bytes: bytes, max_chars=500000):
 # ================================
 @app.post("/api/chat")
 async def chat(chat_message: ChatMessage):
+    # 0) LLM 匹配 topic → 从 data 书本提取对应页
+    page_context = ""
+    matched_topic = None
+    try:
+        matched_topic = _match_topic_with_llm(chat_message.message)
+        if matched_topic:
+            pdf_bytes = _load_focs_pdf()
+            if pdf_bytes:
+                page_context = _extract_pdf_pages_text(
+                    pdf_bytes, matched_topic["start"], matched_topic["end"]
+                )
+    except Exception as e:
+        print(f"[Learning] topic match/page extract failed: {e}")
+
+    system_content = "You are an AI math tutor. Explain clearly and step-by-step."
+    if page_context:
+        system_content += (
+            f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, pages {matched_topic['start']}-{matched_topic['end']}) ---\n"
+            f"{page_context[:12000]}\n"
+            "--- End of reference ---\n\nUse the above as context when answering. Cite relevant parts if helpful."
+        )
+
     # 1) Tutor answer
-    messages = [{"role": "system", "content": "You are an AI math tutor. Explain clearly and step-by-step."}]
+    messages = [{"role": "system", "content": system_content}]
     for msg in chat_message.history:
         role = "assistant" if msg["sender"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})
@@ -152,7 +277,14 @@ async def chat(chat_message: ChatMessage):
     raw_score = eval_resp.choices[0].message.content
     confidence = clamp_int_0_100(raw_score)
 
-    return {"reply": answer, "confidence": confidence}
+    result = {"reply": answer, "confidence": confidence}
+    if matched_topic:
+        result["matched_topic"] = {
+            "name": matched_topic["name"],
+            "start": matched_topic["start"],
+            "end": matched_topic["end"],
+        }
+    return result
 
 # ================================
 # AUTO GRADER ENDPOINT
