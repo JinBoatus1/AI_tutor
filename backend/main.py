@@ -62,6 +62,9 @@ TEXTBOOK_PARAGRAPHS: list[dict] = []
 # ================================
 # DATA: FOCS.json + PDF (Learning Mode)
 # ================================
+# PDF 前 15 页无内容，教材第 "1" 页对应 PDF 第 16 页
+PDF_PAGE_OFFSET = 15
+
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 FOCS_JSON_PATH = os.path.join(DATA_DIR, "FOCS.json")
 FOCS_PDF_PATH = os.path.join(DATA_DIR, "FOCS.pdf")  # 或 data 下首个 .pdf
@@ -121,7 +124,7 @@ def _load_focs_pdf() -> bytes | None:
 
 
 def _match_topic_with_llm(question: str) -> dict | None:
-    """用 LLM 根据学生问题匹配 FOCS.json 中最相关的 topic。"""
+    """用 LLM 根据学生问题匹配 FOCS.json 中最相关的 topic。若问题与课程完全无关则返回 None。"""
     topics = _load_focs_topic_list()
     if not topics:
         return None
@@ -129,9 +132,10 @@ def _match_topic_with_llm(question: str) -> dict | None:
     prompt = (
         f"You are matching a student question to a textbook topic.\n\n"
         f"Student question: {question}\n\n"
-        f"Available topics (return ONLY one exact topic name):\n"
+        f"If the question is COMPLETELY unrelated to this course (e.g. greetings like 'hi', random chat, "
+        f"questions about other subjects like cooking/sports/general knowledge), reply with exactly: UNRELATED\n\n"
+        f"Otherwise, choose the most relevant topic from this list. Reply with ONLY one exact topic name, no quotes:\n"
         + "\n".join(f"- {n}" for n in names)
-        + "\n\nIf none match well, return the closest one. Reply with ONLY the topic name, no quotes."
     )
     resp = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -139,6 +143,8 @@ def _match_topic_with_llm(question: str) -> dict | None:
         temperature=0.0,
     )
     chosen = (resp.choices[0].message.content or "").strip().strip('"\'')
+    if chosen.upper() == "UNRELATED":
+        return None
     for t in topics:
         if t["name"] == chosen:
             return t
@@ -147,6 +153,20 @@ def _match_topic_with_llm(question: str) -> dict | None:
         if chosen in t["name"] or t["name"] in chosen:
             return t
     return None
+
+
+def _render_pdf_page_to_base64(pdf_bytes: bytes, page_num_1based: int, dpi: int = 120) -> str | None:
+    """将 PDF 指定页（1-based）渲染为 PNG，返回 base64 字符串。用于在对话中展示「携带重要公式」的参考页。"""
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if page_num_1based < 1 or page_num_1based > len(doc):
+            return None
+        page = doc[page_num_1based - 1]
+        pix = page.get_pixmap(dpi=dpi)
+        img_bytes = pix.tobytes("png")
+        return base64.b64encode(img_bytes).decode("utf-8")
+    except Exception:
+        return None
 
 
 def _extract_pdf_pages_text(pdf_bytes: bytes, start_page: int, end_page: int, max_chars: int = 15000) -> str:
@@ -227,15 +247,18 @@ async def chat(chat_message: ChatMessage):
             pdf_bytes = _load_focs_pdf()
             if pdf_bytes:
                 page_context = _extract_pdf_pages_text(
-                    pdf_bytes, matched_topic["start"], matched_topic["end"]
+                    pdf_bytes,
+                    matched_topic["start"] + PDF_PAGE_OFFSET,
+                    matched_topic["end"] + PDF_PAGE_OFFSET,
                 )
     except Exception as e:
         print(f"[Learning] topic match/page extract failed: {e}")
 
     system_content = "You are an AI math tutor. Explain clearly and step-by-step."
-    if page_context:
+    if page_context and matched_topic:
+        s, e = matched_topic["start"] + PDF_PAGE_OFFSET, matched_topic["end"] + PDF_PAGE_OFFSET
         system_content += (
-            f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, pages {matched_topic['start']}-{matched_topic['end']}) ---\n"
+            f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, PDF pages {s}-{e}) ---\n"
             f"{page_context[:12000]}\n"
             "--- End of reference ---\n\nUse the above as context when answering. Cite relevant parts if helpful."
         )
@@ -279,11 +302,19 @@ async def chat(chat_message: ChatMessage):
 
     result = {"reply": answer, "confidence": confidence}
     if matched_topic:
+        start_pdf = matched_topic["start"] + PDF_PAGE_OFFSET
+        end_pdf = matched_topic["end"] + PDF_PAGE_OFFSET
         result["matched_topic"] = {
             "name": matched_topic["name"],
-            "start": matched_topic["start"],
-            "end": matched_topic["end"],
+            "start": start_pdf,
+            "end": end_pdf,
         }
+        # 携带重要公式的那一页：取匹配区间的起始页截图，供前端在对话中展示
+        _pdf = _load_focs_pdf()
+        if _pdf:
+            page_b64 = _render_pdf_page_to_base64(_pdf, start_pdf)
+            if page_b64:
+                result["reference_page_image_b64"] = page_b64
     return result
 
 # ================================
