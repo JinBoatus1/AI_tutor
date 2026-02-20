@@ -57,6 +57,12 @@ export default function LearningModel() {
       });
 
       const data = await resp.json();
+      if (!resp.ok) {
+        const detail = data?.detail || data?.error || "Backend request failed.";
+        addAIMessage(`Backend error: ${detail}`);
+        return;
+      }
+
       const reply = data.reply || "[Empty reply]";
       const conf =
         typeof data.confidence === "number" ? data.confidence : null;

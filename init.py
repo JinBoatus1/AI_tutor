@@ -11,6 +11,47 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 
+def load_env_file(path: Path) -> dict[str, str]:
+	values: dict[str, str] = {}
+	if not path.is_file():
+		return values
+	for raw_line in path.read_text(encoding="utf-8").splitlines():
+		line = raw_line.strip()
+		if not line or line.startswith("#") or "=" not in line:
+			continue
+		key, value = line.split("=", 1)
+		key = key.strip()
+		value = value.strip().strip('"').strip("'")
+		if key:
+			values[key] = value
+	return values
+
+
+def mask_secret(secret: str) -> str:
+	if len(secret) < 12:
+		return "<too-short>"
+	return f"{secret[:7]}...{secret[-4:]}"
+
+
+def build_backend_env() -> dict[str, str]:
+	env = dict(os.environ)
+	root_env = load_env_file(ROOT / ".env")
+	backend_env = load_env_file(ROOT / "backend" / ".env")
+
+	for key, value in {**root_env, **backend_env}.items():
+		env.setdefault(key, value)
+
+	api_key = env.get("OPENAI_API_KEY") or env.get("API_KEY")
+	if api_key:
+		normalized = api_key.strip().strip('"').strip("'")
+		env["OPENAI_API_KEY"] = normalized
+		print(f"Detected OpenAI key: {mask_secret(normalized)}")
+	else:
+		print("Warning: OPENAI_API_KEY/API_KEY not found in environment, .env, or backend/.env")
+
+	return env
+
+
 def run(command, cwd=None, env=None):
 	"""Start a subprocess and keep it running until interrupted."""
 	return subprocess.Popen(
@@ -96,6 +137,7 @@ def main():
 
 	backend_dir = ROOT / "backend"
 	frontend_dir = ROOT / "frontend"
+	backend_env = build_backend_env()
 
 	npm_exec = resolve_npm_path(args.npm_path)
 	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec)
@@ -115,7 +157,7 @@ def main():
 	frontend_cmd = [str(npm_exec), "run", "dev"]
 
 	print("Launching backend (uvicorn) in py312-api")
-	backend_proc = run(backend_cmd, cwd=backend_dir)
+	backend_proc = run(backend_cmd, cwd=backend_dir, env=backend_env)
 	print("Launching frontend (npm run dev)")
 	frontend_proc = run(frontend_cmd, cwd=frontend_dir)
 

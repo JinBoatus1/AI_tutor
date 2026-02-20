@@ -4,10 +4,10 @@
 # With Chat + AutoGrade + Vision + CurriculumTree
 # ================================
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError, OpenAIError
 
 import os
 import base64
@@ -32,12 +32,42 @@ def clamp_int_0_100(x: str) -> int:
 # ================================
 # API KEY & CLIENT INIT
 # ================================
-API_KEY = "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"  # or: os.getenv("API_KEY")
+def _normalize_api_key(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    cleaned = raw.strip().strip('"').strip("'")
+    return cleaned or None
 
-if not API_KEY:
-    raise RuntimeError("❌ Missing API_KEY!")
 
-client = OpenAI(api_key=API_KEY)     # ←唯一合法初始化方式
+API_KEY_SOURCE = "OPENAI_API_KEY" if os.getenv("OPENAI_API_KEY") else ("API_KEY" if os.getenv("API_KEY") else None)
+API_KEY = _normalize_api_key(os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY"))
+MASKED_KEY = f"{API_KEY[:7]}...{API_KEY[-4:]}" if API_KEY and len(API_KEY) >= 12 else "<missing>"
+client = OpenAI(api_key=API_KEY) if API_KEY else None
+
+
+def require_openai_client() -> OpenAI:
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Missing OPENAI_API_KEY. Set it in environment or .env before using AI endpoints.",
+        )
+    return client
+
+
+def create_chat_completion(**kwargs):
+    api_client = require_openai_client()
+    try:
+        return api_client.chat.completions.create(**kwargs)
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"OpenAI authentication failed. source={API_KEY_SOURCE or 'none'}, key={MASKED_KEY}. Please verify the key is valid and not revoked.",
+        ) from exc
+    except OpenAIError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenAI request failed: {exc.__class__.__name__}",
+        ) from exc
 
 # ================================
 # FASTAPI APP INIT
@@ -110,7 +140,7 @@ async def chat(chat_message: ChatMessage):
         messages.append({"role": role, "content": msg["text"]})
     messages.append({"role": "user", "content": chat_message.message})
 
-    tutor_resp = client.chat.completions.create(
+    tutor_resp = create_chat_completion(
         model="gpt-5.2",
         messages=messages,
     )
@@ -132,7 +162,7 @@ async def chat(chat_message: ChatMessage):
         }
     ]
 
-    eval_resp = client.chat.completions.create(
+    eval_resp = create_chat_completion(
         model="gpt-5.2",
         messages=eval_messages,
         temperature=0.0,
@@ -162,7 +192,7 @@ async def grade(prompt: str = Form(...), text: str = Form(""), files: list[Uploa
                 "image_url": {"url": f"data:image/png;base64,{b64}"}
             })
 
-    resp = client.chat.completions.create(
+    resp = create_chat_completion(
         model="gpt-5.2",
         messages=[
             {"role": "system", "content": prompt},
@@ -236,7 +266,7 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     ocr_text = ""
     for b64_img in pages_b64:
-        ocr_resp = client.chat.completions.create(
+        ocr_resp = create_chat_completion(
             model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "Extract clean textbook text for curriculum structure analysis."},
@@ -288,7 +318,7 @@ Based ONLY on this textbook text:
 {ocr_text[:12000]}
 """
 
-    tree_resp = client.chat.completions.create(
+    tree_resp = create_chat_completion(
         model="gpt-5.2",
         messages=[{"role": "user", "content": tree_prompt}],
         temperature=0.0
