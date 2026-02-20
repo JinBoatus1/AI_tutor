@@ -82,7 +82,7 @@ def find_local_npm() -> Path | None:
 
 def find_env_npm() -> Path | None:
 	npm_name = "npm.cmd" if os.name == "nt" else "npm"
-	for env_var in ("NODE_HOME", "NODEJS_HOME", "NVM_HOME"):
+	for env_var in ("NODE_HOME", "NODEJS_HOME", "NVM_SYMLINK", "NVM_HOME", "VOLTA_HOME"):
 		node_dir = os.environ.get(env_var)
 		if not node_dir:
 			continue
@@ -91,6 +91,26 @@ def find_env_npm() -> Path | None:
 			candidate = candidate_dir / npm_name
 			if candidate.is_file():
 				return candidate
+	return None
+
+
+def find_path_npm() -> Path | None:
+	for name in ("npm.cmd", "npm") if os.name == "nt" else ("npm",):
+		which = shutil.which(name)
+		if which:
+			return Path(which)
+	return None
+
+
+def find_npm_near_node() -> Path | None:
+	node_exec = shutil.which("node.exe" if os.name == "nt" else "node")
+	if not node_exec:
+		return None
+	node_dir = Path(node_exec).parent
+	npm_name = "npm.cmd" if os.name == "nt" else "npm"
+	candidate = node_dir / npm_name
+	if candidate.is_file():
+		return candidate
 	return None
 
 
@@ -105,16 +125,20 @@ def resolve_npm_path(user_path: str | None) -> Path:
 	if env_npm:
 		return env_npm
 
+	path_npm = find_path_npm()
+	if path_npm:
+		return path_npm
+
+	node_sibling_npm = find_npm_near_node()
+	if node_sibling_npm:
+		return node_sibling_npm
+
 	local = find_local_npm()
 	if local:
 		return local
 
-	which = shutil.which("npm")
-	if which:
-		return Path(which)
-
 	raise RuntimeError(
-		"npm executable not available. Please extract Node.js into frontend/node.js or install Node.js and add npm to PATH."
+		"npm executable not available. Checked NODE_HOME/NODEJS_HOME/NVM_SYMLINK/NVM_HOME/VOLTA_HOME, PATH, and frontend/node.js."
 	)
 
 
