@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
+import MathText from "./MathText";
 
 export default function LearningModel() {
   const [input, setInput] = useState("");
@@ -10,6 +11,12 @@ export default function LearningModel() {
   const { curriculumTree } = useCurriculum();
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
+  const [dataMatchedTopic, setDataMatchedTopic] = useState<{
+    name: string;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
 
   // ============================
   // UTILS
@@ -46,6 +53,14 @@ export default function LearningModel() {
     addAIMessage(`📘 You selected: ${choice}. Let me help you step by step.`);
 
     // call backend
+    let data:
+      | {
+          matched_topic?: any;
+          reply?: string;
+          confidence?: number;
+          reference_page_image_b64?: string;
+        }
+      | undefined;
     try {
       const resp = await fetch("http://127.0.0.1:8000/api/chat", {
         method: "POST",
@@ -56,16 +71,31 @@ export default function LearningModel() {
         }),
       });
 
-      const data = await resp.json();
+      data = await resp.json();
       if (!resp.ok) {
-        const detail = data?.detail || data?.error || "Backend request failed.";
+        const detail = (data as any)?.detail || (data as any)?.error || "Backend request failed.";
         addAIMessage(`Backend error: ${detail}`);
         return;
       }
 
       const reply = data.reply || "[Empty reply]";
-      const conf =
-        typeof data.confidence === "number" ? data.confidence : null;
+      const conf = typeof data.confidence === "number" ? data.confidence : null;
+
+      if (data.matched_topic) {
+        setDataMatchedTopic({
+          name: data.matched_topic.name,
+          start: data.matched_topic.start,
+          end: data.matched_topic.end,
+        });
+      } else {
+        setDataMatchedTopic(null);
+        setMatchedSection(null);
+      }
+      if (data.reference_page_image_b64) {
+        setReferencePageImage(`data:image/png;base64,${data.reference_page_image_b64}`);
+      } else {
+        setReferencePageImage(null);
+      }
 
       if (conf === null) {
         addAIMessage(reply);
@@ -76,8 +106,8 @@ export default function LearningModel() {
       addAIMessage("Error: Could not reach backend.");
     }
 
-    // match curriculum
-    if (curriculumTree) {
+    // match curriculum（仅当后端匹配到 topic 时才显示 Related Section；无关问题不展示）
+    if (curriculumTree && data?.matched_topic) {
       matchCurriculum(problem);
     }
   };
@@ -127,6 +157,8 @@ export default function LearningModel() {
     setWaitingForPolyaChoice(false);
     setProblem("");
     setMatchedSection(null);
+    setDataMatchedTopic(null);
+    setReferencePageImage(null);
   };
 
   // ============================
@@ -154,6 +186,7 @@ export default function LearningModel() {
   };
 
   return (
+    <div className="learning-page-wrapper">
     <div className="learning-layout">
       {/* LEFT CHAT AREA */}
       <div className="chat-panel">
@@ -170,7 +203,7 @@ export default function LearningModel() {
         <div className="chat-box">
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              <p style={{ whiteSpace: "pre-wrap" }}>{m.text}</p>
+              <p><MathText>{m.text}</MathText></p>
             </div>
           ))}
 
@@ -192,7 +225,12 @@ export default function LearningModel() {
       <div className="right-panel">
         <h3>📚 Related Section</h3>
 
-        {matchedSection ? (
+        {dataMatchedTopic ? (
+          <div className="match-box">
+            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
+            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
+          </div>
+        ) : matchedSection ? (
           <div className="match-box">
             <h4>🔍 Topic: {matchedSection.topic}</h4>
             <h5>📘 Chapter: {matchedSection.chapter}</h5>
@@ -203,10 +241,10 @@ export default function LearningModel() {
             </ul>
           </div>
         ) : (
-          <p>No related topic yet. Ask a question!</p>
+          <p>No related topic yet. Ask a question and select a Polya option!</p>
         )}
 
-        <hr />
+        {/* <hr />
 
         <h3>📖 Curriculum Overview</h3>
 
@@ -223,8 +261,23 @@ export default function LearningModel() {
           </div>
         ) : (
           <p className="note">Upload textbook to build curriculum tree →</p>
+        )} */}
+
+        {referencePageImage && (
+          <>
+            <hr />
+            <h3>📖 参考页（教材对应页）</h3>
+            <div className="reference-page-box reference-page-sidebar">
+              <img
+                src={referencePageImage}
+                alt="教材参考页"
+                className="reference-page-img"
+              />
+            </div>
+          </>
         )}
       </div>
+    </div>
     </div>
   );
 }
