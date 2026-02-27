@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
 import MathText from "./MathText";
 
+const RIGHT_PANEL_MIN = 20;
+const RIGHT_PANEL_MAX = 55;
+
 export default function LearningModel() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
-  const [waitingForPolyaChoice, setWaitingForPolyaChoice] = useState(false);
-  const [problem, setProblem] = useState("");
   const { curriculumTree } = useCurriculum();
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
@@ -17,6 +18,28 @@ export default function LearningModel() {
     end: number;
   } | null>(null);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
+  const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
+
+  const [rightPanelWidth, setRightPanelWidth] = useState(35);
+  const layoutRef = useRef<HTMLDivElement>(null);
+
+  const handleResizeMove = useCallback(
+    (e: MouseEvent) => {
+      if (!layoutRef.current) return;
+      const rect = layoutRef.current.getBoundingClientRect();
+      const percent = ((rect.right - e.clientX) / rect.width) * 100;
+      setRightPanelWidth(Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, percent)));
+    },
+    []
+  );
+  const handleResizeEnd = useCallback(() => {
+    window.removeEventListener("mousemove", handleResizeMove);
+    window.removeEventListener("mouseup", handleResizeEnd);
+  }, [handleResizeMove]);
+  const handleResizeStart = useCallback(() => {
+    window.addEventListener("mousemove", handleResizeMove);
+    window.addEventListener("mouseup", handleResizeEnd);
+  }, [handleResizeMove, handleResizeEnd]);
 
   // ============================
   // UTILS
@@ -31,34 +54,22 @@ export default function LearningModel() {
   };
 
   // ============================
-  // MAIN SEND
+  // SEND MESSAGE → BACKEND → SHOW REPLY
   // ============================
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    addUserMessage(input);
-    setProblem(input);
+    const userText = input.trim();
+    addUserMessage(userText);
     setInput("");
 
-    // WAIT FOR POLYA CHOICE
-    setWaitingForPolyaChoice(true);
-  };
-
-  // ============================
-  // POLYA RESPONSE
-  // ============================
-  const handlePolyaChoice = async (choice: string) => {
-    setWaitingForPolyaChoice(false);
-
-    addAIMessage(`📘 You selected: ${choice}. Let me help you step by step.`);
-
-    // call backend
     let data:
       | {
           matched_topic?: any;
           reply?: string;
           confidence?: number;
           reference_page_image_b64?: string;
+          reference_page_snippets_b64?: string[];
         }
       | undefined;
     try {
@@ -66,7 +77,7 @@ export default function LearningModel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `${choice}\nStudent problem: ${problem}`,
+          message: userText,
           history: messages,
         }),
       });
@@ -91,10 +102,17 @@ export default function LearningModel() {
         setDataMatchedTopic(null);
         setMatchedSection(null);
       }
-      if (data.reference_page_image_b64) {
+      if (data.reference_page_snippets_b64?.length) {
+        setReferencePageSnippets(
+          data.reference_page_snippets_b64.map((b64) => `data:image/png;base64,${b64}`)
+        );
+        setReferencePageImage(null);
+      } else if (data.reference_page_image_b64) {
         setReferencePageImage(`data:image/png;base64,${data.reference_page_image_b64}`);
+        setReferencePageSnippets(null);
       } else {
         setReferencePageImage(null);
+        setReferencePageSnippets(null);
       }
 
       if (conf === null) {
@@ -102,13 +120,12 @@ export default function LearningModel() {
       } else {
         addAIMessage(`${reply}\n\nConfidence: ${conf}/100`);
       }
+
+      if (curriculumTree && data?.matched_topic) {
+        matchCurriculum(userText);
+      }
     } catch (err) {
       addAIMessage("Error: Could not reach backend.");
-    }
-
-    // match curriculum（仅当后端匹配到 topic 时才显示 Related Section；无关问题不展示）
-    if (curriculumTree && data?.matched_topic) {
-      matchCurriculum(problem);
     }
   };
 
@@ -154,42 +171,20 @@ export default function LearningModel() {
   // ============================
   const reset = () => {
     setMessages([]);
-    setWaitingForPolyaChoice(false);
-    setProblem("");
     setMatchedSection(null);
     setDataMatchedTopic(null);
     setReferencePageImage(null);
-  };
-
-  // ============================
-  // POLYA UI COMPONENT
-  // ============================
-  const PolyaSelector = () => {
-    if (!waitingForPolyaChoice) return null;
-    return (
-      <div className="polya-container">
-        <h3>Where do you feel stuck?</h3>
-
-        <button onClick={() => handlePolyaChoice("I don't understand the problem")}>
-          I don't understand
-        </button>
-
-        <button onClick={() => handlePolyaChoice("I don't know what to do next")}>
-          I don't know what to do
-        </button>
-
-        <button onClick={() => handlePolyaChoice("I solved it but my answer is wrong")}>
-          I solved but answer is wrong
-        </button>
-      </div>
-    );
+    setReferencePageSnippets(null);
   };
 
   return (
     <div className="learning-page-wrapper">
-    <div className="learning-layout">
+    <div className="learning-layout" ref={layoutRef}>
       {/* LEFT CHAT AREA */}
-      <div className="chat-panel">
+      <div
+        className="chat-panel"
+        style={{ flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }}
+      >
         <h1 className="title">Learning Mode</h1>
 
         {/* Reset button */}
@@ -206,8 +201,6 @@ export default function LearningModel() {
               <p><MathText>{m.text}</MathText></p>
             </div>
           ))}
-
-          <PolyaSelector />
         </div>
 
         {/* Input bar */}
@@ -221,8 +214,18 @@ export default function LearningModel() {
         </div>
       </div>
 
+      {/* 可拖拽缩放条 */}
+      <div
+        className="resize-handle"
+        onMouseDown={handleResizeStart}
+        title="拖拽调整右侧宽度"
+      />
+
       {/* RIGHT PANEL */}
-      <div className="right-panel">
+      <div
+        className="right-panel"
+        style={{ flex: `0 0 ${rightPanelWidth}%` }}
+      >
         <h3>📚 Related Section</h3>
 
         {dataMatchedTopic ? (
@@ -241,7 +244,7 @@ export default function LearningModel() {
             </ul>
           </div>
         ) : (
-          <p>No related topic yet. Ask a question and select a Polya option!</p>
+          <p>No related topic yet. Ask a question!</p>
         )}
 
         {/* <hr />
@@ -263,16 +266,27 @@ export default function LearningModel() {
           <p className="note">Upload textbook to build curriculum tree →</p>
         )} */}
 
-        {referencePageImage && (
+        {(referencePageSnippets?.length || referencePageImage) && (
           <>
             <hr />
             <h3>📖 参考页（教材对应页）</h3>
             <div className="reference-page-box reference-page-sidebar">
-              <img
-                src={referencePageImage}
-                alt="教材参考页"
-                className="reference-page-img"
-              />
+              {referencePageSnippets?.length ? (
+                referencePageSnippets.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt={`教材片段 ${i + 1}`}
+                    className="reference-page-img reference-snippet"
+                  />
+                ))
+              ) : referencePageImage ? (
+                <img
+                  src={referencePageImage}
+                  alt="教材参考页"
+                  className="reference-page-img"
+                />
+              ) : null}
             </div>
           </>
         )}

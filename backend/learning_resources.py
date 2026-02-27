@@ -86,12 +86,12 @@ def match_topic_with_llm(question: str) -> Optional[Dict[str, Any]]:
         f"You are matching a student question to a textbook topic.\n\n"
         f"Student question: {question}\n\n"
         f"If the question is COMPLETELY unrelated to this course (e.g. greetings like 'hi', random chat, "
-        f"questions about other subjects like cooking/sports/general knowledge), reply with exactly: UNRELATED\n\n"
-        f"Otherwise, choose the most relevant topic from this list. Reply with ONLY one exact topic name, no quotes:\n"
+        f"questions about other subjects), reply with exactly: UNRELATED\n\n"
+        f"choose the most relevant topic from this list. Reply with ONLY one exact topic name, no quotes:\n"
         + "\n".join(f"- {n}" for n in names)
     )
     resp = create_chat_completion(
-        model="gpt-4o-mini",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
     )
@@ -119,6 +119,145 @@ def render_pdf_page_to_base64(pdf_bytes: bytes, page_num_1based: int, dpi: int =
         img_bytes = pix.tobytes("png")
         return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
+        return None
+
+
+def _fallback_indices_formula_only(
+    blocks: List[Dict[str, Any]], max_n: int = 3
+) -> List[int]:
+    """仅按硬公式/框内关键词选块；排除 Pop Quiz、quiz、riddle。"""
+    if not blocks:
+        return []
+    exclude_keywords = ["pop quiz", "quiz 5.", "riddle"]  # 不选测验/谜语
+    formula_keywords = [
+        "proof template", "proof.", "definition", "theorem", "proposition",
+        "lemma", "1.", "2.", "3.", "4.", "5.", "→", "⇒", "=", "p → q"
+    ]
+    scored: List[tuple] = []
+    for i, b in enumerate(blocks):
+        t = (b.get("text") or "").lower()
+        if any(ex in t for ex in exclude_keywords):
+            continue
+        score = 0
+        for kw in formula_keywords:
+            if kw in t:
+                score += 1
+                break
+        if score > 0:
+            scored.append((i, score))
+    scored.sort(key=lambda x: -x[1])
+    return [idx for idx, _ in scored[:max_n]]
+
+
+def get_three_relevant_snippet_images(
+    pdf_bytes: bytes,
+    page_num_1based: int,
+    question: str,
+    dpi: int = 120,
+    padding_pt: float = 14.0,
+) -> Optional[List[str]]:
+
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if page_num_1based < 1 or page_num_1based > len(doc):
+            return None
+        page = doc[page_num_1based - 1]
+        page_rect = page.rect
+
+        raw_blocks = page.get_text("blocks", sort=True)
+        blocks: List[Dict[str, Any]] = []
+        for b in raw_blocks:
+            x0, y0, x1, y1 = b[0], b[1], b[2], b[3]
+            text = (b[4] or "").strip()
+            if len(text) < 3:
+                continue
+            blocks.append({"bbox": (x0, y0, x1, y1), "text": text[:800]})
+
+        if not blocks:
+            return None
+
+        snippet_list = "\n\n".join(
+            f"[{i}] {blocks[i]['text']}" for i in range(len(blocks))
+        )
+        prompt = (
+            "Select textbook blocks that are HARD FORMULA / DEFINITION only.\n"
+            "IMPORTANT: If the student question is about proving an IMPLICATION (if p then q, p→q) or a DIRECT PROOF of a conditional, "
+            "PREFER blocks about 'Proof Template' for direct proof of p→q / implication. "
+            "Do NOT prefer the full 'Principle of Induction' (base case P(1) + inductive step for all n) or 'Ordinary Induction' — that is for full induction, not for proving a single if-then.\n\n"
+            f"Student question: {question}\n\n"
+            "Numbered blocks below. Return 0 to 3 indices. For 'prove if A then B' type questions, choose Proof Template / direct proof of implication blocks, not the full induction principle.\n\n"
+            f"{snippet_list}\n\n"
+            "Reply with ONLY a JSON array, e.g. [0, 2] or [1] or []."
+        )
+        resp = create_chat_completion(
+            model="gpt-5.2",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Output indices for formula/definition blocks. "
+                        "For questions about proving 'if p then q' or direct proof of an implication, select Proof Template (direct proof of p→q), NOT the full Principle of Induction (base case + for all n)."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+        )
+        raw_out = (resp.choices[0].message.content or "").strip()
+        raw_out = raw_out.replace("`", "").strip()
+        if raw_out.lower().startswith("json"):
+            raw_out = raw_out[4:].strip()
+        indices: List[int] = []
+        try:
+            parsed = json.loads(raw_out)
+            if isinstance(parsed, list):
+                for i in parsed:
+                    try:
+                        idx = int(i)
+                        if 0 <= idx < len(blocks):
+                            indices.append(idx)
+                    except (ValueError, TypeError):
+                        pass
+                indices = list(dict.fromkeys(indices))[:3]
+        except Exception:
+            pass
+
+        # 剔除 Pop Quiz / quiz / riddle 类块，只留公式和定义
+        exclude_keywords = ["pop quiz", "quiz 5.", "riddle"]
+        indices = [
+            idx for idx in indices
+            if idx < len(blocks) and not any(
+                ex in (blocks[idx].get("text") or "").lower() for ex in exclude_keywords
+            )
+        ][:3]
+
+        if not indices:
+            indices = _fallback_indices_formula_only(blocks, max_n=3)
+
+        out_b64: List[str] = []
+        for idx in indices:
+            if idx >= len(blocks):
+                continue
+            x0, y0, x1, y1 = blocks[idx]["bbox"]
+            w = max(x1 - x0, 1)
+            h = max(y1 - y0, 1)
+            # 固定边距 + 按块大小比例外扩，避免裁断整块（框线、标题等）
+            pad_x = max(padding_pt, w * 0.15)
+            pad_y = max(padding_pt, h * 0.12)
+            r = fitz.Rect(
+                max(0, x0 - pad_x),
+                max(0, y0 - pad_y),
+                min(page_rect.width, x1 + pad_x),
+                min(page_rect.height, y1 + pad_y),
+            )
+            pix = page.get_pixmap(dpi=dpi, clip=r)
+            img_bytes = pix.tobytes("png")
+            out_b64.append(base64.b64encode(img_bytes).decode("utf-8"))
+
+        doc.close()
+        return out_b64  # 0～3 个，不足 3 不补齐；空列表表示本页无公式/定义可展示
+    except Exception as e:
+        print(f"[Learning] get_three_relevant_snippet_images failed: {e}")
         return None
 
 

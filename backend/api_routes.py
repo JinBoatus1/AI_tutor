@@ -97,12 +97,19 @@ async def chat(chat_message: ChatMessage):
             "start": start_pdf,
             "end": end_pdf,
         }
-        # 携带重要公式的那一页：取匹配区间的起始页截图，供前端在对话中展示
+        # 教材裁剪：只输出公式/定义类片段（0～3 个），不足 3 不补齐；无公式/定义时不展示参考图
         _pdf = lr.load_focs_pdf()
         if _pdf:
-            page_b64 = lr.render_pdf_page_to_base64(_pdf, start_pdf)
-            if page_b64:
-                result["reference_page_image_b64"] = page_b64
+            snippets_b64 = lr.get_three_relevant_snippet_images(
+                _pdf, start_pdf, chat_message.message
+            )
+            if snippets_b64 is not None and len(snippets_b64) > 0:
+                result["reference_page_snippets_b64"] = snippets_b64
+            elif snippets_b64 is None:
+                # 仅异常时退回整页图
+                page_b64 = lr.render_pdf_page_to_base64(_pdf, start_pdf)
+                if page_b64:
+                    result["reference_page_image_b64"] = page_b64
     return result
 
 
