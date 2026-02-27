@@ -53,7 +53,14 @@ export default function LearningModel() {
     addAIMessage(`📘 You selected: ${choice}. Let me help you step by step.`);
 
     // call backend
-    let data: { matched_topic?: any; reply?: string; confidence?: number; reference_page_image_b64?: string } | undefined;
+    let data:
+      | {
+          matched_topic?: any;
+          reply?: string;
+          confidence?: number;
+          reference_page_image_b64?: string;
+        }
+      | undefined;
     try {
       const resp = await fetch("http://127.0.0.1:8000/api/chat", {
         method: "POST",
@@ -65,9 +72,14 @@ export default function LearningModel() {
       });
 
       data = await resp.json();
+      if (!resp.ok) {
+        const detail = (data as any)?.detail || (data as any)?.error || "Backend request failed.";
+        addAIMessage(`Backend error: ${detail}`);
+        return;
+      }
+
       const reply = data.reply || "[Empty reply]";
-      const conf =
-        typeof data.confidence === "number" ? data.confidence : null;
+      const conf = typeof data.confidence === "number" ? data.confidence : null;
 
       if (data.matched_topic) {
         setDataMatchedTopic({

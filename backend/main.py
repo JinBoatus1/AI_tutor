@@ -4,10 +4,10 @@
 # With Chat + AutoGrade + Vision + CurriculumTree
 # ================================
 
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError, OpenAIError
 
 import os
 import json
@@ -36,21 +36,47 @@ def clamp_int_0_100(x: str) -> int:
 # ================================
 # API KEY & CLIENT INIT
 # ================================
-_raw = (os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY") or "").strip()
-# 去除可能被误读的引号及 BOM（Windows UTF-8 保存时可能产生）
-if _raw.startswith('"') and _raw.endswith('"'):
-    _raw = _raw[1:-1]
-elif _raw.startswith("'") and _raw.endswith("'"):
-    _raw = _raw[1:-1]
-if _raw.startswith("\ufeff"):  # BOM
-    _raw = _raw[1:]
-API_KEY = _raw.strip()
-if not API_KEY:
-    raise RuntimeError(
-        "❌ 请在 backend/.env 中设置 OPENAI_API_KEY=你的密钥（或 API_KEY=你的密钥）。"
-    )
+def _normalize_api_key(raw: str | None) -> str | None:
+    """清洗环境变量中的 API Key，去掉引号和 BOM 等异常字符。"""
+    if raw is None:
+        return None
+    cleaned = raw.strip().strip('"').strip("'")
+    # Windows UTF-8 文件有时会带 BOM
+    if cleaned.startswith("\ufeff"):
+        cleaned = cleaned.lstrip("\ufeff")
+    cleaned = cleaned.strip()
+    return cleaned or None
 
-client = OpenAI(api_key=API_KEY)
+
+API_KEY_SOURCE = "OPENAI_API_KEY" if os.getenv("OPENAI_API_KEY") else ("API_KEY" if os.getenv("API_KEY") else None)
+API_KEY = _normalize_api_key(os.getenv("OPENAI_API_KEY") or os.getenv("API_KEY"))
+MASKED_KEY = f"{API_KEY[:7]}...{API_KEY[-4:]}" if API_KEY and len(API_KEY) >= 12 else "<missing>"
+client = OpenAI(api_key=API_KEY) if API_KEY else None
+
+
+def require_openai_client() -> OpenAI:
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Missing OPENAI_API_KEY. Set it in environment or .env before using AI endpoints.",
+        )
+    return client
+
+
+def create_chat_completion(**kwargs):
+    api_client = require_openai_client()
+    try:
+        return api_client.chat.completions.create(**kwargs)
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"OpenAI authentication failed. source={API_KEY_SOURCE or 'none'}, key={MASKED_KEY}. Please verify the key is valid and not revoked.",
+        ) from exc
+    except OpenAIError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenAI request failed: {exc.__class__.__name__}",
+        ) from exc
 
 # ================================
 # FASTAPI APP INIT
@@ -137,7 +163,7 @@ def _match_topic_with_llm(question: str) -> dict | None:
         f"Otherwise, choose the most relevant topic from this list. Reply with ONLY one exact topic name, no quotes:\n"
         + "\n".join(f"- {n}" for n in names)
     )
-    resp = client.chat.completions.create(
+    resp = create_chat_completion(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
@@ -270,7 +296,7 @@ async def chat(chat_message: ChatMessage):
         messages.append({"role": role, "content": msg["text"]})
     messages.append({"role": "user", "content": chat_message.message})
 
-    tutor_resp = client.chat.completions.create(
+    tutor_resp = create_chat_completion(
         model="gpt-5.2",
         messages=messages,
     )
@@ -292,7 +318,7 @@ async def chat(chat_message: ChatMessage):
         }
     ]
 
-    eval_resp = client.chat.completions.create(
+    eval_resp = create_chat_completion(
         model="gpt-5.2",
         messages=eval_messages,
         temperature=0.0,
@@ -337,7 +363,7 @@ async def grade(prompt: str = Form(...), text: str = Form(""), files: list[Uploa
                 "image_url": {"url": f"data:image/png;base64,{b64}"}
             })
 
-    resp = client.chat.completions.create(
+    resp = create_chat_completion(
         model="gpt-5.2",
         messages=[
             {"role": "system", "content": prompt},
@@ -412,7 +438,7 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     ocr_text = ""
     for b64_img in pages_b64:
-        ocr_resp = client.chat.completions.create(
+        ocr_resp = create_chat_completion(
             model="gpt-5.2",
             messages=[
                 {"role": "system", "content": "Extract clean textbook text for curriculum structure analysis."},
@@ -453,7 +479,7 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     """
 
-    tree_resp = client.chat.completions.create(
+    tree_resp = create_chat_completion(
         model="gpt-5.2",
         messages=[{"role": "user", "content": tree_prompt}],
         temperature=0.0

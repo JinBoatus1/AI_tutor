@@ -22,8 +22,12 @@ export default function AutoGrader() {
       body: formData,
     });
 
-
     const data = await resp.json();
+    if (!resp.ok) {
+      const detail = data?.detail || data?.error || "Backend request failed.";
+      setResult(`Backend error: ${detail}`);
+      return;
+    }
     setResult(data.reply);
   };
 
