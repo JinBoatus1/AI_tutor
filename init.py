@@ -142,35 +142,11 @@ def resolve_npm_path(user_path: str | None) -> Path:
 	)
 
 
-def build_frontend_env(npm_exec: Path) -> dict[str, str]:
-	"""Build env for npm/node so postinstall scripts can find node executable."""
-	env = dict(os.environ)
-	path_sep = os.pathsep
-	node_dir = str(npm_exec.parent)
-	# npm.cmd in embedded Node layout lives next to node.exe; ensure this directory is first in PATH.
-	current_path = env.get("PATH", "")
-	if current_path:
-		env["PATH"] = f"{node_dir}{path_sep}{current_path}"
-	else:
-		env["PATH"] = node_dir
-	return env
-
-
-def ensure_npm_deps(frontend_dir: Path, skip_install: bool, npm_exec: Path, frontend_env: dict[str, str]):
+def ensure_npm_deps(frontend_dir: Path, skip_install: bool, npm_exec: Path):
 	if skip_install:
 		return
 	print("Installing frontend dependencies (npm install)")
-	try:
-		subprocess.run([str(npm_exec), "install"], cwd=frontend_dir, env=frontend_env, check=True)
-	except subprocess.CalledProcessError as exc:
-		print("npm install failed.")
-		print(f"npm executable: {npm_exec}")
-		print(f"node expected in: {npm_exec.parent}")
-		print(
-			"Hint: this is commonly caused by PATH missing node.exe for npm postinstall scripts. "
-			"Try deleting frontend/node_modules and rerun init.py."
-		)
-		raise exc
+	subprocess.run([str(npm_exec), "install"], cwd=frontend_dir, check=True)
 
 
 def main():
@@ -188,8 +164,7 @@ def main():
 	backend_env = build_backend_env()
 
 	npm_exec = resolve_npm_path(args.npm_path)
-	frontend_env = build_frontend_env(npm_exec)
-	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec, frontend_env)
+	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec)
 
 	backend_cmd = [
 		sys.executable,
@@ -208,7 +183,7 @@ def main():
 	print("Launching backend (uvicorn) in py312-api")
 	backend_proc = run(backend_cmd, cwd=backend_dir, env=backend_env)
 	print("Launching frontend (npm run dev)")
-	frontend_proc = run(frontend_cmd, cwd=frontend_dir, env=frontend_env)
+	frontend_proc = run(frontend_cmd, cwd=frontend_dir)
 
 	try:
 		while True:
