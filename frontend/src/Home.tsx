@@ -7,10 +7,8 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="hero">
-        <h1 className="title">AI Tutor Demo</h1>
-        <p className="subtitle">
-          Empowering Math Learning with AI-guided Teaching, Polya Reasoning, and Auto Grading.
-        </p>
+        <p className="hero-brand">AI Tutor Demo</p>
+        <h1 className="hero-headline">Equal Education for Every Child</h1>
 
         <div className="hero-buttons">
           <Link to="/learning" className="btn primary">Go to Learning Mode</Link>

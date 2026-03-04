@@ -18,6 +18,7 @@ router = APIRouter()
 class ChatMessage(BaseModel):
     message: str
     history: List[dict] = []  # [{sender:"user"/"ai", text:"..."}]
+    images_b64: Optional[List[str]] = None  # 当前轮用户附带的图片（base64，无 data URL 前缀）
 
 
 @router.post("/api/chat")
@@ -48,12 +49,20 @@ async def chat(chat_message: ChatMessage):
             "--- End of reference ---\n\nUse the above as context when answering. Cite relevant parts if helpful."
         )
 
-    # 1) Tutor answer
+    # 1) Tutor answer（当前轮可带图片，走 vision）
     messages: List[dict[str, Any]] = [{"role": "system", "content": system_content}]
     for msg in chat_message.history:
         role = "assistant" if msg["sender"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})
-    messages.append({"role": "user", "content": chat_message.message})
+    # 最后一条 user：无图则纯文本，有图则 content 为多 part（text + image_url）
+    if not (chat_message.images_b64 and len(chat_message.images_b64) > 0):
+        messages.append({"role": "user", "content": chat_message.message})
+    else:
+        parts: List[dict[str, Any]] = [{"type": "text", "text": chat_message.message or "(用户发送了图片)"}]
+        for b64 in chat_message.images_b64:
+            url = f"data:image/png;base64,{b64}" if not b64.startswith("data:") else b64
+            parts.append({"type": "image_url", "image_url": {"url": url}})
+        messages.append({"role": "user", "content": parts})
 
     tutor_resp = create_chat_completion(
         model="gpt-5.2",

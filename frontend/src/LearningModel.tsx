@@ -19,6 +19,9 @@ export default function LearningModel() {
   } | null>(null);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
+  const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(35);
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -44,8 +47,8 @@ export default function LearningModel() {
   // ============================
   // UTILS
   // ============================
-  const addUserMessage = (text: string) => {
-    setMessages((prev) => [...prev, { sender: "user", text }]);
+  const addUserMessage = (text: string, images?: string[]) => {
+    setMessages((prev) => [...prev, { sender: "user", text, images }]);
   };
 
   const addAIMessage = (text: string) => {
@@ -57,11 +60,17 @@ export default function LearningModel() {
   // SEND MESSAGE → BACKEND → SHOW REPLY
   // ============================
   const handleSend = async () => {
-    if (!input.trim()) return;
-
     const userText = input.trim();
-    addUserMessage(userText);
+    const hasImages = attachedImages.length > 0;
+    if (!userText && !hasImages) return;
+
+    addUserMessage(userText || "(图片)", hasImages ? [...attachedImages] : undefined);
     setInput("");
+    setAttachedImages([]);
+
+    const imagesB64 = hasImages
+      ? attachedImages.map((dataUrl) => dataUrl.replace(/^data:image\/\w+;base64,/, ""))
+      : undefined;
 
     let data:
       | {
@@ -77,8 +86,9 @@ export default function LearningModel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userText,
+          message: userText || "(图片)",
           history: messages,
+          images_b64: imagesB64,
         }),
       });
 
@@ -199,15 +209,78 @@ export default function LearningModel() {
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
               <p><MathText>{m.text}</MathText></p>
+              {m.images?.length > 0 && (
+                <div className="msg-user-images">
+                  {m.images.map((src: string, j: number) => (
+                    <img key={j} src={src} alt="" className="msg-user-thumb" />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
+        {/* 已选图片预览 */}
+        {attachedImages.length > 0 && (
+          <div className="attached-images-row">
+            {attachedImages.map((src, i) => (
+              <span key={i} className="attached-img-wrap">
+                <img src={src} alt="" className="attached-img-thumb" />
+                <button
+                  type="button"
+                  className="attached-img-remove"
+                  onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label="移除图片"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Input bar */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden-file-input"
+          aria-hidden
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files?.length) return;
+            Array.from(files).forEach((file) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const dataUrl = reader.result as string;
+                if (dataUrl) setAttachedImages((prev) => [...prev, dataUrl]);
+              };
+              reader.readAsDataURL(file);
+            });
+            e.target.value = "";
+          }}
+        />
         <div className="input-row">
+          <button
+            type="button"
+            className="input-add-image-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title="添加图片"
+          >
+            📷
+          </button>
           <input
+            type="text"
+            className="chat-input-text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder="Ask or continue your question..."
           />
           <button onClick={handleSend}>▶</button>
@@ -269,7 +342,7 @@ export default function LearningModel() {
         {(referencePageSnippets?.length || referencePageImage) && (
           <>
             <hr />
-            <h3>📖 参考页（教材对应页）</h3>
+            <h3>📖 Original page in Textbook</h3>
             <div className="reference-page-box reference-page-sidebar">
               {referencePageSnippets?.length ? (
                 referencePageSnippets.map((src, i) => (
@@ -277,17 +350,52 @@ export default function LearningModel() {
                     key={i}
                     src={src}
                     alt={`教材片段 ${i + 1}`}
-                    className="reference-page-img reference-snippet"
+                    className="reference-page-img reference-snippet reference-img-clickable"
+                    onClick={() => setEnlargedImageSrc(src)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
                   />
                 ))
               ) : referencePageImage ? (
                 <img
                   src={referencePageImage}
                   alt="教材参考页"
-                  className="reference-page-img"
+                  className="reference-page-img reference-img-clickable"
+                  onClick={() => setEnlargedImageSrc(referencePageImage)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
                 />
               ) : null}
             </div>
+            {enlargedImageSrc && (
+              <div
+                className="reference-image-lightbox"
+                onClick={() => setEnlargedImageSrc(null)}
+                role="dialog"
+                aria-modal="true"
+                aria-label="放大查看图片"
+              >
+                <button
+                  type="button"
+                  className="reference-image-lightbox-close"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEnlargedImageSrc(null);
+                  }}
+                  aria-label="关闭"
+                >
+                  ×
+                </button>
+                <img
+                  src={enlargedImageSrc}
+                  alt="放大查看"
+                  className="reference-image-lightbox-img"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
           </>
         )}
       </div>

@@ -131,7 +131,7 @@ def _fallback_indices_formula_only(
     exclude_keywords = ["pop quiz", "quiz 5.", "riddle"]  # 不选测验/谜语
     formula_keywords = [
         "proof template", "proof.", "definition", "theorem", "proposition",
-        "lemma", "1.", "2.", "3.", "4.", "5.", "→", "⇒", "=", "p → q"
+        "lemma", "1.", "2.", "3.", "4.", "5.", "→", "⇒", "="
     ]
     scored: List[tuple] = []
     for i, b in enumerate(blocks):
@@ -165,13 +165,30 @@ def get_three_relevant_snippet_images(
         page_rect = page.rect
 
         raw_blocks = page.get_text("blocks", sort=True)
-        blocks: List[Dict[str, Any]] = []
+        # 按段落合并：垂直间距小于阈值的块视为同一段，合并 bbox 与文本，避免切块过小
+        PARAGRAPH_GAP_PT = 14.0
+        MERGED_TEXT_CAP = 1200
+        segments: List[Dict[str, Any]] = []
         for b in raw_blocks:
             x0, y0, x1, y1 = b[0], b[1], b[2], b[3]
             text = (b[4] or "").strip()
             if len(text) < 3:
                 continue
-            blocks.append({"bbox": (x0, y0, x1, y1), "text": text[:800]})
+            if not segments:
+                segments.append({"bbox": (x0, y0, x1, y1), "text": text})
+                continue
+            last = segments[-1]
+            lx0, ly0, lx1, ly1 = last["bbox"]
+            if y0 - ly1 <= PARAGRAPH_GAP_PT:
+                # 同一段：合并 bbox，拼接文本
+                last["bbox"] = (min(lx0, x0), min(ly0, y0), max(lx1, x1), max(ly1, y1))
+                last["text"] = (last["text"] + "\n" + text).strip()
+            else:
+                segments.append({"bbox": (x0, y0, x1, y1), "text": text})
+        blocks = [
+            {"bbox": s["bbox"], "text": (s["text"][:MERGED_TEXT_CAP])}
+            for s in segments
+        ]
 
         if not blocks:
             return None
@@ -180,14 +197,13 @@ def get_three_relevant_snippet_images(
             f"[{i}] {blocks[i]['text']}" for i in range(len(blocks))
         )
         prompt = (
-            "Select textbook blocks that are HARD FORMULA / DEFINITION only.\n"
-            "IMPORTANT: If the student question is about proving an IMPLICATION (if p then q, p→q) or a DIRECT PROOF of a conditional, "
-            "PREFER blocks about 'Proof Template' for direct proof of p→q / implication. "
-            "Do NOT prefer the full 'Principle of Induction' (base case P(1) + inductive step for all n) or 'Ordinary Induction' — that is for full induction, not for proving a single if-then.\n\n"
+            "Select textbook blocks that are formula or definition content only: "
+            "theorem/definition/proposition/lemma statements, proof templates or proof steps, math equations, key formulas.\n"
+            "Do NOT select: page or section headers, topic titles, long prose with no formulas, or quiz/riddle.\n\n"
             f"Student question: {question}\n\n"
-            "Numbered blocks below. Return 0 to 3 indices. For 'prove if A then B' type questions, choose Proof Template / direct proof of implication blocks, not the full induction principle.\n\n"
+            "Numbered blocks below. Return 0 to 3 indices (0-based) of blocks that match. Reply with ONLY a JSON array, e.g. [0, 2] or [1] or [].\n\n"
             f"{snippet_list}\n\n"
-            "Reply with ONLY a JSON array, e.g. [0, 2] or [1] or []."
+            "Reply with ONLY a JSON array."
         )
         resp = create_chat_completion(
             model="gpt-5.2",
@@ -195,8 +211,8 @@ def get_three_relevant_snippet_images(
                 {
                     "role": "system",
                     "content": (
-                        "Output indices for formula/definition blocks. "
-                        "For questions about proving 'if p then q' or direct proof of an implication, select Proof Template (direct proof of p→q), NOT the full Principle of Induction (base case + for all n)."
+                        "Choose blocks that are formula or definition content (theorems, definitions, proof steps, equations). "
+                        "Do not choose page/section headers, topic titles, or prose without formulas."
                     ),
                 },
                 {"role": "user", "content": prompt},

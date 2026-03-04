@@ -148,6 +148,56 @@
   margin-bottom: 0;
 }
 
+.reference-img-clickable {
+  cursor: pointer;
+}
+
+/* 点击放大：遮罩 + 居中大图 */
+.reference-image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.reference-image-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.reference-image-lightbox-close:hover {
+  background: #fff;
+}
+
+.reference-image-lightbox-img {
+  max-width: min(96vw, 1200px);
+  max-height: 96vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
 .polya-container {
   margin-top: 12px;
   padding: 10px;
@@ -161,14 +211,95 @@
   width: 100%;
 }
 
+.hidden-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .input-row {
   display: flex;
   gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
-.input-row input {
-  flex: 1;
-  padding: 8px;
+.input-add-image-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.input-add-image-btn:hover {
+  background: #f0f0f0;
+}
+
+.chat-input-text {
+  flex: 1 1 0%;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.attached-images-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.attached-img-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.attached-img-thumb {
+  display: block;
+  max-height: 64px;
+  max-width: 120px;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.attached-img-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.msg-user-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.msg-user-thumb {
+  max-height: 80px;
+  max-width: 140px;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
 }
 
 .section-box {
