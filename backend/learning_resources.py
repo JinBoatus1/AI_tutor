@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import tempfile
 from typing import Any, Dict, List, Optional
 
@@ -24,6 +25,19 @@ _focs_pdf_bytes: Optional[bytes] = None
 
 # 全局缓存：当前教材的段落
 TEXTBOOK_PARAGRAPHS: List[Dict[str, Any]] = []
+
+
+def topic_name_to_memory_address(topic_name: str) -> str:
+    """
+    将 FOCS.json 的 topic 名称转为 memory 可用的地址（单段，符合 [A-Za-z0-9_\\-]+）。
+    例如 "3.2.1 Proving an Implication" -> "3_2_1_Proving_an_Implication"
+    """
+    if not topic_name or not isinstance(topic_name, str):
+        return "unknown"
+    s = topic_name.strip()
+    s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or "unknown"
 
 
 def load_focs_topic_list() -> List[Dict[str, Any]]:
@@ -83,7 +97,7 @@ def match_topic_with_llm(question: str) -> Optional[Dict[str, Any]]:
         return None
     names = [t["name"] for t in topics[:120]]  # 限制长度
     prompt = (
-        f"You are matching a student question to a textbook topic.\n\n"
+        f"You are matching a student question to a textbook topic, remember to choose the topic by how to solve the question instead of the words\n\n"
         f"Student question: {question}\n\n"
         f"If the question is COMPLETELY unrelated to this course (e.g. greetings like 'hi', random chat, "
         f"questions about other subjects), reply with exactly: UNRELATED\n\n"
@@ -197,13 +211,13 @@ def get_three_relevant_snippet_images(
             f"[{i}] {blocks[i]['text']}" for i in range(len(blocks))
         )
         prompt = (
-            "Select textbook blocks that are formula or definition content only: "
+            "Select textbook blocks that are formula or definition content ONLY: "
             "theorem/definition/proposition/lemma statements, proof templates or proof steps, math equations, key formulas.\n"
             "Do NOT select: page or section headers, topic titles, long prose with no formulas, or quiz/riddle.\n\n"
             f"Student question: {question}\n\n"
             "Numbered blocks below. Return 0 to 3 indices (0-based) of blocks that match. Reply with ONLY a JSON array, e.g. [0, 2] or [1] or [].\n\n"
             f"{snippet_list}\n\n"
-            "Reply with ONLY a JSON array."
+            "Reply with ONLY a JSON array, e.g. [0, 2] or [1] or []."
         )
         resp = create_chat_completion(
             model="gpt-5.2",

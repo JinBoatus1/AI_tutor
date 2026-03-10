@@ -25,25 +25,93 @@ export default function LearningModel() {
 
   const [rightPanelWidth, setRightPanelWidth] = useState(67); // 左侧书页约 2/3，右侧对话 1/3
   const layoutRef = useRef<HTMLDivElement>(null);
+  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
 
-  const handleResizeMove = useCallback(
-    (e: MouseEvent) => {
-      if (!layoutRef.current) return;
-      const rect = layoutRef.current.getBoundingClientRect();
-      // 书页在左，宽度 = 从左到手柄的距离
-      const percent = ((e.clientX - rect.left) / rect.width) * 100;
-      setRightPanelWidth(Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, percent)));
-    },
-    []
-  );
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    const start = resizeStartRef.current;
+    if (!start || !layoutRef.current) return;
+    const rect = layoutRef.current.getBoundingClientRect();
+    const deltaPercent = ((e.clientX - start.x) / rect.width) * 100;
+    const newWidth = Math.min(
+      RIGHT_PANEL_MAX,
+      Math.max(RIGHT_PANEL_MIN, start.width + deltaPercent)
+    );
+    setRightPanelWidth(newWidth);
+  }, []);
+
   const handleResizeEnd = useCallback(() => {
+    resizeStartRef.current = null;
     window.removeEventListener("mousemove", handleResizeMove);
     window.removeEventListener("mouseup", handleResizeEnd);
   }, [handleResizeMove]);
-  const handleResizeStart = useCallback(() => {
-    window.addEventListener("mousemove", handleResizeMove);
-    window.addEventListener("mouseup", handleResizeEnd);
-  }, [handleResizeMove, handleResizeEnd]);
+
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      resizeStartRef.current = { x: e.clientX, width: rightPanelWidth };
+      window.addEventListener("mousemove", handleResizeMove);
+      window.addEventListener("mouseup", handleResizeEnd);
+    },
+    [rightPanelWidth, handleResizeMove, handleResizeEnd]
+  );
+
+  /** 点击截图：屏幕/窗口捕获，取一帧加入附件 */
+  const handleScreenshot = useCallback(async () => {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      alert("当前浏览器不支持屏幕截图，请用「选择图片」或粘贴截图 (Ctrl+V)");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      ctx.drawImage(video, 0, 0);
+      stream.getTracks().forEach((t) => t.stop());
+      const dataUrl = canvas.toDataURL("image/png");
+      setAttachedImages((prev) => [...prev, dataUrl]);
+    } catch (err) {
+      if ((err as Error).name !== "NotAllowedError") {
+        console.error("Screenshot failed:", err);
+        alert("截图失败，请重试或使用「选择图片」/ 粘贴 (Ctrl+V)");
+      }
+    }
+  }, []);
+
+  /** 粘贴时若剪贴板有图片则加入附件 */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          if (dataUrl) setAttachedImages((prev) => [...prev, dataUrl]);
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  }, []);
 
   // ============================
   // UTILS
@@ -285,10 +353,11 @@ export default function LearningModel() {
         title="拖拽调整书页区宽度"
       />
 
-      {/* RIGHT: 对话区 */}
+      {/* RIGHT: 对话区（支持 Ctrl+V 粘贴截图） */}
       <div
         className="chat-panel"
         style={{ flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }}
+        onPaste={handlePaste}
       >
         <h1 className="title">Learning Mode</h1>
 
@@ -361,9 +430,17 @@ export default function LearningModel() {
             type="button"
             className="input-add-image-btn"
             onClick={() => fileInputRef.current?.click()}
-            title="添加图片"
+            title="选择本地图片"
           >
             📷
+          </button>
+          <button
+            type="button"
+            className="input-add-image-btn"
+            onClick={handleScreenshot}
+            title="截屏（选择窗口/屏幕）"
+          >
+            🖥️
           </button>
           <input
             type="text"
