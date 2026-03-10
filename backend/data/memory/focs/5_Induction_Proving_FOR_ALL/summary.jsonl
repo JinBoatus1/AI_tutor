@@ -1,0 +1,1 @@
+{"id": "54127c7fbf9d47168ac49a587e02616d", "ts": "2026-03-10T21:37:09Z", "t": 1773178629, "content": "Q: tell me a problem about induction | A: Here are a few good induction-practice problems (pick one you like). None require advanced tricks—just the standard induction template: **base case** + **prove \\(P(n)\\Rightarrow P(n+1)\\)**.\n\n### Probl..."}

@@ -2,6 +2,7 @@
 
 import base64
 import json
+import os
 from typing import Any, List, Optional
 
 import fitz  # PyMuPDF
@@ -10,6 +11,15 @@ from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
 import learning_resources as lr
+
+try:
+    from memory import open_memory, Status
+    _MEMORY_AVAILABLE = True
+except ImportError:
+    _MEMORY_AVAILABLE = False
+
+MEMORY_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "memory")
+FOCS_BOOK_ID = "focs"
 
 
 router = APIRouter()
@@ -119,6 +129,21 @@ async def chat(chat_message: ChatMessage):
                 page_b64 = lr.render_pdf_page_to_base64(_pdf, start_pdf)
                 if page_b64:
                     result["reference_page_image_b64"] = page_b64
+
+        # 按 FOCS topic 写入 memory：事件（完整 Q&A，带时间）+ summary 流
+        if _MEMORY_AVAILABLE and matched_topic:
+            try:
+                mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
+                addr = lr.topic_name_to_memory_address(matched_topic["name"])
+                event_content = f"Q: {chat_message.message}\nA: {answer}"
+                if mem.write(addr, event_content) == Status.OK:
+                    summary_line = (
+                        f"Q: {chat_message.message[:100]}{'...' if len(chat_message.message) > 100 else ''} | "
+                        f"A: {answer[:200]}{'...' if len(answer) > 200 else ''}"
+                    )
+                    mem.write(f"{addr}/__summary__", summary_line)
+            except Exception as e:
+                print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
     return result
 
 
