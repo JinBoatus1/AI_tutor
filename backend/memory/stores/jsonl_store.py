@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from ..memory import Status
+from ..memory import MemoryRecord, Status
 
 
 # =============== 约定 ===============
@@ -229,11 +229,15 @@ class JsonlMemoryStore:
         except Exception:
             return Status.IO_ERROR
 
-    def read(self, address: str) -> Tuple[int, List[Dict[str, Any]]]:
+    def read(self, address: str) -> Tuple[int, List[MemoryRecord]]:
         """
-        按 address 读取全部记录：
+                按 address 读取全部记录（对外只返回三项）：
           - unit => events.jsonl
           - unit/__summary__ => summary.jsonl
+
+                每条记录输出结构：
+                    {"id": str, "time": str|int|None, "content": str|None}
+                其中 time 优先使用 ISO 字符串 ts，若缺失则回退到 epoch t。
         """
         addr = self._validate_address(address)
         if addr is None:
@@ -245,14 +249,21 @@ class JsonlMemoryStore:
             if not path.exists():
                 return (Status.NOT_FOUND, [])
 
-            out: List[Dict[str, Any]] = []
+            out: List[MemoryRecord] = []
             with path.open("r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
                         continue
                     try:
-                        out.append(json.loads(line))
+                        raw = json.loads(line)
+                        out.append(
+                            {
+                                "id": raw.get("id"),
+                                "time": raw.get("ts") if raw.get("ts") is not None else raw.get("t"),
+                                "content": raw.get("content"),
+                            }
+                        )
                     except json.JSONDecodeError:
                         continue
 
