@@ -23,14 +23,15 @@ export default function LearningModel() {
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [rightPanelWidth, setRightPanelWidth] = useState(35);
+  const [rightPanelWidth, setRightPanelWidth] = useState(67); // 左侧书页约 2/3，右侧对话 1/3
   const layoutRef = useRef<HTMLDivElement>(null);
 
   const handleResizeMove = useCallback(
     (e: MouseEvent) => {
       if (!layoutRef.current) return;
       const rect = layoutRef.current.getBoundingClientRect();
-      const percent = ((rect.right - e.clientX) / rect.width) * 100;
+      // 书页在左，宽度 = 从左到手柄的距离
+      const percent = ((e.clientX - rect.left) / rect.width) * 100;
       setRightPanelWidth(Math.min(RIGHT_PANEL_MAX, Math.max(RIGHT_PANEL_MIN, percent)));
     },
     []
@@ -190,7 +191,101 @@ export default function LearningModel() {
   return (
     <div className="learning-page-wrapper">
     <div className="learning-layout" ref={layoutRef}>
-      {/* LEFT CHAT AREA */}
+      {/* LEFT: 书页 / 参考区 */}
+      <div
+        className="right-panel"
+        style={{ flex: `0 0 ${rightPanelWidth}%` }}
+      >
+        <h3>📚 Related Section</h3>
+
+        {dataMatchedTopic ? (
+          <div className="match-box">
+            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
+            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
+          </div>
+        ) : matchedSection ? (
+          <div className="match-box">
+            <h4>🔍 Topic: {matchedSection.topic}</h4>
+            <h5>📘 Chapter: {matchedSection.chapter}</h5>
+            <ul>
+              {matchedSection.key_points.map((kp: string, i: number) => (
+                <li key={i}>• {kp}</li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p>No related topic yet. Ask a question!</p>
+        )}
+
+        {(referencePageSnippets?.length || referencePageImage) && (
+          <>
+            <hr />
+            <h3>📖 Original page in Textbook</h3>
+            <div className="reference-page-box reference-page-sidebar">
+              {referencePageSnippets?.length ? (
+                referencePageSnippets.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt={`教材片段 ${i + 1}`}
+                    className="reference-page-img reference-snippet reference-img-clickable"
+                    onClick={() => setEnlargedImageSrc(src)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
+                  />
+                ))
+              ) : referencePageImage ? (
+                <img
+                  src={referencePageImage}
+                  alt="教材参考页"
+                  className="reference-page-img reference-img-clickable"
+                  onClick={() => setEnlargedImageSrc(referencePageImage)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
+                />
+              ) : null}
+            </div>
+            {enlargedImageSrc && (
+              <div
+                className="reference-image-lightbox"
+                onClick={() => setEnlargedImageSrc(null)}
+                role="dialog"
+                aria-modal="true"
+                aria-label="放大查看图片"
+              >
+                <button
+                  type="button"
+                  className="reference-image-lightbox-close"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEnlargedImageSrc(null);
+                  }}
+                  aria-label="关闭"
+                >
+                  ×
+                </button>
+                <img
+                  src={enlargedImageSrc}
+                  alt="放大查看"
+                  className="reference-image-lightbox-img"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 可拖拽缩放条 */}
+      <div
+        className="resize-handle"
+        onMouseDown={handleResizeStart}
+        title="拖拽调整书页区宽度"
+      />
+
+      {/* RIGHT: 对话区 */}
       <div
         className="chat-panel"
         style={{ flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }}
@@ -285,119 +380,6 @@ export default function LearningModel() {
           />
           <button onClick={handleSend}>▶</button>
         </div>
-      </div>
-
-      {/* 可拖拽缩放条 */}
-      <div
-        className="resize-handle"
-        onMouseDown={handleResizeStart}
-        title="拖拽调整右侧宽度"
-      />
-
-      {/* RIGHT PANEL */}
-      <div
-        className="right-panel"
-        style={{ flex: `0 0 ${rightPanelWidth}%` }}
-      >
-        <h3>📚 Related Section</h3>
-
-        {dataMatchedTopic ? (
-          <div className="match-box">
-            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
-            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
-          </div>
-        ) : matchedSection ? (
-          <div className="match-box">
-            <h4>🔍 Topic: {matchedSection.topic}</h4>
-            <h5>📘 Chapter: {matchedSection.chapter}</h5>
-            <ul>
-              {matchedSection.key_points.map((kp: string, i: number) => (
-                <li key={i}>• {kp}</li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p>No related topic yet. Ask a question!</p>
-        )}
-
-        {/* <hr />
-
-        <h3>📖 Curriculum Overview</h3>
-
-        {curriculumTree?.topics ? (
-          <div className="tree-scroll">
-            {curriculumTree.topics.map((t: any, i: number) => (
-              <div key={i} className="topic-box">
-                <strong>📌 {t.topic}</strong>
-                {t.chapters.map((c: any, j: number) => (
-                  <div key={j} className="chappter-box">┗ 📘 {c.chapter}</div>
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="note">Upload textbook to build curriculum tree →</p>
-        )} */}
-
-        {(referencePageSnippets?.length || referencePageImage) && (
-          <>
-            <hr />
-            <h3>📖 Original page in Textbook</h3>
-            <div className="reference-page-box reference-page-sidebar">
-              {referencePageSnippets?.length ? (
-                referencePageSnippets.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt={`教材片段 ${i + 1}`}
-                    className="reference-page-img reference-snippet reference-img-clickable"
-                    onClick={() => setEnlargedImageSrc(src)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
-                  />
-                ))
-              ) : referencePageImage ? (
-                <img
-                  src={referencePageImage}
-                  alt="教材参考页"
-                  className="reference-page-img reference-img-clickable"
-                  onClick={() => setEnlargedImageSrc(referencePageImage)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
-                />
-              ) : null}
-            </div>
-            {enlargedImageSrc && (
-              <div
-                className="reference-image-lightbox"
-                onClick={() => setEnlargedImageSrc(null)}
-                role="dialog"
-                aria-modal="true"
-                aria-label="放大查看图片"
-              >
-                <button
-                  type="button"
-                  className="reference-image-lightbox-close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEnlargedImageSrc(null);
-                  }}
-                  aria-label="关闭"
-                >
-                  ×
-                </button>
-                <img
-                  src={enlargedImageSrc}
-                  alt="放大查看"
-                  className="reference-image-lightbox-img"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
-          </>
-        )}
       </div>
     </div>
     </div>
