@@ -70,14 +70,29 @@ def find_local_npm() -> Path | None:
 	candidate = node_root / "npm.cmd"
 	if candidate.is_file():
 		return candidate
-	# check subdirectories such as node-v24.13.0-win-x64
-	for child in node_root.iterdir():
+	# check subdirectories such as node-v24.14.0-win-x64 (prefer newer names)
+	for child in sorted(node_root.iterdir(), key=lambda p: p.name, reverse=True):
 		if not child.is_dir():
 			continue
 		candidate = child / "npm.cmd"
 		if candidate.is_file():
 			return candidate
 	return None
+
+
+def can_run_npm(npm_exec: Path) -> bool:
+	if not npm_exec.is_file():
+		return False
+	try:
+		result = subprocess.run(
+			[str(npm_exec), "--version"],
+			stdout=subprocess.DEVNULL,
+			stderr=subprocess.DEVNULL,
+			check=False,
+		)
+		return result.returncode == 0
+	except OSError:
+		return False
 
 
 def find_env_npm() -> Path | None:
@@ -119,26 +134,21 @@ def resolve_npm_path(user_path: str | None) -> Path:
 		path = Path(user_path)
 		if not path.is_file():
 			raise RuntimeError(f"Specified npm path does not exist: {path}")
+		if not can_run_npm(path):
+			raise RuntimeError(f"Specified npm path is not runnable: {path}")
 		return path
 
-	env_npm = find_env_npm()
-	if env_npm:
-		return env_npm
-
-	path_npm = find_path_npm()
-	if path_npm:
-		return path_npm
-
-	node_sibling_npm = find_npm_near_node()
-	if node_sibling_npm:
-		return node_sibling_npm
-
-	local = find_local_npm()
-	if local:
-		return local
+	for candidate in (
+		find_env_npm(),
+		find_path_npm(),
+		find_npm_near_node(),
+		find_local_npm(),
+	):
+		if candidate and can_run_npm(candidate):
+			return candidate
 
 	raise RuntimeError(
-		"npm executable not available. Checked NODE_HOME/NODEJS_HOME/NVM_SYMLINK/NVM_HOME/VOLTA_HOME, PATH, and frontend/node.js."
+		"No runnable npm executable found. Checked NODE_HOME/NODEJS_HOME/NVM_SYMLINK/NVM_HOME/VOLTA_HOME, PATH, and frontend/node.js."
 	)
 
 
