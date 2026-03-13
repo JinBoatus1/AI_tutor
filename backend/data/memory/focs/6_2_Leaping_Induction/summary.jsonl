@@ -1,0 +1,1 @@
+{"id": "0334a7b4dffd454cb271427fc4d5af71", "ts": "2026-03-13T21:26:31Z", "t": 1773437191, "content": "Q: 6.2 | A: ## 6.2 Leaping Induction (p. 74)\n\n### What “leaping induction” means\nSometimes proving the usual induction step \\(P(n)\\Rightarrow P(n+1)\\) is hard, but it’s easier to prove a bigger jump:\n\\[\nP(n)\\Righ..."}

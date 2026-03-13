@@ -40,6 +40,150 @@ def topic_name_to_memory_address(topic_name: str) -> str:
     return s or "unknown"
 
 
+def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:
+    """
+    从 FOCS.json 生成教材章节树（缩进 + 页码）。
+    chapter_filter: 若为 "5"，只返回第 5 章及其 sections，不返回全书；None 则返回全书。
+    """
+    if not os.path.exists(FOCS_JSON_PATH):
+        return ""
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+
+    def fmt_range(d: Dict[str, Any]) -> str:
+        start = d.get("start") or (d.get("_range", {}) or {}).get("start")
+        end = d.get("end") or (d.get("_range", {}) or {}).get("end")
+        if start is not None and end is not None:
+            if start == end:
+                return f" (p. {start})"
+            return f" (pp. {start}-{end})"
+        return ""
+
+    def walk(obj: Dict[str, Any], indent: int) -> List[str]:
+        lines: List[str] = []
+        prefix = "  " * indent
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            rng = fmt_range(v)
+            lines.append(f"{prefix}{k}{rng}")
+            sub = walk(v, indent + 1)
+            lines.extend(sub)
+        return lines
+
+    if chapter_filter is not None and str(chapter_filter).strip():
+        num = str(chapter_filter).strip()
+        for k, v in raw.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == num or k.startswith(num + " "):
+                lines = [k + fmt_range(v)] + walk(v, 1)
+                return "\n".join(lines)
+        return ""
+
+    lines = walk(raw, 0)
+    return "\n".join(lines) if lines else ""
+
+
+def _get_range_from_node(v: Dict[str, Any]) -> Optional[tuple]:
+    start = v.get("start") or (v.get("_range") or {}).get("start")
+    end = v.get("end") or (v.get("_range") or {}).get("end")
+    if start is not None and end is not None:
+        try:
+            return (int(start), int(end))
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def get_chapter_start_end_name(chapter_filter: str) -> Optional[tuple]:
+    """
+    根据章节号取该章在 FOCS 中的起始/结束页（教材页码）及章节名。
+    返回 (start_book, end_book, name) 或 None。
+    """
+    if not chapter_filter or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    num = str(chapter_filter).strip()
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first_word = k.split()[0] if k.split() else ""
+        if first_word != num and not k.startswith(num + " "):
+            continue
+        r = _get_range_from_node(v)
+        if r:
+            return (r[0], r[1], k)
+        break
+    return None
+
+
+def get_section_start_end_name(section_filter: str) -> Optional[tuple]:
+    """
+    根据小节号（如 5.1、5.1.1）在 FOCS 整棵树中查找，返回 (start_book, end_book, name)。
+    支持 chapter（5）和 subsection（5.1、5.1.1）。
+    """
+    if not section_filter or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    prefix = str(section_filter).strip()
+
+    def walk(obj: Dict[str, Any]) -> Optional[tuple]:
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == prefix:
+                r = _get_range_from_node(v)
+                if r:
+                    return (r[0], r[1], k)
+            found = walk(v)
+            if found:
+                return found
+        return None
+
+    return walk(raw)
+
+
+def extract_chapter_from_message(message: str) -> Optional[str]:
+    """从用户消息中解析出章节号，例如 'chapter 5' / '第5章' / '5' -> '5'。"""
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:chapter|ch\.?)\s*(\d+)", s, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    m = re.search(r"第\s*(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    if re.match(r"^\d+\s*$", s):
+        return s.strip()
+    m = re.search(r"\b(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    return None
+
+
+def extract_section_from_message(message: str) -> Optional[str]:
+    """
+    从用户消息中解析出章节或小节号，如 '5.1' / 'section 5.1' / '5.1.1' -> '5.1' 或 '5.1.1'；
+    'chapter 5' / '5' -> '5'。优先匹配 subsection（含小数点），否则用 chapter。
+    """
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"\b(\d+\.\d+(?:\.\d+)*)\b", s)
+    if m:
+        return m.group(1)
+    return extract_chapter_from_message(message)
+
+
 def load_focs_topic_list() -> List[Dict[str, Any]]:
     """从 FOCS.json 解析出所有有页码的 topic。"""
     global _topic_list
@@ -134,6 +278,26 @@ def render_pdf_page_to_base64(pdf_bytes: bytes, page_num_1based: int, dpi: int =
         return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
         return None
+
+
+def render_pdf_page_range_to_base64(
+    pdf_bytes: bytes, start_page_1based: int, end_page_1based: int, dpi: int = 120
+) -> List[str]:
+    """将 PDF 指定页码范围（1-based，含首尾）逐页渲染为 PNG，返回 base64 字符串列表。"""
+    out: List[str] = []
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        start = max(1, min(start_page_1based, len(doc)))
+        end = max(start, min(end_page_1based, len(doc)))
+        for i in range(start - 1, end):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=dpi)
+            img_bytes = pix.tobytes("png")
+            out.append(base64.b64encode(img_bytes).decode("utf-8"))
+        doc.close()
+    except Exception:
+        pass
+    return out
 
 
 def _fallback_indices_formula_only(

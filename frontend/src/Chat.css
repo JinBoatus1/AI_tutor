@@ -148,6 +148,33 @@
   margin-bottom: 0;
 }
 
+.section-pages-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.section-pages-nav button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.section-pages-nav button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.section-pages-info {
+  font-size: 0.9rem;
+  color: #555;
+}
+
 .reference-img-clickable {
   cursor: pointer;
 }

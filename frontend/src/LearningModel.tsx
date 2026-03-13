@@ -6,9 +6,12 @@ import MathText from "./MathText";
 const RIGHT_PANEL_MIN = 20;
 const RIGHT_PANEL_MAX = 55;
 
+const WELCOME_MSG =
+  "Hi! Which chapter do you want to learn or review? Type a chapter name or topic (e.g. \"Chapter 5\", \"Induction\", \"Proofs\"), and I’ll look up the textbook pages and walk you through the most important formulas and definitions.";
+
 export default function LearningModel() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
   const { curriculumTree } = useCurriculum();
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
@@ -19,6 +22,8 @@ export default function LearningModel() {
   } | null>(null);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
+  const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
+  const [sectionPageIndex, setSectionPageIndex] = useState(0);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +153,7 @@ export default function LearningModel() {
           confidence?: number;
           reference_page_image_b64?: string;
           reference_page_snippets_b64?: string[];
+          reference_section_pages_b64?: string[];
         }
       | undefined;
     const CHAT_TIMEOUT_MS = 120000;
@@ -188,17 +194,27 @@ export default function LearningModel() {
         setDataMatchedTopic(null);
         setMatchedSection(null);
       }
-      if (data.reference_page_snippets_b64?.length) {
+      if (data.reference_section_pages_b64?.length) {
+        setReferenceSectionPages(
+          data.reference_section_pages_b64.map((b64) => `data:image/png;base64,${b64}`)
+        );
+        setSectionPageIndex(0);
+        setReferencePageSnippets(null);
+        setReferencePageImage(null);
+      } else if (data.reference_page_snippets_b64?.length) {
         setReferencePageSnippets(
           data.reference_page_snippets_b64.map((b64) => `data:image/png;base64,${b64}`)
         );
         setReferencePageImage(null);
+        setReferenceSectionPages(null);
       } else if (data.reference_page_image_b64) {
         setReferencePageImage(`data:image/png;base64,${data.reference_page_image_b64}`);
         setReferencePageSnippets(null);
+        setReferenceSectionPages(null);
       } else {
         setReferencePageImage(null);
         setReferencePageSnippets(null);
+        setReferenceSectionPages(null);
       }
 
       if (conf === null) {
@@ -261,11 +277,13 @@ export default function LearningModel() {
   // CLEAR EVERYTHING
   // ============================
   const reset = () => {
-    setMessages([]);
+    setMessages([{ sender: "ai", text: WELCOME_MSG }]);
     setMatchedSection(null);
     setDataMatchedTopic(null);
     setReferencePageImage(null);
     setReferencePageSnippets(null);
+    setReferenceSectionPages(null);
+    setSectionPageIndex(0);
   };
 
   return (
@@ -297,12 +315,51 @@ export default function LearningModel() {
           <p>No related topic yet. Ask a question!</p>
         )}
 
-        {(referencePageSnippets?.length || referencePageImage) && (
+        {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
           <>
             <hr />
             <h3>📖 Original page in Textbook</h3>
             <div className="reference-page-box reference-page-sidebar">
-              {referencePageSnippets?.length ? (
+              {referenceSectionPages?.length ? (
+                <>
+                  <div className="section-pages-nav">
+                    <button
+                      type="button"
+                      disabled={sectionPageIndex <= 0}
+                      onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}
+                      aria-label="上一页"
+                    >
+                      ‹ Prev
+                    </button>
+                    <span className="section-pages-info">
+                      Page {sectionPageIndex + 1} of {referenceSectionPages.length}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={sectionPageIndex >= referenceSectionPages.length - 1}
+                      onClick={() =>
+                        setSectionPageIndex((i) =>
+                          Math.min(referenceSectionPages.length - 1, i + 1)
+                        )
+                      }
+                      aria-label="下一页"
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                  <img
+                    src={referenceSectionPages[sectionPageIndex]}
+                    alt={`Section page ${sectionPageIndex + 1}`}
+                    className="reference-page-img reference-img-clickable"
+                    onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
+                    }
+                  />
+                </>
+              ) : referencePageSnippets?.length ? (
                 referencePageSnippets.map((src, i) => (
                   <img
                     key={i}

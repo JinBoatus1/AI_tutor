@@ -50,14 +50,60 @@ async def chat(chat_message: ChatMessage):
     except Exception as e:
         print(f"[Learning] topic match/page extract failed: {e}")
 
-    system_content = "You are an AI math tutor. Explain clearly and step-by-step."
-    if page_context and matched_topic:
+    system_content = (
+        "You are an AI math tutor. Explain clearly and step-by-step. "
+        "When the student asks which chapter to learn or review, or names a topic/chapter (e.g. Chapter 5, Induction, Proofs), "
+        "use the reference below to guide them through the most important formulas and definitions from that section."
+    )
+    section_hint = lr.extract_section_from_message(chat_message.message)
+    section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
+    is_subsection_request = bool(section_hint and "." in section_hint and section_info)
+
+    if is_subsection_request:
+        start_book, end_book, section_name = section_info
+        start_pdf = start_book + lr.PDF_PAGE_OFFSET
+        end_pdf = end_book + lr.PDF_PAGE_OFFSET
+        system_content += (
+            f"\n\nThe student has already chosen section: {section_name}. "
+            "Do NOT show the section list or ask them to pick again. Use the reference below to walk them through this section's key formulas and definitions."
+        )
+        _pdf = lr.load_focs_pdf()
+        if _pdf:
+            page_context = lr.extract_pdf_pages_text(_pdf, start_pdf, end_pdf)
+            if page_context:
+                system_content += (
+                    f"\n\n--- Reference from textbook ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
+                    f"{page_context[:12000]}\n"
+                    "--- End of reference ---\n\n"
+                    "Use the above to explain this section. Point to the right-hand pages when relevant."
+                )
+    else:
+        chapter_for_tree = (section_hint.split(".")[0] if section_hint and "." in section_hint else section_hint) or lr.extract_chapter_from_message(chat_message.message)
+        chapter_tree = lr.get_focs_chapter_tree(chapter_filter=chapter_for_tree)
+        if chapter_tree:
+            if chapter_for_tree:
+                system_content += (
+                    "\n\n--- Sections of the chapter they asked for (list only these in your reply) ---\n"
+                    + chapter_tree
+                    + "\n--- End ---\n"
+                    "In your reply: list ONLY the sections above, then ask exactly one of two options (no goals like 'understand the idea' or 'practice problems'): "
+                    "either pick one section to dive into, OR get a quick summary of the whole topic first and then pick what they don't understand."
+                )
+            else:
+                system_content += (
+                    "\n\n--- Textbook chapter tree ---\n"
+                    + chapter_tree
+                    + "\n--- End of chapter tree ---\n"
+                    "In your reply: list the sections above, then ask either pick one section, OR get a quick summary of the whole topic first and then pick what they don't understand. Do NOT ask about goals (understand the idea, proof template, practice problems)."
+                )
+    if page_context and matched_topic and not is_subsection_request:
         s = matched_topic["start"] + lr.PDF_PAGE_OFFSET
         e = matched_topic["end"] + lr.PDF_PAGE_OFFSET
         system_content += (
             f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, PDF pages {s}-{e}) ---\n"
             f"{page_context[:12000]}\n"
-            "--- End of reference ---\n\nUse the above as context when answering. Cite relevant parts if helpful."
+            "--- End of reference ---\n\n"
+            "Use the above to walk the student through key formulas, definitions, and proof templates. Point to the right-hand snippets when they appear."
         )
 
     # 1) Tutor answer（当前轮可带图片，走 vision）
@@ -109,7 +155,34 @@ async def chat(chat_message: ChatMessage):
     confidence = clamp_int_0_100(raw_score)
 
     result: dict[str, Any] = {"reply": answer, "confidence": confidence}
-    if matched_topic:
+
+    # 若用户问的是某一章或小节（chapter 5 / 5.1 / 5.1.1），左侧显示该章/节全部页并可翻页，不跑 snippet 检索
+    if section_hint:
+        section_info = lr.get_section_start_end_name(section_hint)
+        if section_info:
+            start_book, end_book, name = section_info
+            start_pdf = start_book + lr.PDF_PAGE_OFFSET
+            end_pdf = end_book + lr.PDF_PAGE_OFFSET
+            result["matched_topic"] = {"name": name, "start": start_pdf, "end": end_pdf}
+            _pdf = lr.load_focs_pdf()
+            if _pdf:
+                pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
+                if pages_b64:
+                    result["reference_section_pages_b64"] = pages_b64
+            if _MEMORY_AVAILABLE:
+                try:
+                    mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
+                    addr = lr.topic_name_to_memory_address(name)
+                    event_content = f"Q: {chat_message.message}\nA: {answer}"
+                    if mem.write(addr, event_content) == Status.OK:
+                        summary_line = (
+                            f"Q: {chat_message.message[:100]}{'...' if len(chat_message.message) > 100 else ''} | "
+                            f"A: {answer[:200]}{'...' if len(answer) > 200 else ''}"
+                        )
+                        mem.write(f"{addr}/__summary__", summary_line)
+                except Exception as e:
+                    print(f"[Memory] write failed for topic {name}: {e}")
+    elif matched_topic:
         start_pdf = matched_topic["start"] + lr.PDF_PAGE_OFFSET
         end_pdf = matched_topic["end"] + lr.PDF_PAGE_OFFSET
         result["matched_topic"] = {

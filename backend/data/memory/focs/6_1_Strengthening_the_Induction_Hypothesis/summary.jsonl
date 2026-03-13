@@ -1,0 +1,1 @@
+{"id": "21e0ec85965c4a909efa7ce635a2f419", "ts": "2026-03-13T21:25:27Z", "t": 1773437127, "content": "Q: 6.1 | A: ## 6.1 Strengthening the Induction Hypothesis (pp. 71–73)\n\n### Big idea\nSometimes an induction proof *gets stuck* because, to prove \\(P(n+1)\\), you need an extra fact that isn’t included in \\(P(n)\\). ..."}
