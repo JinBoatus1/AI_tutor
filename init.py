@@ -142,11 +142,46 @@ def resolve_npm_path(user_path: str | None) -> Path:
 	)
 
 
-def ensure_npm_deps(frontend_dir: Path, skip_install: bool, npm_exec: Path):
+def resolve_node_exec(npm_exec: Path) -> Path:
+	if os.name != "nt":
+		node = shutil.which("node")
+		if node:
+			return Path(node)
+		raise RuntimeError("node executable not available on PATH")
+
+	# Typical Node layout on Windows keeps node.exe next to npm.cmd
+	for candidate in (
+		npm_exec.parent / "node.exe",
+		npm_exec.parent.parent / "node.exe",
+	):
+		if candidate.is_file():
+			return candidate
+
+	node = shutil.which("node.exe")
+	if node:
+		return Path(node)
+
+	raise RuntimeError(
+		f"node.exe not available for npm at {npm_exec}. Install Node or pass --npm-path that points to a Node bundle."
+	)
+
+
+def build_frontend_env(node_exec: Path) -> dict[str, str]:
+	env = dict(os.environ)
+	node_dir = str(node_exec.parent)
+	path_value = env.get("PATH", "")
+	if not path_value:
+		env["PATH"] = node_dir
+	elif node_dir.lower() not in {part.lower() for part in path_value.split(os.pathsep) if part}:
+		env["PATH"] = f"{node_dir}{os.pathsep}{path_value}"
+	return env
+
+
+def ensure_npm_deps(frontend_dir: Path, skip_install: bool, npm_exec: Path, frontend_env: dict[str, str]):
 	if skip_install:
 		return
 	print("Installing frontend dependencies (npm install)")
-	subprocess.run([str(npm_exec), "install"], cwd=frontend_dir, check=True)
+	subprocess.run([str(npm_exec), "install"], cwd=frontend_dir, env=frontend_env, check=True)
 
 
 def main():
@@ -164,7 +199,9 @@ def main():
 	backend_env = build_backend_env()
 
 	npm_exec = resolve_npm_path(args.npm_path)
-	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec)
+	node_exec = resolve_node_exec(npm_exec)
+	frontend_env = build_frontend_env(node_exec)
+	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec, frontend_env)
 
 	backend_cmd = [
 		sys.executable,
@@ -183,7 +220,7 @@ def main():
 	print("Launching backend (uvicorn) in py312-api")
 	backend_proc = run(backend_cmd, cwd=backend_dir, env=backend_env)
 	print("Launching frontend (npm run dev)")
-	frontend_proc = run(frontend_cmd, cwd=frontend_dir)
+	frontend_proc = run(frontend_cmd, cwd=frontend_dir, env=frontend_env)
 
 	try:
 		while True:
