@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+REQUIRED_BACKEND_MODULES = ("fastapi", "uvicorn")
 
 
 def load_env_file(path: Path) -> dict[str, str]:
@@ -60,6 +61,121 @@ def run(command, cwd=None, env=None):
 		env=env,
 		shell=False,
 	)
+
+
+def _python_exec_from_env_root(root: str | None) -> Path | None:
+	if not root:
+		return None
+	base = Path(root)
+	if os.name == "nt":
+		candidate = base / "Scripts" / "python.exe"
+	else:
+		candidate = base / "bin" / "python"
+	return candidate if candidate.is_file() else None
+
+
+def _iter_backend_python_candidates(user_path: str | None) -> list[Path]:
+	candidates: list[Path] = []
+
+	def add(path: Path | None):
+		if path and path not in candidates:
+			candidates.append(path)
+
+	if user_path:
+		add(Path(user_path))
+
+	add(Path(sys.executable) if sys.executable else None)
+	add(_python_exec_from_env_root(os.environ.get("VIRTUAL_ENV")))
+	add(_python_exec_from_env_root(os.environ.get("CONDA_PREFIX")))
+
+	for env_name in (".venv", "venv", "env"):
+		root = ROOT / env_name
+		if os.name == "nt":
+			add(root / "Scripts" / "python.exe")
+			add(ROOT / "backend" / env_name / "Scripts" / "python.exe")
+		else:
+			add(root / "bin" / "python")
+			add(ROOT / "backend" / env_name / "bin" / "python")
+
+	for name in ("python", "python3"):
+		which = shutil.which(name)
+		if which:
+			add(Path(which))
+
+	return candidates
+
+
+def _can_run_python(python_exec: Path) -> bool:
+	if not python_exec.is_file():
+		return False
+	try:
+		result = subprocess.run(
+			[str(python_exec), "--version"],
+			stdout=subprocess.DEVNULL,
+			stderr=subprocess.DEVNULL,
+			check=False,
+		)
+		return result.returncode == 0
+	except OSError:
+		return False
+
+
+def _has_backend_modules(python_exec: Path) -> bool:
+	check_code = "import fastapi, uvicorn"
+	result = subprocess.run(
+		[str(python_exec), "-c", check_code],
+		stdout=subprocess.DEVNULL,
+		stderr=subprocess.DEVNULL,
+		check=False,
+	)
+	return result.returncode == 0
+
+
+def resolve_backend_python(user_path: str | None) -> tuple[Path, bool]:
+	runnable: list[Path] = []
+	for candidate in _iter_backend_python_candidates(user_path):
+		if not _can_run_python(candidate):
+			continue
+		runnable.append(candidate)
+		if _has_backend_modules(candidate):
+			return candidate, True
+
+	if not runnable:
+		raise RuntimeError(
+			"No runnable Python executable found for backend. Provide --python-path or create a virtual environment."
+		)
+
+	# Return first runnable interpreter even if modules are missing; caller may auto-install dependencies.
+	return runnable[0], False
+
+
+def ensure_backend_deps(
+	python_exec: Path,
+	backend_dir: Path,
+	auto_install_backend_deps: bool,
+):
+	if _has_backend_modules(python_exec):
+		return
+
+	requirements_path = backend_dir / "requirements.txt"
+	if not auto_install_backend_deps:
+		raise RuntimeError(
+			"Backend dependencies are missing for interpreter "
+			f"{python_exec}. Install with: {python_exec} -m pip install -r {requirements_path}"
+		)
+
+	print(f"Installing backend dependencies using {python_exec}")
+	subprocess.run(
+		[str(python_exec), "-m", "pip", "install", "-r", str(requirements_path)],
+		cwd=backend_dir,
+		check=True,
+	)
+
+	if not _has_backend_modules(python_exec):
+		raise RuntimeError(
+			"Backend dependencies still unavailable after installation. "
+			f"Please inspect environment for interpreter: {python_exec}"
+		)
 
 
 def find_local_npm() -> Path | None:
@@ -202,11 +318,21 @@ def main():
 		help="Skip npm install to save time when deps are already cached.",
 	)
 	parser.add_argument("--npm-path", type=str, help="Path to npm executable.")
+	parser.add_argument("--python-path", type=str, help="Path to Python executable for backend.")
+	parser.add_argument(
+		"--auto-install-backend-deps",
+		action=argparse.BooleanOptionalAction,
+		default=True,
+		help="Automatically install missing backend dependencies from backend/requirements.txt.",
+	)
 	args = parser.parse_args()
 
 	backend_dir = ROOT / "backend"
 	frontend_dir = ROOT / "frontend"
 	backend_env = build_backend_env()
+	backend_python, has_modules = resolve_backend_python(args.python_path)
+	if not has_modules:
+		ensure_backend_deps(backend_python, backend_dir, args.auto_install_backend_deps)
 
 	npm_exec = resolve_npm_path(args.npm_path)
 	node_exec = resolve_node_exec(npm_exec)
@@ -214,7 +340,7 @@ def main():
 	ensure_npm_deps(frontend_dir, args.skip_npm_install, npm_exec, frontend_env)
 
 	backend_cmd = [
-		sys.executable,
+		str(backend_python),
 		"-m",
 		"uvicorn",
 		"main:app",
@@ -227,7 +353,7 @@ def main():
 
 	frontend_cmd = [str(npm_exec), "run", "dev"]
 
-	print("Launching backend (uvicorn) in py312-api")
+	print(f"Launching backend (uvicorn) with {backend_python}")
 	backend_proc = run(backend_cmd, cwd=backend_dir, env=backend_env)
 	print("Launching frontend (npm run dev)")
 	frontend_proc = run(frontend_cmd, cwd=frontend_dir, env=frontend_env)
