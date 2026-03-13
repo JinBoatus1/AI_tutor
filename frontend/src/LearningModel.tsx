@@ -150,6 +150,10 @@ export default function LearningModel() {
           reference_page_snippets_b64?: string[];
         }
       | undefined;
+    const CHAT_TIMEOUT_MS = 120000;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
     try {
       const resp = await fetch("http://127.0.0.1:8000/api/chat", {
         method: "POST",
@@ -159,7 +163,10 @@ export default function LearningModel() {
           history: messages,
           images_b64: imagesB64,
         }),
+        signal: controller.signal,
       });
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = null;
 
       data = await resp.json();
       if (!resp.ok) {
@@ -204,7 +211,12 @@ export default function LearningModel() {
         matchCurriculum(userText);
       }
     } catch (err) {
-      addAIMessage("Error: Could not reach backend.");
+      if (timeoutId) clearTimeout(timeoutId);
+      if ((err as Error).name === "AbortError") {
+        addAIMessage("请求超时（约 2 分钟）。请检查后端是否正常运行，或稍后重试。");
+      } else {
+        addAIMessage("请求失败，无法连接后端。请确认后端已在 http://127.0.0.1:8000 运行。");
+      }
     }
   };
 

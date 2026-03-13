@@ -33,6 +33,7 @@ class ChatMessage(BaseModel):
 
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage):
+    print("[Chat] request received", flush=True)
     # 0) LLM 匹配 topic → 从 data 书本提取对应页
     page_context = ""
     matched_topic: Optional[dict[str, Any]] = None
@@ -144,6 +145,7 @@ async def chat(chat_message: ChatMessage):
                     mem.write(f"{addr}/__summary__", summary_line)
             except Exception as e:
                 print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
+    print("[Chat] response sent", flush=True)
     return result
 
 
