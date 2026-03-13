@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
 import MathText from "./MathText";
+import { apiCandidates } from "./api";
 
 const RIGHT_PANEL_MIN = 20;
 const RIGHT_PANEL_MAX = 55;
@@ -141,27 +142,45 @@ export default function LearningModel() {
       ? attachedImages.map((dataUrl) => dataUrl.replace(/^data:image\/\w+;base64,/, ""))
       : undefined;
 
-    let data:
-      | {
-          matched_topic?: any;
-          reply?: string;
-          confidence?: number;
-          reference_page_image_b64?: string;
-          reference_page_snippets_b64?: string[];
-        }
-      | undefined;
+    let data: {
+      matched_topic?: any;
+      reply?: string;
+      confidence?: number;
+      reference_page_image_b64?: string;
+      reference_page_snippets_b64?: string[];
+    } = {};
     try {
-      const resp = await fetch("http://127.0.0.1:8000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userText || "(图片)",
-          history: messages,
-          images_b64: imagesB64,
-        }),
-      });
+      let resp: Response | null = null;
+      let lastNonJsonBody = "";
+      for (const endpoint of apiCandidates("/api/chat")) {
+        const candidateResp = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userText || "(图片)",
+            history: messages,
+            images_b64: imagesB64,
+          }),
+        });
 
-      data = await resp.json();
+        const responseContentType = candidateResp.headers.get("content-type") || "";
+        if (responseContentType.includes("application/json")) {
+          data = await candidateResp.json();
+          resp = candidateResp;
+          break;
+        }
+
+        lastNonJsonBody = (await candidateResp.text()).slice(0, 200);
+      }
+
+      if (!resp) {
+        throw new Error(
+          lastNonJsonBody
+            ? `Backend returned a non-JSON response: ${lastNonJsonBody}`
+            : "Backend returned a non-JSON response."
+        );
+      }
+
       if (!resp.ok) {
         const detail = (data as any)?.detail || (data as any)?.error || "Backend request failed.";
         addAIMessage(`Backend error: ${detail}`);
@@ -204,7 +223,8 @@ export default function LearningModel() {
         matchCurriculum(userText);
       }
     } catch (err) {
-      addAIMessage("Error: Could not reach backend.");
+      const detail = err instanceof Error ? err.message : "Could not reach backend.";
+      addAIMessage(`Error: ${detail}`);
     }
   };
 

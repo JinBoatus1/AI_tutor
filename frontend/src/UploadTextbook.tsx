@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCurriculum } from "./context/CurriculumContext";
+import { apiCandidates } from "./api";
 
 export default function UploadTextbook() {
   const { curriculumTree, setCurriculumTree } = useCurriculum();
@@ -37,13 +38,36 @@ export default function UploadTextbook() {
     formData.append("subject", subject);
     formData.append("file", file);
 
-    const resp = await fetch("http://127.0.0.1:8000/api/upload_textbook", {
-      method: "POST",
-      body: formData,
-    });
+    let resp: Response | null = null;
+    let data: any = null;
+    let lastError = "Backend returned a non-JSON response.";
+    for (const endpoint of apiCandidates("/api/upload_textbook")) {
+      const candidate = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      const contentType = candidate.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        resp = candidate;
+        data = await candidate.json();
+        break;
+      }
+      lastError = (await candidate.text()).slice(0, 200) || lastError;
+    }
 
-    const data = await resp.json();
+    if (!resp) {
+      setLoading(false);
+      alert(lastError);
+      return;
+    }
+
     setLoading(false);
+
+    if (!resp.ok) {
+      const detail = data?.detail || data?.error || "Backend request failed.";
+      alert(detail);
+      return;
+    }
 
     if (data.tree) {
       setCurriculumTree(data.tree);

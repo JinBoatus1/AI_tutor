@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiCandidates } from "./api";
 
 export default function AutoGrader() {
   const [prompt, setPrompt] = useState("");
@@ -17,12 +18,28 @@ export default function AutoGrader() {
       formData.append("files", f);   // ← 注意这里用 "files"
     });
 
-    const resp = await fetch("http://127.0.0.1:8000/api/grade", {
-      method: "POST",
-      body: formData,
-    });
+    let resp: Response | null = null;
+    let data: any = null;
+    let lastError = "Backend returned a non-JSON response.";
+    for (const endpoint of apiCandidates("/api/grade")) {
+      const candidate = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      const contentType = candidate.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        resp = candidate;
+        data = await candidate.json();
+        break;
+      }
+      lastError = (await candidate.text()).slice(0, 200) || lastError;
+    }
 
-    const data = await resp.json();
+    if (!resp) {
+      setResult(`Backend error: ${lastError}`);
+      return;
+    }
+
     if (!resp.ok) {
       const detail = data?.detail || data?.error || "Backend request failed.";
       setResult(`Backend error: ${detail}`);
