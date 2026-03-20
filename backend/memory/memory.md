@@ -42,6 +42,7 @@ Memory.write(address: str, content: str) -> int
 ### 参数
 
 - `address`：教材目录相对路径，例如 `chapter_01/section_02/unit_03`
+  - **FOCS / Learning 模式**：由 `learning_resources.topic_name_to_memory_address` 生成。小节（如 `5.1 ...`）会落在**章目录**下，例如 `5_Induction_.../5_1_Ordinary_Induction`，便于同一章下 `5.1`、`5.2` 等共用父目录；整章 topic 仍为单层目录。
 - `content`：要写入的纯文本（`str`）
 
 ### 返回值（状态码 `int`）

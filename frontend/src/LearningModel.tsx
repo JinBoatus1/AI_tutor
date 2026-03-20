@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
-import MathText from "./MathText";
+import MarkdownMessage from "./MarkdownMessage";
 
 const RIGHT_PANEL_MIN = 20;
 const RIGHT_PANEL_MAX = 55;
@@ -441,7 +441,15 @@ export default function LearningModel() {
         <div className="chat-box">
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              <p><MathText>{m.text}</MathText></p>
+              <MarkdownMessage
+                className={
+                  m.sender === "user"
+                    ? "markdown-message markdown-message--user"
+                    : "markdown-message"
+                }
+              >
+                {m.text}
+              </MarkdownMessage>
               {m.images?.length > 0 && (
                 <div className="msg-user-images">
                   {m.images.map((src: string, j: number) => (

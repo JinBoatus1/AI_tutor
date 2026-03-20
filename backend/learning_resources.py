@@ -27,17 +27,70 @@ _focs_pdf_bytes: Optional[bytes] = None
 TEXTBOOK_PARAGRAPHS: List[Dict[str, Any]] = []
 
 
+def _sanitize_memory_segment(s: str) -> str:
+    """单段路径：仅 [A-Za-z0-9_-]，供 memory address 使用。"""
+    if not s or not isinstance(s, str):
+        return "unknown"
+    s = s.strip()
+    s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or "unknown"
+
+
+def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
+    """
+    在 FOCS.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
+    仅匹配顶层章（首词等于章节号）。
+    """
+    if not chapter_num or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    num = str(chapter_num).strip()
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first = k.split()[0] if k.split() else ""
+        if first == num:
+            return k
+    return None
+
+
 def topic_name_to_memory_address(topic_name: str) -> str:
     """
-    将 FOCS.json 的 topic 名称转为 memory 可用的地址（单段，符合 [A-Za-z0-9_\\-]+）。
-    例如 "3.2.1 Proving an Implication" -> "3_2_1_Proving_an_Implication"
+    将 FOCS.json 的 topic 名称转为 memory 地址（允许用 / 分层）。
+
+    - 小节（首词形如 5.1、5.1.1）：存到「章」目录下，例如
+      5_Induction_.../5_1_Ordinary_Induction，这样同一章下 5.1、5.2 共用父目录。
+    - 章级（首词为纯数字，如整章 topic）：单层目录，例如 5_Induction_...。
+    - 其它：整段 sanitize 成单段（兼容旧行为）。
     """
     if not topic_name or not isinstance(topic_name, str):
         return "unknown"
     s = topic_name.strip()
-    s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s or "unknown"
+    parts = s.split()
+    if not parts:
+        return "unknown"
+    token = parts[0]
+
+    # 小节：5.1 / 5.1.1 → 父目录为 FOCS 顶层章标题，子目录为本节
+    if re.match(r"^\d+\.\d+(?:\.\d+)*$", token):
+        chapter_num = token.split(".")[0]
+        ch_key = get_chapter_heading_key(chapter_num)
+        if ch_key:
+            parent = _sanitize_memory_segment(ch_key)
+            child = _sanitize_memory_segment(s)
+            return f"{parent}/{child}"
+        return _sanitize_memory_segment(s)
+
+    # 章级：首词仅为章节号 → 单层（对应整章记忆）
+    if re.match(r"^\d+$", token):
+        ch_key = get_chapter_heading_key(token)
+        if ch_key:
+            return _sanitize_memory_segment(ch_key)
+        return _sanitize_memory_segment(s)
+
+    return _sanitize_memory_segment(s)
 
 
 def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:

@@ -95,6 +95,118 @@
   margin: 6px 0;
 }
 
+/* Learning Mode：聊天气泡内 Markdown（粗体、标题、列表、代码、表格、公式） */
+.markdown-message {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  text-align: left;
+  color: inherit;
+  max-width: 100%;
+}
+.markdown-message.markdown-message--user {
+  text-align: right;
+}
+.markdown-message > *:first-child {
+  margin-top: 0;
+}
+.markdown-message > *:last-child {
+  margin-bottom: 0;
+}
+.markdown-message h1,
+.markdown-message h2,
+.markdown-message h3,
+.markdown-message h4,
+.markdown-message h5,
+.markdown-message h6 {
+  margin: 0.6em 0 0.35em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.markdown-message h1 {
+  font-size: 1.35rem;
+}
+.markdown-message h2 {
+  font-size: 1.22rem;
+}
+.markdown-message h3 {
+  font-size: 1.12rem;
+}
+.markdown-message p {
+  margin: 0.4em 0;
+  white-space: pre-wrap;
+}
+.markdown-message strong {
+  font-weight: 700;
+}
+.markdown-message em {
+  font-style: italic;
+}
+.markdown-message ul,
+.markdown-message ol {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+.markdown-message li {
+  margin: 0.2em 0;
+}
+.markdown-message blockquote {
+  margin: 0.5em 0;
+  padding: 0.35em 0.75em;
+  border-left: 3px solid #c5d4e8;
+  background: rgba(0, 0, 0, 0.03);
+  color: #444;
+}
+.markdown-message hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 0.75em 0;
+}
+.markdown-message code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.12em 0.35em;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+}
+.markdown-message pre {
+  margin: 0.5em 0;
+  padding: 0.65em 0.85em;
+  overflow-x: auto;
+  background: #f4f4f4;
+  border-radius: 6px;
+  border: 1px solid #e8e8e8;
+}
+.markdown-message pre code {
+  padding: 0;
+  background: none;
+  font-size: 0.88em;
+}
+.markdown-message table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+.markdown-message th,
+.markdown-message td {
+  border: 1px solid #ccc;
+  padding: 0.35em 0.6em;
+  text-align: left;
+}
+.markdown-message th {
+  background: #f0f0f0;
+}
+.markdown-message a {
+  color: #2c7be5;
+  word-break: break-word;
+}
+.markdown-message .katex-display {
+  margin: 0.6em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .reference-page-box {
   margin-top: 10px;
   padding: 8px;
