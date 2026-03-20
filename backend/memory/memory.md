@@ -1,6 +1,6 @@
 # Memory 模块对外接口规范（Usage Spec）
 
-本文档说明 `backend.memory` 的标准使用方式。当前对外最小能力为：`open_memory`、`write`、`read`。
+本文档说明 `backend.memory` 的标准使用方式。当前对外最小能力为：`open_memory`、`write`、`read`、`delete`。
 
 ---
 
@@ -139,3 +139,68 @@ latest = summaries[-1]["content"] if (st == Status.OK and summaries) else ""
 - summary 同样是追加写
 - `read(sum_addr)` 返回的是 summary 历史版本列表
 - 默认取最后一条作为最新 summary
+
+---
+
+## 5. 删除（delete）
+
+### 函数签名
+
+```python
+Memory.delete(address: str, mode: str | DeleteMode = DeleteMode.PATH) -> int
+```
+
+### 参数
+
+- `address`：目录地址或文件地址（相对 `book_id` 根目录）
+- `mode`：删除模式
+  - `DeleteMode.PATH` / `"path"`：删除指定文件；或删除目录下所有文件（保留目录结构）
+  - `DeleteMode.NON_SUMMARY_JSON` / `"non_summary_json"`：删除所有非 summary 的 `json/jsonl` 文件，保留 summary 文件与目录结构
+
+### 返回值（状态码 `int`）
+
+- `Status.OK == 1`：成功
+- `Status.NOT_FOUND == 0`：目标不存在
+- `Status.IO_ERROR == -1`：I/O 或未知错误
+- `Status.INVALID_ADDRESS == -2`：`address` 不合法
+- `Status.INVALID_PARAM == -3`：`mode` 或参数类型不合法
+
+### 示例
+
+```python
+from backend.memory import DeleteMode
+
+# 1) 删除指定文件
+mem.delete("chapter_01/section_01/unit_01/events.jsonl", mode=DeleteMode.PATH)
+
+# 2) 删除目录下全部文件（目录保留）
+mem.delete("chapter_01/section_01", mode="path")
+
+# 3) 删除非 summary 的 json/jsonl 文件（保留 summary 文件与目录）
+mem.delete("chapter_02", mode=DeleteMode.NON_SUMMARY_JSON)
+```
+
+### 外部调用模板（推荐）
+
+```python
+from backend.memory import open_memory, DeleteMode, Status
+
+mem = open_memory("./backend/data/memory", book_id="focs")
+
+st = mem.delete("chapter_01/section_01", mode=DeleteMode.PATH)
+if st == Status.OK:
+  print("delete success")
+elif st == Status.NOT_FOUND:
+  print("target not found")
+elif st == Status.INVALID_ADDRESS:
+  print("invalid address")
+elif st == Status.INVALID_PARAM:
+  print("invalid mode")
+else:
+  print("io error")
+```
+
+### mode 可用写法
+
+- 枚举写法（推荐）：`DeleteMode.PATH`、`DeleteMode.NON_SUMMARY_JSON`
+- 字符串写法（兼容）：`"path"`、`"address"`、`"file_or_dir"`、`"non_summary_json"`、`"json_except_summary"`、`"keep_summary"`

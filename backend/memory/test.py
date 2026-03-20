@@ -16,7 +16,7 @@ PROJECT_ROOT = THIS_FILE.parents[2]  # .../AI_TUTOR
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.memory import open_memory, Status  # noqa: E402
+from backend.memory import DeleteMode, open_memory, Status  # noqa: E402
 
 
 # ----------- 简单断言工具 -----------
@@ -142,10 +142,67 @@ def main() -> int:
         else:
             print("[SKIP] query_by_time not implemented on this backend")
 
-        # 6) rebuild_unit_index（删除索引后重建）
+        # 6) delete：按路径删除文件/目录
+        if hasattr(mem, "delete"):
+            base_book = tmp_root / book_id
+
+            # 6.1 删除指定文件
+            target_file_rel = f"{unit2}/events.jsonl"
+            target_file_abs = base_book / target_file_rel
+            assert_true(target_file_abs.exists(), "events.jsonl should exist before delete(file)")
+
+            st = mem.delete(target_file_rel, mode=DeleteMode.PATH)
+            assert_eq(st, Status.OK, "delete(file, PATH) should OK")
+            assert_true(not target_file_abs.exists(), "events.jsonl should be removed")
+
+            # 6.2 删除目录下全部文件（目录保留）
+            target_dir_rel = "chapter_01/section_01"
+            target_dir_abs = base_book / target_dir_rel
+            assert_true(target_dir_abs.exists(), "target directory should exist before delete(dir)")
+
+            st = mem.delete(target_dir_rel, mode="path")
+            assert_eq(st, Status.OK, "delete(dir, path) should OK")
+            assert_true(target_dir_abs.exists(), "directory should be kept after delete(dir)")
+            assert_true(not any(p.is_file() for p in target_dir_abs.rglob("*")), "all files under dir should be removed")
+            print_ok("delete PATH mode")
+        else:
+            print("[SKIP] delete not implemented on this backend")
+
+        # 7) delete：删除非 summary 的 json/jsonl，保留目录与 summary 文件
+        if hasattr(mem, "delete"):
+            # 重新准备数据
+            keep_unit = "chapter_02/section_01/unit_01"
+            keep_sum_addr = keep_unit + "/__summary__"
+            st = mem.write(keep_unit, "event for delete mode test")
+            assert_eq(st, Status.OK, "prepare event should OK")
+            st = mem.write(keep_sum_addr, "summary for delete mode test")
+            assert_eq(st, Status.OK, "prepare summary should OK")
+
+            keep_dir = tmp_root / book_id / "chapter_02/section_01/unit_01"
+            event_file = keep_dir / "events.jsonl"
+            summary_file = keep_dir / "summary.jsonl"
+            assert_true(event_file.exists(), "events.jsonl should exist before NON_SUMMARY_JSON delete")
+            assert_true(summary_file.exists(), "summary.jsonl should exist before NON_SUMMARY_JSON delete")
+
+            st = mem.delete("chapter_02", mode=DeleteMode.NON_SUMMARY_JSON)
+            assert_eq(st, Status.OK, "delete(chapter_02, NON_SUMMARY_JSON) should OK")
+            assert_true(not event_file.exists(), "events.jsonl should be removed in NON_SUMMARY_JSON mode")
+            assert_true(summary_file.exists(), "summary.jsonl should be kept in NON_SUMMARY_JSON mode")
+            assert_true(keep_dir.exists(), "directory structure should be kept in NON_SUMMARY_JSON mode")
+            print_ok("delete NON_SUMMARY_JSON mode")
+        else:
+            print("[SKIP] delete not implemented on this backend")
+
+        # 8) rebuild_unit_index（删除索引后重建）
         if hasattr(mem, "rebuild_unit_index"):
+            rebuild_unit = "chapter_03/section_01/unit_01"
+            st = mem.write(rebuild_unit, "event for rebuild unit index")
+            assert_eq(st, Status.OK, "prepare rebuild unit event should OK")
+            st = mem.write(rebuild_unit + "/__summary__", "summary for rebuild unit index")
+            assert_eq(st, Status.OK, "prepare rebuild unit summary should OK")
+
             # 找到索引文件路径：根据实现约定 events.index.jsonl / summary.index.jsonl
-            base = tmp_root / book_id / unit1
+            base = tmp_root / book_id / rebuild_unit
             ev_idx = base / "events.index.jsonl"
             sm_idx = base / "summary.index.jsonl"
             if ev_idx.exists():
@@ -153,10 +210,10 @@ def main() -> int:
             if sm_idx.exists():
                 sm_idx.unlink()
 
-            st = mem.rebuild_unit_index(unit1, stream="events")
+            st = mem.rebuild_unit_index(rebuild_unit, stream="events")
             assert_eq(st, Status.OK, "rebuild_unit_index(events) should OK")
 
-            st = mem.rebuild_unit_index(unit1, stream="summary")
+            st = mem.rebuild_unit_index(rebuild_unit, stream="summary")
             # 若没有 summary 文件可能 NOT_FOUND；但我们之前写过 summary，应该 OK
             assert_eq(st, Status.OK, "rebuild_unit_index(summary) should OK")
 
@@ -166,8 +223,16 @@ def main() -> int:
         else:
             print("[SKIP] rebuild_unit_index not implemented on this backend")
 
-        # 7) rebuild_global_index（删除后重建）
+        # 9) rebuild_global_index（删除后重建）
         if hasattr(mem, "rebuild_global_index") and hasattr(mem, "get_by_id"):
+            global_rebuild_unit = "chapter_04/section_01/unit_01"
+            st = mem.write(global_rebuild_unit, "event for rebuild global index")
+            assert_eq(st, Status.OK, "prepare global rebuild event should OK")
+            st, global_recs = mem.read(global_rebuild_unit)
+            assert_eq(st, Status.OK, "read global rebuild unit should OK")
+            assert_true(len(global_recs) >= 1 and global_recs[-1].get("id") is not None, "global rebuild sample id should exist")
+            sample_id = global_recs[-1]["id"]
+
             gidx = tmp_root / book_id / "_global_index.jsonl"
             if gidx.exists():
                 gidx.unlink()
@@ -177,9 +242,9 @@ def main() -> int:
             assert_true(gidx.exists(), "_global_index.jsonl should exist after rebuild")
 
             # 重建后再按 id 查一次
-            st, rec = mem.get_by_id(id2)
+            st, rec = mem.get_by_id(sample_id)
             assert_eq(st, Status.OK, "get_by_id should still OK after global rebuild")
-            assert_true(rec is not None and rec.get("id") == id2, "record mismatch after rebuild_global_index")
+            assert_true(rec is not None and rec.get("id") == sample_id, "record mismatch after rebuild_global_index")
             print_ok("rebuild_global_index + get_by_id")
         else:
             print("[SKIP] rebuild_global_index or get_by_id not implemented on this backend")

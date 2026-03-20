@@ -8,14 +8,16 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple, Union
 
-from ..memory import MemoryRecord, Status
+from ..memory import DeleteMode, MemoryRecord, Status
 
 
 # =============== 约定 ===============
 SUMMARY_SEG = "__summary__"  # address 后缀：/<unit>/__summary__ 代表 summary 流
 _ALLOWED_ADDR = re.compile(r"^[A-Za-z0-9_\-/]+$")
+_ALLOWED_DELETE_ADDR = re.compile(r"^[A-Za-z0-9_\-./\\/]*$")
+_JSON_SUFFIXES = {".json", ".jsonl"}
 
 
 def _iso_utc_now() -> str:
@@ -62,6 +64,76 @@ class _Loc:
     length: int
 
 
+class _DeleteStrategy(Protocol):
+    def execute(self, target: Path) -> int:
+        ...
+
+
+class _PathDeleteStrategy:
+    """删除指定文件，或目录下全部文件（保留目录结构）。"""
+
+    def execute(self, target: Path) -> int:
+        if not target.exists():
+            return Status.NOT_FOUND
+
+        try:
+            if target.is_file():
+                target.unlink(missing_ok=False)
+                return Status.OK
+
+            if target.is_dir():
+                for p in target.rglob("*"):
+                    if p.is_file():
+                        p.unlink(missing_ok=True)
+                return Status.OK
+
+            return Status.NOT_FOUND
+        except Exception:
+            return Status.IO_ERROR
+
+
+class _NonSummaryJsonDeleteStrategy:
+    """删除非 summary 的 json/jsonl 文件，保留 summary 文件与目录结构。"""
+
+    @staticmethod
+    def _is_deletable_json(p: Path) -> bool:
+        if not p.is_file():
+            return False
+        if p.suffix.lower() not in _JSON_SUFFIXES:
+            return False
+        return "summary" not in p.name.lower()
+
+    def execute(self, target: Path) -> int:
+        if not target.exists():
+            return Status.NOT_FOUND
+
+        try:
+            if target.is_file():
+                if self._is_deletable_json(target):
+                    target.unlink(missing_ok=False)
+                return Status.OK
+
+            if target.is_dir():
+                for p in target.rglob("*"):
+                    if self._is_deletable_json(p):
+                        p.unlink(missing_ok=True)
+                return Status.OK
+
+            return Status.NOT_FOUND
+        except Exception:
+            return Status.IO_ERROR
+
+
+class _DeleteStrategyFactory:
+    @staticmethod
+    def create(mode: DeleteMode) -> _DeleteStrategy:
+        if mode == DeleteMode.PATH:
+            return _PathDeleteStrategy()
+        if mode == DeleteMode.NON_SUMMARY_JSON:
+            return _NonSummaryJsonDeleteStrategy()
+        raise ValueError("unsupported delete mode")
+
+
 class JsonlMemoryStore:
     """
     纯文本 JSONL 记忆存储（含临时索引）：
@@ -105,6 +177,63 @@ class JsonlMemoryStore:
         if any(p in ("..", ".", "") for p in parts):
             return None
         return address
+
+    def _validate_delete_address(self, address: str) -> Optional[str]:
+        if not isinstance(address, str):
+            return None
+
+        raw = address.strip().replace("\\", "/")
+        if raw == "/":
+            raw = ""
+        raw = raw.strip("/")
+
+        if not _ALLOWED_DELETE_ADDR.match(raw):
+            return None
+
+        if not raw:
+            return ""
+
+        parts = [p for p in raw.split("/") if p]
+        if any(p in ("..", ".") for p in parts):
+            return None
+
+        return "/".join(parts)
+
+    def _resolve_delete_target(self, address: str) -> Optional[Path]:
+        norm = self._validate_delete_address(address)
+        if norm is None:
+            return None
+
+        target = (self.base / norm).resolve() if norm else self.base
+        if target != self.base and self.base not in target.parents:
+            return None
+        return target
+
+    @staticmethod
+    def _parse_delete_mode(mode: Union[str, DeleteMode]) -> Optional[DeleteMode]:
+        if isinstance(mode, DeleteMode):
+            return mode
+
+        if not isinstance(mode, str):
+            return None
+
+        m = mode.strip().lower()
+        alias = {
+            "path": DeleteMode.PATH,
+            "address": DeleteMode.PATH,
+            "file_or_dir": DeleteMode.PATH,
+            "non_summary_json": DeleteMode.NON_SUMMARY_JSON,
+            "json_except_summary": DeleteMode.NON_SUMMARY_JSON,
+            "keep_summary": DeleteMode.NON_SUMMARY_JSON,
+        }
+        return alias.get(m)
+
+    def _post_delete_refresh(self) -> int:
+        self._id_cache.clear()
+        self._id_cache_loaded = False
+        # 删除后重建全局索引，避免按 id/时间查询读到陈旧地址
+        st = self.rebuild_global_index()
+        return st if st == Status.OK else Status.IO_ERROR
 
     def _split_stream(self, address: str) -> Tuple[str, str]:
         """
@@ -271,6 +400,31 @@ class JsonlMemoryStore:
 
         except Exception:
             return (Status.IO_ERROR, [])
+
+    def delete(self, address: str, mode: Union[str, DeleteMode] = DeleteMode.PATH) -> int:
+        """
+        统一删除入口：
+        - mode=PATH: 删除指定文件，或目录下全部文件（保留目录）
+        - mode=NON_SUMMARY_JSON: 删除所有非 summary 的 json/jsonl 文件（保留目录）
+        """
+        target = self._resolve_delete_target(address)
+        if target is None:
+            return Status.INVALID_ADDRESS
+
+        delete_mode = self._parse_delete_mode(mode)
+        if delete_mode is None:
+            return Status.INVALID_PARAM
+
+        try:
+            strategy = _DeleteStrategyFactory.create(delete_mode)
+            st = strategy.execute(target)
+            if st == Status.OK:
+                refresh_st = self._post_delete_refresh()
+                if refresh_st != Status.OK:
+                    return Status.IO_ERROR
+            return st
+        except Exception:
+            return Status.IO_ERROR
 
     # ---------------------------
     # Enhanced: summary with source_ids (future-proof)

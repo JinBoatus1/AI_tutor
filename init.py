@@ -88,7 +88,7 @@ def _iter_backend_python_candidates(user_path: str | None) -> list[Path]:
 	add(_python_exec_from_env_root(os.environ.get("VIRTUAL_ENV")))
 	add(_python_exec_from_env_root(os.environ.get("CONDA_PREFIX")))
 
-	for env_name in (".venv", "venv", "env"):
+	for env_name in (".venv", "venv", "env", ".env"):
 		root = ROOT / env_name
 		if os.name == "nt":
 			add(root / "Scripts" / "python.exe")
