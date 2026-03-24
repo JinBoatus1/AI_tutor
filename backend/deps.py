@@ -53,6 +53,8 @@ def require_openai_client() -> OpenAI:
 
 def create_chat_completion(**kwargs):
     api_client = require_openai_client()
+    if "timeout" not in kwargs:
+        kwargs["timeout"] = 90.0
     try:
         return api_client.chat.completions.create(**kwargs)
     except AuthenticationError as exc:

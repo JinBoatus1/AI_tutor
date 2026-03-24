@@ -27,17 +27,214 @@ _focs_pdf_bytes: Optional[bytes] = None
 TEXTBOOK_PARAGRAPHS: List[Dict[str, Any]] = []
 
 
+def _sanitize_memory_segment(s: str) -> str:
+    """单段路径：仅 [A-Za-z0-9_-]，供 memory address 使用。"""
+    if not s or not isinstance(s, str):
+        return "unknown"
+    s = s.strip()
+    s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s or "unknown"
+
+
+def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
+    """
+    在 FOCS.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
+    仅匹配顶层章（首词等于章节号）。
+    """
+    if not chapter_num or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    num = str(chapter_num).strip()
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first = k.split()[0] if k.split() else ""
+        if first == num:
+            return k
+    return None
+
+
 def topic_name_to_memory_address(topic_name: str) -> str:
     """
-    将 FOCS.json 的 topic 名称转为 memory 可用的地址（单段，符合 [A-Za-z0-9_\\-]+）。
-    例如 "3.2.1 Proving an Implication" -> "3_2_1_Proving_an_Implication"
+    将 FOCS.json 的 topic 名称转为 memory 地址（允许用 / 分层）。
+
+    - 小节（首词形如 5.1、5.1.1）：存到「章」目录下，例如
+      5_Induction_.../5_1_Ordinary_Induction，这样同一章下 5.1、5.2 共用父目录。
+    - 章级（首词为纯数字，如整章 topic）：单层目录，例如 5_Induction_...。
+    - 其它：整段 sanitize 成单段（兼容旧行为）。
     """
     if not topic_name or not isinstance(topic_name, str):
         return "unknown"
     s = topic_name.strip()
-    s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s or "unknown"
+    parts = s.split()
+    if not parts:
+        return "unknown"
+    token = parts[0]
+
+    # 小节：5.1 / 5.1.1 → 父目录为 FOCS 顶层章标题，子目录为本节
+    if re.match(r"^\d+\.\d+(?:\.\d+)*$", token):
+        chapter_num = token.split(".")[0]
+        ch_key = get_chapter_heading_key(chapter_num)
+        if ch_key:
+            parent = _sanitize_memory_segment(ch_key)
+            child = _sanitize_memory_segment(s)
+            return f"{parent}/{child}"
+        return _sanitize_memory_segment(s)
+
+    # 章级：首词仅为章节号 → 单层（对应整章记忆）
+    if re.match(r"^\d+$", token):
+        ch_key = get_chapter_heading_key(token)
+        if ch_key:
+            return _sanitize_memory_segment(ch_key)
+        return _sanitize_memory_segment(s)
+
+    return _sanitize_memory_segment(s)
+
+
+def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:
+    """
+    从 FOCS.json 生成教材章节树（缩进 + 页码）。
+    chapter_filter: 若为 "5"，只返回第 5 章及其 sections，不返回全书；None 则返回全书。
+    """
+    if not os.path.exists(FOCS_JSON_PATH):
+        return ""
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+
+    def fmt_range(d: Dict[str, Any]) -> str:
+        start = d.get("start") or (d.get("_range", {}) or {}).get("start")
+        end = d.get("end") or (d.get("_range", {}) or {}).get("end")
+        if start is not None and end is not None:
+            if start == end:
+                return f" (p. {start})"
+            return f" (pp. {start}-{end})"
+        return ""
+
+    def walk(obj: Dict[str, Any], indent: int) -> List[str]:
+        lines: List[str] = []
+        prefix = "  " * indent
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            rng = fmt_range(v)
+            lines.append(f"{prefix}{k}{rng}")
+            sub = walk(v, indent + 1)
+            lines.extend(sub)
+        return lines
+
+    if chapter_filter is not None and str(chapter_filter).strip():
+        num = str(chapter_filter).strip()
+        for k, v in raw.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == num or k.startswith(num + " "):
+                lines = [k + fmt_range(v)] + walk(v, 1)
+                return "\n".join(lines)
+        return ""
+
+    lines = walk(raw, 0)
+    return "\n".join(lines) if lines else ""
+
+
+def _get_range_from_node(v: Dict[str, Any]) -> Optional[tuple]:
+    start = v.get("start") or (v.get("_range") or {}).get("start")
+    end = v.get("end") or (v.get("_range") or {}).get("end")
+    if start is not None and end is not None:
+        try:
+            return (int(start), int(end))
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def get_chapter_start_end_name(chapter_filter: str) -> Optional[tuple]:
+    """
+    根据章节号取该章在 FOCS 中的起始/结束页（教材页码）及章节名。
+    返回 (start_book, end_book, name) 或 None。
+    """
+    if not chapter_filter or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    num = str(chapter_filter).strip()
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first_word = k.split()[0] if k.split() else ""
+        if first_word != num and not k.startswith(num + " "):
+            continue
+        r = _get_range_from_node(v)
+        if r:
+            return (r[0], r[1], k)
+        break
+    return None
+
+
+def get_section_start_end_name(section_filter: str) -> Optional[tuple]:
+    """
+    根据小节号（如 5.1、5.1.1）在 FOCS 整棵树中查找，返回 (start_book, end_book, name)。
+    支持 chapter（5）和 subsection（5.1、5.1.1）。
+    """
+    if not section_filter or not os.path.exists(FOCS_JSON_PATH):
+        return None
+    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+        raw = json.load(f)
+    prefix = str(section_filter).strip()
+
+    def walk(obj: Dict[str, Any]) -> Optional[tuple]:
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == prefix:
+                r = _get_range_from_node(v)
+                if r:
+                    return (r[0], r[1], k)
+            found = walk(v)
+            if found:
+                return found
+        return None
+
+    return walk(raw)
+
+
+def extract_chapter_from_message(message: str) -> Optional[str]:
+    """从用户消息中解析出章节号，例如 'chapter 5' / '第5章' / '5' -> '5'。"""
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:chapter|ch\.?)\s*(\d+)", s, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    m = re.search(r"第\s*(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    if re.match(r"^\d+\s*$", s):
+        return s.strip()
+    m = re.search(r"\b(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    return None
+
+
+def extract_section_from_message(message: str) -> Optional[str]:
+    """
+    从用户消息中解析出章节或小节号，如 '5.1' / 'section 5.1' / '5.1.1' -> '5.1' 或 '5.1.1'；
+    'chapter 5' / '5' -> '5'。优先匹配 subsection（含小数点），否则用 chapter。
+    """
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"\b(\d+\.\d+(?:\.\d+)*)\b", s)
+    if m:
+        return m.group(1)
+    return extract_chapter_from_message(message)
 
 
 def load_focs_topic_list() -> List[Dict[str, Any]]:
@@ -134,6 +331,26 @@ def render_pdf_page_to_base64(pdf_bytes: bytes, page_num_1based: int, dpi: int =
         return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
         return None
+
+
+def render_pdf_page_range_to_base64(
+    pdf_bytes: bytes, start_page_1based: int, end_page_1based: int, dpi: int = 120
+) -> List[str]:
+    """将 PDF 指定页码范围（1-based，含首尾）逐页渲染为 PNG，返回 base64 字符串列表。"""
+    out: List[str] = []
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        start = max(1, min(start_page_1based, len(doc)))
+        end = max(start, min(end_page_1based, len(doc)))
+        for i in range(start - 1, end):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=dpi)
+            img_bytes = pix.tobytes("png")
+            out.append(base64.b64encode(img_bytes).decode("utf-8"))
+        doc.close()
+    except Exception:
+        pass
+    return out
 
 
 def _fallback_indices_formula_only(

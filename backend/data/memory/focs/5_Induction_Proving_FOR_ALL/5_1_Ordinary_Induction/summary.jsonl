@@ -1,0 +1,1 @@
+{"id": "367ddb6991e64e0186b284ea248ec79a", "ts": "2026-03-24T20:17:43Z", "t": 1774383463, "content": "Q: 5.1 | A: ## 5.1 Ordinary Induction (key ideas + how to use it)\n\nOrdinary induction is a method for proving statements of the form:\n\n> For all natural numbers \\(n \\ge 1\\), the statement \\(P(n)\\) is true.\n\nHere ..."}

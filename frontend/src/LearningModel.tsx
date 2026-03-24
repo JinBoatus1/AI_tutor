@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
 import MathText from "./MathText";
+import { useCurriculum } from "./context/CurriculumContext";
 
 const REF_MIN_PCT = 20;
 const REF_MAX_PCT = 55;
@@ -9,6 +10,9 @@ export default function LearningModel() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const { curriculumTree } = useCurriculum();
+
+  const [matchedSection, setMatchedSection] = useState<any>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -18,9 +22,12 @@ export default function LearningModel() {
   const [refSnippets, setRefSnippets] = useState<string[]>([]);
   const [refTopicName, setRefTopicName] = useState<string | null>(null);
   const [refPages, setRefPages] = useState<{ start: number; end: number } | null>(null);
+  // section pages for multi-page navigation
+  const [refSectionPages, setRefSectionPages] = useState<string[]>([]);
+  const [sectionPageIndex, setSectionPageIndex] = useState(0);
   // panel visibility — separate from data
   const [refPanelOpen, setRefPanelOpen] = useState(false);
-  const hasRefData = refSnippets.length > 0;
+  const hasRefData = refSnippets.length > 0 || refSectionPages.length > 0;
   const showPanel = hasRefData && refPanelOpen;
 
   // resize state
@@ -58,7 +65,7 @@ export default function LearningModel() {
   // auto-open panel when new ref data arrives
   useEffect(() => {
     if (hasRefData) setRefPanelOpen(true);
-  }, [refSnippets]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refSnippets, refSectionPages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = chatScrollRef.current;
@@ -145,6 +152,10 @@ export default function LearningModel() {
       ? attachedImages.map((d) => d.replace(/^data:image\/\w+;base64,/, ""))
       : undefined;
 
+    const CHAT_TIMEOUT_MS = 120000;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
     try {
       const resp = await fetch("http://127.0.0.1:8000/api/chat", {
         method: "POST",
@@ -154,7 +165,10 @@ export default function LearningModel() {
           history: messages,
           images_b64: imagesB64,
         }),
+        signal: controller.signal,
       });
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = null;
 
       const data = await resp.json();
       if (!resp.ok) {
@@ -169,18 +183,27 @@ export default function LearningModel() {
       addAIMessage(text);
 
       // update reference panel data
-      const newSnippets: string[] = [];
-      if (data.reference_page_snippets_b64?.length) {
-        data.reference_page_snippets_b64.forEach((b: string) =>
-          newSnippets.push(`data:image/png;base64,${b}`)
+      if (data.reference_section_pages_b64?.length) {
+        setRefSectionPages(
+          data.reference_section_pages_b64.map((b64: string) => `data:image/png;base64,${b64}`)
         );
-      } else if (data.reference_page_image_b64) {
-        newSnippets.push(`data:image/png;base64,${data.reference_page_image_b64}`);
-      }
+        setSectionPageIndex(0);
+        setRefSnippets([]);
+      } else {
+        const newSnippets: string[] = [];
+        if (data.reference_page_snippets_b64?.length) {
+          data.reference_page_snippets_b64.forEach((b: string) =>
+            newSnippets.push(`data:image/png;base64,${b}`)
+          );
+        } else if (data.reference_page_image_b64) {
+          newSnippets.push(`data:image/png;base64,${data.reference_page_image_b64}`);
+        }
 
-      if (newSnippets.length > 0) {
-        setRefSnippets(newSnippets);
-        // panel auto-opens via useEffect
+        if (newSnippets.length > 0) {
+          setRefSnippets(newSnippets);
+          setRefSectionPages([]);
+          // panel auto-opens via useEffect
+        }
       }
 
       if (data.matched_topic) {
@@ -191,18 +214,68 @@ export default function LearningModel() {
             : null
         );
       }
-    } catch {
-      addAIMessage("Error: Could not reach backend.");
+
+      if (curriculumTree && data?.matched_topic) {
+        matchCurriculum(userText);
+      }
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if ((err as Error).name === "AbortError") {
+        addAIMessage("Request timed out (~2 minutes). Please check if the backend is running, or try again later.");
+      } else {
+        addAIMessage("Error: Could not reach backend.");
+      }
     }
     setLoading(false);
+  };
+
+  // ============================
+  // MATCH CURRICULUM SECTION
+  // ============================
+  const matchCurriculum = (question: string) => {
+    if (
+      !curriculumTree ||
+      typeof curriculumTree !== "object" ||
+      !Array.isArray(curriculumTree.topics)
+    ) {
+      return;
+    }
+
+    let best: any = null;
+    let score = 0;
+
+    curriculumTree.topics.forEach((t: any) => {
+      if (!Array.isArray(t.chapters)) return;
+
+      t.chapters.forEach((c: any) => {
+        const text = (c.chapter + " " + c.key_points.join(" ")).toLowerCase();
+        const q = question.toLowerCase();
+
+        let s = 0;
+        q.split(" ").forEach((w: string) => {
+          if (text.includes(w)) s++;
+        });
+
+        if (s > score) {
+          score = s;
+          best = { topic: t.topic, chapter: c.chapter, key_points: c.key_points };
+        }
+      });
+    });
+
+    setMatchedSection(best);
   };
 
   const reset = () => {
     setMessages([]);
     setRefSnippets([]);
+    setRefSectionPages([]);
     setRefTopicName(null);
     setRefPages(null);
     setRefPanelOpen(false);
+    setMatchedSection(null);
+    setSectionPageIndex(0);
+    setEnlargedImageSrc(null);
   };
 
   // ============================
@@ -374,12 +447,37 @@ export default function LearningModel() {
                 </div>
               )}
 
+              {matchedSection && (
+                <div className="learn-ref-meta">
+                  <span className="learn-ref-meta-name">{matchedSection.topic} &mdash; {matchedSection.chapter}</span>
+                </div>
+              )}
+
               <div className="learn-ref-scroll">
-                {refSnippets.map((src, i) => (
-                  <img key={i} src={src} alt={`Reference ${i + 1}`}
-                    className="learn-ref-img"
-                    onClick={() => setEnlargedImageSrc(src)} />
-                ))}
+                {refSectionPages.length > 0 ? (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px 8px" }}>
+                      <button type="button" disabled={sectionPageIndex <= 0}
+                        onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}>
+                        &lsaquo; Prev
+                      </button>
+                      <span>Page {sectionPageIndex + 1} of {refSectionPages.length}</span>
+                      <button type="button" disabled={sectionPageIndex >= refSectionPages.length - 1}
+                        onClick={() => setSectionPageIndex((i) => Math.min(refSectionPages.length - 1, i + 1))}>
+                        Next &rsaquo;
+                      </button>
+                    </div>
+                    <img src={refSectionPages[sectionPageIndex]} alt={`Section page ${sectionPageIndex + 1}`}
+                      className="learn-ref-img"
+                      onClick={() => setEnlargedImageSrc(refSectionPages[sectionPageIndex])} />
+                  </>
+                ) : (
+                  refSnippets.map((src, i) => (
+                    <img key={i} src={src} alt={`Reference ${i + 1}`}
+                      className="learn-ref-img"
+                      onClick={() => setEnlargedImageSrc(src)} />
+                  ))
+                )}
               </div>
             </aside>
           </>

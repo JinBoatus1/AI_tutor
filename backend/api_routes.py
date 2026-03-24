@@ -32,6 +32,112 @@ MAX_SUMMARIES_FOR_LOOKUP = 50
 
 router = APIRouter()
 
+# 与本 subtopic 相关的 memory：summary 进 prompt；完整 events 通过 tool 按需拉取
+MAX_SUMMARY_IN_PROMPT_CHARS = 12000
+MAX_EVENTS_TOOL_CHARS = 120000
+TUTOR_TOOL_ROUNDS_MAX = 8
+
+MEMORY_TOOL_DEFS: List[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_subtopic_memory_full",
+            "description": (
+                "Load the complete past Q&A transcript (full event log) for the current textbook subtopic. "
+                "Call this when the summary lines in the system prompt are not enough, or when the student "
+                "refers to something from a previous session and you need exact prior wording."
+            ),
+            "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+        },
+    }
+]
+
+
+def _format_summary_records_for_prompt(records: List[dict[str, Any]]) -> str:
+    if not records:
+        return ""
+    lines: List[str] = []
+    for i, rec in enumerate(records, start=1):
+        c = (rec.get("content") or "").strip()
+        if not c:
+            continue
+        ts = rec.get("ts") or ""
+        lines.append(f"[{i}] ({ts}) {c}")
+    text = "\n".join(lines)
+    if len(text) > MAX_SUMMARY_IN_PROMPT_CHARS:
+        text = text[: MAX_SUMMARY_IN_PROMPT_CHARS] + "\n...[truncated]"
+    return text
+
+
+def _format_events_for_tool(events: List[dict[str, Any]]) -> str:
+    if not events:
+        return "（暂无完整问答记录）"
+    parts: List[str] = []
+    for i, ev in enumerate(events, start=1):
+        c = (ev.get("content") or "").strip()
+        if not c:
+            continue
+        parts.append(f"--- 第 {i} 轮 ({ev.get('ts', '')}) ---\n{c}")
+    return "\n\n".join(parts)
+
+
+def run_tutor_with_optional_memory_tool(
+    messages: List[dict[str, Any]],
+    *,
+    memory_addr: Optional[str],
+    mem: Any,
+    enable_memory_tool: bool,
+) -> str:
+    """
+    若 enable_memory_tool 且 mem/addr 有效，则注册 get_subtopic_memory_full，
+    模型可多次调用以读取该 subtopic 下 events.jsonl 的完整历史（有长度上限）。
+    """
+    for _ in range(TUTOR_TOOL_ROUNDS_MAX):
+        kwargs: dict[str, Any] = {
+            "model": "gpt-5.2",
+            "messages": messages,
+        }
+        if enable_memory_tool and mem is not None and memory_addr:
+            kwargs["tools"] = MEMORY_TOOL_DEFS
+            kwargs["tool_choice"] = "auto"
+            kwargs["parallel_tool_calls"] = False
+        resp = create_chat_completion(**kwargs)
+        msg = resp.choices[0].message
+        tool_calls = getattr(msg, "tool_calls", None)
+        if tool_calls:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content or None,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments or "{}",
+                            },
+                        }
+                        for tc in tool_calls
+                    ],
+                }
+            )
+            for tc in tool_calls:
+                fn = tc.function.name
+                tid = tc.id
+                if fn == "get_subtopic_memory_full" and mem is not None and memory_addr:
+                    st_ev, ev_recs = mem.read(memory_addr)
+                    # Status.OK == 1（避免 memory 未安装时 NameError）
+                    full_text = _format_events_for_tool(ev_recs if st_ev == 1 else [])
+                    if len(full_text) > MAX_EVENTS_TOOL_CHARS:
+                        full_text = full_text[:MAX_EVENTS_TOOL_CHARS] + "\n\n...[truncated]"
+                else:
+                    full_text = "（工具不可用）"
+                messages.append({"role": "tool", "tool_call_id": tid, "content": full_text})
+            continue
+        return msg.content or ""
+    return ""
+
 
 class ChatMessage(BaseModel):
     message: str
@@ -88,6 +194,8 @@ def _try_get_cached_answer_from_history(new_question: str) -> Optional[str]:
 
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage):
+    print("[Chat] request received", flush=True)
+
     # -1) 若为纯文本问题，先检查 chat_history 中是否有类似问题可复用（节省 API）
     answer: Optional[str] = None
     used_cache = False
@@ -120,15 +228,94 @@ async def chat(chat_message: ChatMessage):
     except Exception as e:
         print(f"[Learning] topic match/page extract failed: {e}")
 
-    system_content = "You are an AI math tutor. Explain clearly and step-by-step."
-    if page_context and matched_topic:
+    system_content = (
+        "You are an AI math tutor. Explain clearly and step-by-step. "
+        "When the student asks which chapter to learn or review, or names a topic/chapter (e.g. Chapter 5, Induction, Proofs), "
+        "use the reference below to guide them through the most important formulas and definitions from that section."
+    )
+    section_hint = lr.extract_section_from_message(chat_message.message)
+    section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
+    is_subsection_request = bool(section_hint and "." in section_hint and section_info)
+
+    if is_subsection_request:
+        start_book, end_book, section_name = section_info
+        start_pdf = start_book + lr.PDF_PAGE_OFFSET
+        end_pdf = end_book + lr.PDF_PAGE_OFFSET
+        system_content += (
+            f"\n\nThe student has already chosen section: {section_name}. "
+            "Do NOT show the section list or ask them to pick again. Use the reference below to walk them through this section's key formulas and definitions."
+        )
+        _pdf = lr.load_focs_pdf()
+        if _pdf:
+            page_context = lr.extract_pdf_pages_text(_pdf, start_pdf, end_pdf)
+            if page_context:
+                system_content += (
+                    f"\n\n--- Reference from textbook ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
+                    f"{page_context[:12000]}\n"
+                    "--- End of reference ---\n\n"
+                    "Use the above to explain this section. Point to the right-hand pages when relevant."
+                )
+    else:
+        chapter_for_tree = (section_hint.split(".")[0] if section_hint and "." in section_hint else section_hint) or lr.extract_chapter_from_message(chat_message.message)
+        chapter_tree = lr.get_focs_chapter_tree(chapter_filter=chapter_for_tree)
+        if chapter_tree:
+            if chapter_for_tree:
+                system_content += (
+                    "\n\n--- Sections of the chapter they asked for (list only these in your reply) ---\n"
+                    + chapter_tree
+                    + "\n--- End ---\n"
+                    "In your reply: list ONLY the sections above, then ask exactly one of two options (no goals like 'understand the idea' or 'practice problems'): "
+                    "either pick one section to dive into, OR get a quick summary of the whole topic first and then pick what they don't understand."
+                )
+            else:
+                system_content += (
+                    "\n\n--- Textbook chapter tree ---\n"
+                    + chapter_tree
+                    + "\n--- End of chapter tree ---\n"
+                    "In your reply: list the sections above, then ask either pick one section, OR get a quick summary of the whole topic first and then pick what they don't understand. Do NOT ask about goals (understand the idea, proof template, practice problems)."
+                )
+    if page_context and matched_topic and not is_subsection_request:
         s = matched_topic["start"] + lr.PDF_PAGE_OFFSET
         e = matched_topic["end"] + lr.PDF_PAGE_OFFSET
         system_content += (
             f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, PDF pages {s}-{e}) ---\n"
             f"{page_context[:12000]}\n"
-            "--- End of reference ---\n\nUse the above as context when answering. Cite relevant parts if helpful."
+            "--- End of reference ---\n\n"
+            "Use the above to walk the student through key formulas, definitions, and proof templates. Point to the right-hand snippets when they appear."
         )
+
+    # 与写入 memory 时相同的 subtopic 地址：优先小节名，否则 LLM 匹配的 topic 名
+    memory_addr: Optional[str] = None
+    if section_hint and section_info:
+        memory_addr = lr.topic_name_to_memory_address(section_info[2])
+    elif matched_topic:
+        memory_addr = lr.topic_name_to_memory_address(matched_topic["name"])
+
+    mem: Any = None
+    enable_memory_tool = False
+    if _MEMORY_AVAILABLE and memory_addr:
+        try:
+            mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
+            st_sum, sum_recs = mem.read(f"{memory_addr}/__summary__")
+            st_ev, ev_recs = mem.read(memory_addr)
+            has_summaries = st_sum == Status.OK and bool(sum_recs)
+            has_events = st_ev == Status.OK and len(ev_recs) > 0
+            if has_summaries:
+                summary_block = _format_summary_records_for_prompt(sum_recs)
+                system_content += (
+                    "\n\n--- Past sessions on this subtopic (summary log; compressed Q&A lines) ---\n"
+                    f"{summary_block}\n"
+                    "--- End summary ---\n"
+                )
+            if has_events:
+                system_content += (
+                    "\nFull verbatim Q&A for this subtopic is available. "
+                    "If the summary is not enough (e.g. the student refers to a prior explanation), "
+                    "call the tool `get_subtopic_memory_full` to load the complete event history."
+                )
+                enable_memory_tool = True
+        except Exception as e:
+            print(f"[Memory] read for prompt failed ({memory_addr}): {e}")
 
     # 1) Tutor answer（当前轮可带图片，走 vision）
     messages: List[dict[str, Any]] = [{"role": "system", "content": system_content}]
@@ -145,11 +332,12 @@ async def chat(chat_message: ChatMessage):
             parts.append({"type": "image_url", "image_url": {"url": url}})
         messages.append({"role": "user", "content": parts})
 
-    tutor_resp = create_chat_completion(
-        model="gpt-5.2",
-        messages=messages,
+    answer = run_tutor_with_optional_memory_tool(
+        messages,
+        memory_addr=memory_addr,
+        mem=mem,
+        enable_memory_tool=enable_memory_tool,
     )
-    answer = tutor_resp.choices[0].message.content or ""
 
     # 1.5) 写入 chat_history_db（JSON），供后续相似问题复用
     if _CHAT_HISTORY_AVAILABLE and chat_message.message and answer:
@@ -193,7 +381,35 @@ async def chat(chat_message: ChatMessage):
     confidence = clamp_int_0_100(raw_score)
 
     result: dict[str, Any] = {"reply": answer, "confidence": confidence}
-    if matched_topic:
+
+    # 若用户问的是某一章或小节（chapter 5 / 5.1 / 5.1.1），左侧显示该章/节全部页并可翻页，不跑 snippet 检索
+    if section_hint:
+        section_info = lr.get_section_start_end_name(section_hint)
+        if section_info:
+            start_book, end_book, name = section_info
+            start_pdf = start_book + lr.PDF_PAGE_OFFSET
+            end_pdf = end_book + lr.PDF_PAGE_OFFSET
+            result["matched_topic"] = {"name": name, "start": start_pdf, "end": end_pdf}
+            _pdf = lr.load_focs_pdf()
+            if _pdf:
+                pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
+                if pages_b64:
+                    result["reference_section_pages_b64"] = pages_b64
+            if _MEMORY_AVAILABLE:
+                try:
+                    if mem is None:
+                        mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
+                    addr = lr.topic_name_to_memory_address(name)
+                    event_content = f"Q: {chat_message.message}\nA: {answer}"
+                    if mem.write(addr, event_content) == Status.OK:
+                        summary_line = (
+                            f"Q: {chat_message.message[:100]}{'...' if len(chat_message.message) > 100 else ''} | "
+                            f"A: {answer[:200]}{'...' if len(answer) > 200 else ''}"
+                        )
+                        mem.write(f"{addr}/__summary__", summary_line)
+                except Exception as e:
+                    print(f"[Memory] write failed for topic {name}: {e}")
+    elif matched_topic:
         start_pdf = matched_topic["start"] + lr.PDF_PAGE_OFFSET
         end_pdf = matched_topic["end"] + lr.PDF_PAGE_OFFSET
         result["matched_topic"] = {
@@ -218,7 +434,8 @@ async def chat(chat_message: ChatMessage):
         # 按 FOCS topic 写入 memory：事件（完整 Q&A，带时间）+ summary 流
         if _MEMORY_AVAILABLE and matched_topic:
             try:
-                mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
+                if mem is None:
+                    mem = open_memory(MEMORY_ROOT, FOCS_BOOK_ID)
                 addr = lr.topic_name_to_memory_address(matched_topic["name"])
                 event_content = f"Q: {chat_message.message}\nA: {answer}"
                 if mem.write(addr, event_content) == Status.OK:
@@ -229,6 +446,7 @@ async def chat(chat_message: ChatMessage):
                     mem.write(f"{addr}/__summary__", summary_line)
             except Exception as e:
                 print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
+    print("[Chat] response sent", flush=True)
     return result
 
 
