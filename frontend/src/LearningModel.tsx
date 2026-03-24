@@ -1,64 +1,76 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
-import { useCurriculum } from "./context/CurriculumContext";
 import MathText from "./MathText";
 
-const RIGHT_PANEL_MIN = 20;
-const RIGHT_PANEL_MAX = 55;
+const REF_MIN_PCT = 20;
+const REF_MAX_PCT = 55;
 
 export default function LearningModel() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
-  const { curriculumTree } = useCurriculum();
-
-  const [matchedSection, setMatchedSection] = useState<any>(null);
-  const [dataMatchedTopic, setDataMatchedTopic] = useState<{
-    name: string;
-    start: number;
-    end: number;
-  } | null>(null);
-  const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
-  const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
-  const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const [rightPanelWidth, setRightPanelWidth] = useState(67); // 左侧书页约 2/3，右侧对话 1/3
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+  // reference panel data (persists even when panel is hidden)
+  const [refSnippets, setRefSnippets] = useState<string[]>([]);
+  const [refTopicName, setRefTopicName] = useState<string | null>(null);
+  const [refPages, setRefPages] = useState<{ start: number; end: number } | null>(null);
+  // panel visibility — separate from data
+  const [refPanelOpen, setRefPanelOpen] = useState(false);
+  const hasRefData = refSnippets.length > 0;
+  const showPanel = hasRefData && refPanelOpen;
 
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    const start = resizeStartRef.current;
-    if (!start || !layoutRef.current) return;
-    const rect = layoutRef.current.getBoundingClientRect();
-    const deltaPercent = ((e.clientX - start.x) / rect.width) * 100;
-    const newWidth = Math.min(
-      RIGHT_PANEL_MAX,
-      Math.max(RIGHT_PANEL_MIN, start.width + deltaPercent)
-    );
-    setRightPanelWidth(newWidth);
+  // resize state
+  const [refPanelPct, setRefPanelPct] = useState(35);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startPct: number } | null>(null);
+
+  const onDragMove = useCallback((e: MouseEvent) => {
+    const d = dragRef.current;
+    if (!d || !bodyRef.current) return;
+    const rect = bodyRef.current.getBoundingClientRect();
+    // panel is on the right, so moving mouse right = smaller panel
+    const deltaPct = ((e.clientX - d.startX) / rect.width) * 100;
+    const newPct = Math.min(REF_MAX_PCT, Math.max(REF_MIN_PCT, d.startPct - deltaPct));
+    setRefPanelPct(newPct);
   }, []);
 
-  const handleResizeEnd = useCallback(() => {
-    resizeStartRef.current = null;
-    window.removeEventListener("mousemove", handleResizeMove);
-    window.removeEventListener("mouseup", handleResizeEnd);
-  }, [handleResizeMove]);
+  const onDragEnd = useCallback(() => {
+    dragRef.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("mousemove", onDragMove);
+    window.removeEventListener("mouseup", onDragEnd);
+  }, [onDragMove]);
 
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      resizeStartRef.current = { x: e.clientX, width: rightPanelWidth };
-      window.addEventListener("mousemove", handleResizeMove);
-      window.addEventListener("mouseup", handleResizeEnd);
-    },
-    [rightPanelWidth, handleResizeMove, handleResizeEnd]
-  );
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startPct: refPanelPct };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup", onDragEnd);
+  }, [refPanelPct, onDragMove, onDragEnd]);
 
-  /** 点击截图：屏幕/窗口捕获，取一帧加入附件 */
+  // auto-open panel when new ref data arrives
+  useEffect(() => {
+    if (hasRefData) setRefPanelOpen(true);
+  }, [refSnippets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  // ============================
+  // IMAGE HELPERS
+  // ============================
   const handleScreenshot = useCallback(async () => {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      alert("当前浏览器不支持屏幕截图，请用「选择图片」或粘贴截图 (Ctrl+V)");
+      alert("Browser does not support screen capture. Use the image button or paste (Ctrl+V).");
       return;
     }
     try {
@@ -69,31 +81,22 @@ export default function LearningModel() {
       await video.play();
       const w = video.videoWidth;
       const h = video.videoHeight;
-      if (!w || !h) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+      if (!w || !h) { stream.getTracks().forEach((t) => t.stop()); return; }
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+      if (!ctx) { stream.getTracks().forEach((t) => t.stop()); return; }
       ctx.drawImage(video, 0, 0);
       stream.getTracks().forEach((t) => t.stop());
-      const dataUrl = canvas.toDataURL("image/png");
-      setAttachedImages((prev) => [...prev, dataUrl]);
+      setAttachedImages((prev) => [...prev, canvas.toDataURL("image/png")]);
     } catch (err) {
       if ((err as Error).name !== "NotAllowedError") {
         console.error("Screenshot failed:", err);
-        alert("截图失败，请重试或使用「选择图片」/ 粘贴 (Ctrl+V)");
       }
     }
   }, []);
 
-  /** 粘贴时若剪贴板有图片则加入附件 */
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -114,7 +117,7 @@ export default function LearningModel() {
   }, []);
 
   // ============================
-  // UTILS
+  // MESSAGE HELPERS
   // ============================
   const addUserMessage = (text: string, images?: string[]) => {
     setMessages((prev) => [...prev, { sender: "user", text, images }]);
@@ -126,339 +129,272 @@ export default function LearningModel() {
   };
 
   // ============================
-  // SEND MESSAGE → BACKEND → SHOW REPLY
+  // SEND
   // ============================
   const handleSend = async () => {
     const userText = input.trim();
     const hasImages = attachedImages.length > 0;
     if (!userText && !hasImages) return;
 
-    addUserMessage(userText || "(图片)", hasImages ? [...attachedImages] : undefined);
+    addUserMessage(userText || "(image)", hasImages ? [...attachedImages] : undefined);
     setInput("");
     setAttachedImages([]);
+    setLoading(true);
 
     const imagesB64 = hasImages
-      ? attachedImages.map((dataUrl) => dataUrl.replace(/^data:image\/\w+;base64,/, ""))
+      ? attachedImages.map((d) => d.replace(/^data:image\/\w+;base64,/, ""))
       : undefined;
 
-    let data:
-      | {
-          matched_topic?: any;
-          reply?: string;
-          confidence?: number;
-          reference_page_image_b64?: string;
-          reference_page_snippets_b64?: string[];
-        }
-      | undefined;
     try {
       const resp = await fetch("http://127.0.0.1:8000/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userText || "(图片)",
+          message: userText || "(image)",
           history: messages,
           images_b64: imagesB64,
         }),
       });
 
-      data = await resp.json();
+      const data = await resp.json();
       if (!resp.ok) {
-        const detail = (data as any)?.detail || (data as any)?.error || "Backend request failed.";
-        addAIMessage(`Backend error: ${detail}`);
+        addAIMessage(`Error: ${data?.detail || data?.error || "Request failed."}`);
+        setLoading(false);
         return;
       }
 
       const reply = data.reply || "[Empty reply]";
       const conf = typeof data.confidence === "number" ? data.confidence : null;
+      const text = conf !== null ? `${reply}\n\nConfidence: ${conf}/100` : reply;
+      addAIMessage(text);
+
+      // update reference panel data
+      const newSnippets: string[] = [];
+      if (data.reference_page_snippets_b64?.length) {
+        data.reference_page_snippets_b64.forEach((b: string) =>
+          newSnippets.push(`data:image/png;base64,${b}`)
+        );
+      } else if (data.reference_page_image_b64) {
+        newSnippets.push(`data:image/png;base64,${data.reference_page_image_b64}`);
+      }
+
+      if (newSnippets.length > 0) {
+        setRefSnippets(newSnippets);
+        // panel auto-opens via useEffect
+      }
 
       if (data.matched_topic) {
-        setDataMatchedTopic({
-          name: data.matched_topic.name,
-          start: data.matched_topic.start,
-          end: data.matched_topic.end,
-        });
-      } else {
-        setDataMatchedTopic(null);
-        setMatchedSection(null);
-      }
-      if (data.reference_page_snippets_b64?.length) {
-        setReferencePageSnippets(
-          data.reference_page_snippets_b64.map((b64) => `data:image/png;base64,${b64}`)
+        setRefTopicName(data.matched_topic.name || null);
+        setRefPages(
+          data.matched_topic.start != null
+            ? { start: data.matched_topic.start, end: data.matched_topic.end }
+            : null
         );
-        setReferencePageImage(null);
-      } else if (data.reference_page_image_b64) {
-        setReferencePageImage(`data:image/png;base64,${data.reference_page_image_b64}`);
-        setReferencePageSnippets(null);
-      } else {
-        setReferencePageImage(null);
-        setReferencePageSnippets(null);
       }
-
-      if (conf === null) {
-        addAIMessage(reply);
-      } else {
-        addAIMessage(`${reply}\n\nConfidence: ${conf}/100`);
-      }
-
-      if (curriculumTree && data?.matched_topic) {
-        matchCurriculum(userText);
-      }
-    } catch (err) {
+    } catch {
       addAIMessage("Error: Could not reach backend.");
     }
+    setLoading(false);
   };
 
-  // ============================
-  // MATCH CURRICULUM SECTION
-  // ============================
-  const matchCurriculum = (question: string) => {
-    if (
-      !curriculumTree ||
-      typeof curriculumTree !== "object" ||
-      !Array.isArray(curriculumTree.topics)
-    ) {
-      return;
-    }
-
-    let best: any = null;
-    let score = 0;
-
-    curriculumTree.topics.forEach((t: any) => {
-      if (!Array.isArray(t.chapters)) return;
-
-      t.chapters.forEach((c: any) => {
-        const text = (c.chapter + " " + c.key_points.join(" ")).toLowerCase();
-        const q = question.toLowerCase();
-
-        let s = 0;
-        q.split(" ").forEach((w) => {
-          if (text.includes(w)) s++;
-        });
-
-        if (s > score) {
-          score = s;
-          best = { topic: t.topic, chapter: c.chapter, key_points: c.key_points };
-        }
-      });
-    });
-
-    setMatchedSection(best);
-  };
-
-  // ============================
-  // CLEAR EVERYTHING
-  // ============================
   const reset = () => {
     setMessages([]);
-    setMatchedSection(null);
-    setDataMatchedTopic(null);
-    setReferencePageImage(null);
-    setReferencePageSnippets(null);
+    setRefSnippets([]);
+    setRefTopicName(null);
+    setRefPages(null);
+    setRefPanelOpen(false);
   };
 
+  // ============================
+  // RENDER
+  // ============================
   return (
-    <div className="learning-page-wrapper">
-    <div className="learning-layout" ref={layoutRef}>
-      {/* LEFT: 书页 / 参考区 */}
-      <div
-        className="right-panel"
-        style={{ flex: `0 0 ${rightPanelWidth}%` }}
-      >
-        <h3>📚 Related Section</h3>
+    <div className="learn-page" onPaste={handlePaste}>
+      {/* Header */}
+      <div className="learn-header">
+        <div>
+          <h1 className="learn-title">Learning Mode</h1>
+          <p className="learn-subtitle">Ask a question and get step-by-step guidance</p>
+        </div>
+        <div className="learn-header-actions">
+          {/* Reopen reference button — visible when panel hidden but data exists */}
+          {hasRefData && !refPanelOpen && (
+            <button className="learn-show-ref" onClick={() => setRefPanelOpen(true)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+              Show Reference
+            </button>
+          )}
+          {messages.length > 0 && (
+            <button className="learn-reset" onClick={reset}>New Conversation</button>
+          )}
+        </div>
+      </div>
 
-        {dataMatchedTopic ? (
-          <div className="match-box">
-            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
-            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
-          </div>
-        ) : matchedSection ? (
-          <div className="match-box">
-            <h4>🔍 Topic: {matchedSection.topic}</h4>
-            <h5>📘 Chapter: {matchedSection.chapter}</h5>
-            <ul>
-              {matchedSection.key_points.map((kp: string, i: number) => (
-                <li key={i}>• {kp}</li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p>No related topic yet. Ask a question!</p>
-        )}
-
-        {(referencePageSnippets?.length || referencePageImage) && (
-          <>
-            <hr />
-            <h3>📖 Original page in Textbook</h3>
-            <div className="reference-page-box reference-page-sidebar">
-              {referencePageSnippets?.length ? (
-                referencePageSnippets.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt={`教材片段 ${i + 1}`}
-                    className="reference-page-img reference-snippet reference-img-clickable"
-                    onClick={() => setEnlargedImageSrc(src)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
-                  />
-                ))
-              ) : referencePageImage ? (
-                <img
-                  src={referencePageImage}
-                  alt="教材参考页"
-                  className="reference-page-img reference-img-clickable"
-                  onClick={() => setEnlargedImageSrc(referencePageImage)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
-                />
-              ) : null}
-            </div>
-            {enlargedImageSrc && (
-              <div
-                className="reference-image-lightbox"
-                onClick={() => setEnlargedImageSrc(null)}
-                role="dialog"
-                aria-modal="true"
-                aria-label="放大查看图片"
-              >
-                <button
-                  type="button"
-                  className="reference-image-lightbox-close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEnlargedImageSrc(null);
-                  }}
-                  aria-label="关闭"
-                >
-                  ×
-                </button>
-                <img
-                  src={enlargedImageSrc}
-                  alt="放大查看"
-                  className="reference-image-lightbox-img"
-                  onClick={(e) => e.stopPropagation()}
-                />
+      {/* Body: chat + optional reference panel */}
+      <div className={`learn-body ${showPanel ? "learn-body-with-ref" : ""}`} ref={bodyRef}>
+        {/* Main chat column */}
+        <div className="learn-main" style={showPanel ? { flex: `1 1 ${100 - refPanelPct}%` } : undefined}>
+          <div className="learn-chat" ref={chatScrollRef}>
+            {messages.length === 0 ? (
+              <div className="learn-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p>Type a math question below to get started</p>
+              </div>
+            ) : (
+              messages.map((m, i) => (
+                <div key={i} className={`learn-msg ${m.sender === "user" ? "learn-msg-user" : "learn-msg-ai"}`}>
+                  {m.sender === "ai" && (
+                    <div className="learn-avatar">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div className={`learn-bubble ${m.sender === "user" ? "learn-bubble-user" : "learn-bubble-ai"}`}>
+                    <MathText>{m.text}</MathText>
+                    {m.images?.length > 0 && (
+                      <div className="learn-msg-images">
+                        {m.images.map((src: string, j: number) => (
+                          <img key={j} src={src} alt="" className="learn-msg-thumb"
+                            onClick={() => setEnlargedImageSrc(src)} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            {loading && (
+              <div className="learn-msg learn-msg-ai">
+                <div className="learn-avatar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                  </svg>
+                </div>
+                <div className="learn-bubble learn-bubble-ai">
+                  <div className="learn-typing"><span /><span /><span /></div>
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Attached image previews */}
+          {attachedImages.length > 0 && (
+            <div className="learn-attached">
+              {attachedImages.map((src, i) => (
+                <span key={i} className="learn-attached-wrap">
+                  <img src={src} alt="" className="learn-attached-thumb" />
+                  <button type="button" className="learn-attached-remove"
+                    onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
+                  >&times;</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Input bar */}
+          <input ref={fileInputRef} type="file" accept="image/*" multiple
+            className="hidden-file-input"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (!files?.length) return;
+              Array.from(files).forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = reader.result as string;
+                  if (dataUrl) setAttachedImages((prev) => [...prev, dataUrl]);
+                };
+                reader.readAsDataURL(file);
+              });
+              e.target.value = "";
+            }}
+          />
+          <div className="learn-input-bar">
+            <button type="button" className="learn-input-icon"
+              onClick={() => fileInputRef.current?.click()} title="Upload image">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </button>
+            <button type="button" className="learn-input-icon"
+              onClick={handleScreenshot} title="Screenshot">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+            <input type="text" className="learn-input-text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+              }}
+              placeholder="Ask a math question..."
+              disabled={loading}
+            />
+            <button className="learn-send" onClick={handleSend}
+              disabled={loading || (!input.trim() && !attachedImages.length)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Drag handle + Reference panel */}
+        {showPanel && (
+          <>
+            <div className="learn-resize-handle" onMouseDown={onDragStart} title="Drag to resize" />
+            <aside className="learn-ref-panel" style={{ flex: `0 0 ${refPanelPct}%` }}>
+              <div className="learn-ref-panel-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                <span>Textbook Reference</span>
+                <button className="learn-ref-panel-close"
+                  onClick={() => setRefPanelOpen(false)}
+                  title="Close panel">&times;</button>
+              </div>
+
+              {refTopicName && (
+                <div className="learn-ref-meta">
+                  <span className="learn-ref-meta-name">{refTopicName}</span>
+                  {refPages && <span className="learn-ref-meta-pages">pp. {refPages.start}&ndash;{refPages.end}</span>}
+                </div>
+              )}
+
+              <div className="learn-ref-scroll">
+                {refSnippets.map((src, i) => (
+                  <img key={i} src={src} alt={`Reference ${i + 1}`}
+                    className="learn-ref-img"
+                    onClick={() => setEnlargedImageSrc(src)} />
+                ))}
+              </div>
+            </aside>
           </>
         )}
       </div>
 
-      {/* 可拖拽缩放条 */}
-      <div
-        className="resize-handle"
-        onMouseDown={handleResizeStart}
-        title="拖拽调整书页区宽度"
-      />
-
-      {/* RIGHT: 对话区（支持 Ctrl+V 粘贴截图） */}
-      <div
-        className="chat-panel"
-        style={{ flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }}
-        onPaste={handlePaste}
-      >
-        <h1 className="title">Learning Mode</h1>
-
-        {/* Reset button */}
-        <div className="reset-box">
-          <button onClick={reset}>
-            🔄 I already fully understand — Start a new question
-          </button>
+      {/* Lightbox */}
+      {enlargedImageSrc && (
+        <div className="learn-lightbox" onClick={() => setEnlargedImageSrc(null)}>
+          <button type="button" className="learn-lightbox-close"
+            onClick={(e) => { e.stopPropagation(); setEnlargedImageSrc(null); }}>&times;</button>
+          <img src={enlargedImageSrc} alt="enlarged" className="learn-lightbox-img"
+            onClick={(e) => e.stopPropagation()} />
         </div>
-
-        {/* Messages */}
-        <div className="chat-box">
-          {messages.map((m, i) => (
-            <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              <p><MathText>{m.text}</MathText></p>
-              {m.images?.length > 0 && (
-                <div className="msg-user-images">
-                  {m.images.map((src: string, j: number) => (
-                    <img key={j} src={src} alt="" className="msg-user-thumb" />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* 已选图片预览 */}
-        {attachedImages.length > 0 && (
-          <div className="attached-images-row">
-            {attachedImages.map((src, i) => (
-              <span key={i} className="attached-img-wrap">
-                <img src={src} alt="" className="attached-img-thumb" />
-                <button
-                  type="button"
-                  className="attached-img-remove"
-                  onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
-                  aria-label="移除图片"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Input bar */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden-file-input"
-          aria-hidden
-          onChange={(e) => {
-            const files = e.target.files;
-            if (!files?.length) return;
-            Array.from(files).forEach((file) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const dataUrl = reader.result as string;
-                if (dataUrl) setAttachedImages((prev) => [...prev, dataUrl]);
-              };
-              reader.readAsDataURL(file);
-            });
-            e.target.value = "";
-          }}
-        />
-        <div className="input-row">
-          <button
-            type="button"
-            className="input-add-image-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="选择本地图片"
-          >
-            📷
-          </button>
-          <button
-            type="button"
-            className="input-add-image-btn"
-            onClick={handleScreenshot}
-            title="截屏（选择窗口/屏幕）"
-          >
-            🖥️
-          </button>
-          <input
-            type="text"
-            className="chat-input-text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Ask or continue your question..."
-          />
-          <button onClick={handleSend}>▶</button>
-        </div>
-      </div>
-    </div>
+      )}
     </div>
   );
 }

@@ -8,7 +8,6 @@ export default function UploadTextbook() {
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState("");
 
-  // 控制折叠
   const [openTopics, setOpenTopics] = useState<Record<number, boolean>>({});
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
 
@@ -47,7 +46,6 @@ export default function UploadTextbook() {
 
     if (data.tree) {
       setCurriculumTree(data.tree);
-      console.log("📚 Curriculum Tree Saved:", data.tree);
     } else {
       alert("Failed to build tree.");
     }
@@ -55,62 +53,89 @@ export default function UploadTextbook() {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">Upload Textbook</h1>
+      <h1 className="page-title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c4dff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: "middle", marginRight: 10 }}>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload Textbook
+      </h1>
 
-      <input
-        className="input-box"
-        placeholder="Subject (optional)"
-        value={subject}
-        onChange={(e) => setSubject(e.target.value)}
-      />
+      <div className="card">
+        <label className="field-label">Subject</label>
+        <input
+          className="input-box"
+          style={{ minHeight: "auto", padding: "12px 16px" }}
+          placeholder="e.g. Number Theory, Algebra..."
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
 
-      <input
-        type="file"
-        accept=".pdf"
-        onChange={handleUpload}
-        className="file-upload"
-      />
+        <label className="field-label">PDF File</label>
+        <label className="upload-zone">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 12 15 15"/>
+          </svg>
+          {file ? file.name : "Click to select a PDF textbook"}
+          <input
+            type="file"
+            accept=".pdf"
+            style={{ display: "none" }}
+            onChange={handleUpload}
+          />
+        </label>
 
-      {file && <div className="pdf-preview">📄 {file.name}</div>}
+        <button className="btn-primary" onClick={handleBuildTree} disabled={loading}>
+          {loading ? (
+            <>
+              <span className="loading" style={{ display: "inline-block", marginRight: 8, verticalAlign: "middle" }} />
+              Building...
+            </>
+          ) : (
+            "Generate Curriculum Tree"
+          )}
+        </button>
+      </div>
 
-      <button className="btn-primary" onClick={handleBuildTree} disabled={loading}>
-        {loading ? "Building..." : "Generate Curriculum Tree"}
-      </button>
-
-      {/* 分割线 */}
-      <hr style={{ margin: "30px 0" }} />
-
-      {/* 树形结构 */}
+      {/* Curriculum tree */}
       {curriculumTree ? (
-        <>
-          <h2>🌳 Curriculum Tree</h2>
+        <div className="card" style={{ marginTop: 24 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>
+            Curriculum Tree
+          </h2>
 
-          <div style={{ background: "#fafafa", padding: "15px", borderRadius: 12 }}>
+          <div className="tree-view">
             {curriculumTree.topics?.map((t: any, i: number) => (
-              <div key={i} style={{ marginBottom: 10 }}>
+              <div key={i} className="tree-topic">
                 <div
-                  style={{ cursor: "pointer", fontWeight: 600 }}
+                  className="tree-topic-header"
                   onClick={() => toggleTopic(i)}
                 >
-                  {openTopics[i] ? "" : ""} {t.topic}
+                  <span className="tree-toggle">{openTopics[i] ? "\u25BC" : "\u25B6"}</span>
+                  {t.topic}
                 </div>
 
                 {openTopics[i] &&
                   t.chapters.map((c: any, j: number) => {
                     const chapKey = `${i}-${j}`;
                     return (
-                      <div key={j} style={{ marginLeft: 20 }}>
+                      <div key={j} className="tree-chapter">
                         <div
-                          style={{ cursor: "pointer", color: "#333" }}
+                          className="tree-chapter-header"
                           onClick={() => toggleChapter(i, j)}
                         >
-                          {openChapters[chapKey] ? "▼" : "▶"} {c.chapter}
+                          <span className="tree-toggle">{openChapters[chapKey] ? "\u25BC" : "\u25B6"}</span>
+                          {c.chapter}
                         </div>
 
                         {openChapters[chapKey] && (
-                          <ul style={{ marginLeft: 30, color: "#555" }}>
+                          <ul className="tree-keypoints">
                             {c.key_points.map((kp: string, k: number) => (
-                              <li key={k}>• {kp}</li>
+                              <li key={k}>{kp}</li>
                             ))}
                           </ul>
                         )}
@@ -120,9 +145,11 @@ export default function UploadTextbook() {
               </div>
             ))}
           </div>
-        </>
+        </div>
       ) : (
-        <p>⬆ Upload textbook to see tree</p>
+        <p style={{ textAlign: "center", color: "#9ca3af", marginTop: 28, fontSize: 14 }}>
+          Upload a textbook to generate its curriculum tree
+        </p>
       )}
     </div>
   );

@@ -18,9 +18,17 @@ try:
 except ImportError:
     _MEMORY_AVAILABLE = False
 
+try:
+    import chat_history_db as ch_db
+    _CHAT_HISTORY_AVAILABLE = True
+except ImportError:
+    _CHAT_HISTORY_AVAILABLE = False
+
 MEMORY_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "memory")
 FOCS_BOOK_ID = "focs"
 
+# 用于相似问题检查的 past Q&A 数量上限（避免 prompt 过长）
+MAX_SUMMARIES_FOR_LOOKUP = 50
 
 router = APIRouter()
 
@@ -29,10 +37,73 @@ class ChatMessage(BaseModel):
     message: str
     history: List[dict] = []  # [{sender:"user"/"ai", text:"..."}]
     images_b64: Optional[List[str]] = None  # 当前轮用户附带的图片（base64，无 data URL 前缀）
+    session_id: Optional[str] = None  # 可选：聊天 session，不传则用 default
+
+
+def _try_get_cached_answer_from_history(new_question: str) -> Optional[str]:
+    """
+    用 past Q&A summaries 检查是否有类似问题已回答。
+    若找到则返回已缓存的 answer，否则返回 None。
+    """
+    if not _CHAT_HISTORY_AVAILABLE:
+        return None
+    try:
+        summaries = ch_db.get_all_summaries_for_lookup()
+        if not summaries:
+            return None
+        # 限制数量，取最近的
+        summaries = summaries[-MAX_SUMMARIES_FOR_LOOKUP:]
+        prompt = (
+            "You are a helper that checks if a new student question has already been answered.\n\n"
+            "Past Q&A summaries (each has an id):\n"
+        )
+        for s in summaries:
+            prompt += f"  [id={s['id']}] {s['summary']}\n"
+        prompt += (
+            f"\nNew question: {new_question}\n\n"
+            "If the new question is essentially the same as one of the past questions "
+            "(same concept, same type of problem), return ONLY that entry's id (the hex string). "
+            "Otherwise return exactly: NONE"
+        )
+        resp = create_chat_completion(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+        )
+        raw = (resp.choices[0].message.content or "").strip().upper()
+        if raw == "NONE" or not raw:
+            return None
+        # 尝试解析 id（可能带多余字符）
+        candidate = raw.replace(" ", "").split("\n")[0]
+        if len(candidate) == 32 and all(c in "0123456789abcdef" for c in candidate.lower()):
+            return ch_db.get_answer_by_id(candidate)
+        # 可能 LLM 返回了 "id=abc123..." 形式
+        for s in summaries:
+            if s["id"] and s["id"] in raw:
+                return ch_db.get_answer_by_id(s["id"])
+        return None
+    except Exception:
+        return None
 
 
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage):
+    # -1) 若为纯文本问题，先检查 chat_history 中是否有类似问题可复用（节省 API）
+    answer: Optional[str] = None
+    used_cache = False
+    if (
+        _CHAT_HISTORY_AVAILABLE
+        and chat_message.message
+        and not (chat_message.images_b64 and len(chat_message.images_b64) > 0)
+    ):
+        answer = _try_get_cached_answer_from_history(chat_message.message)
+        if answer:
+            used_cache = True
+
+    if used_cache and answer:
+        # 命中缓存，直接返回（省掉 tutor + evaluator 两次 LLM 调用）
+        return {"reply": answer, "confidence": 100, "from_cache": True}
+
     # 0) LLM 匹配 topic → 从 data 书本提取对应页
     page_context = ""
     matched_topic: Optional[dict[str, Any]] = None
@@ -79,6 +150,20 @@ async def chat(chat_message: ChatMessage):
         messages=messages,
     )
     answer = tutor_resp.choices[0].message.content or ""
+
+    # 1.5) 写入 chat_history_db（JSON），供后续相似问题复用
+    if _CHAT_HISTORY_AVAILABLE and chat_message.message and answer:
+        try:
+            sid = chat_message.session_id or ch_db.DEFAULT_SESSION_ID
+            topic_name = matched_topic.get("name") if matched_topic else None
+            ch_db.add_entry(
+                session_id=sid,
+                question=chat_message.message,
+                answer=answer,
+                topic_name=topic_name,
+            )
+        except Exception as e:
+            print(f"[ChatHistory] add_entry failed: {e}")
 
     # 2) Evaluator confidence (0-100)
     eval_messages = [

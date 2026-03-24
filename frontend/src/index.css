@@ -1,19 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Inter', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  color: #1d1d1f;
+  background: #f5f5f7;
 }
 
 #root {
-    width: 100%;
-    min-height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Apple-style scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); background-clip: content-box; }
+
+::selection {
+  background: rgba(0, 122, 255, 0.15);
+  color: inherit;
+}
+
+/* ---- Shared utility classes ---- */
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #86868b;
+  letter-spacing: -0.01em;
+  margin-bottom: -4px;
+}
+
+/* Upload drop zone */
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px;
+  border: 2px dashed #d2d2d7;
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #86868b;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.upload-zone:hover {
+  border-color: #0071e3;
+  background: #f0f5ff;
+  color: #0071e3;
+}
+
+.upload-zone svg {
+  color: #d2d2d7;
+  transition: color 0.2s;
+}
+
+.upload-zone:hover svg {
+  color: #0071e3;
+}
+
+/* Tree view */
+.tree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tree-topic { margin-bottom: 2px; }
+
+.tree-topic-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1d1d1f;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.tree-topic-header:hover { background: rgba(0,0,0,0.04); }
+
+.tree-chapter { margin-left: 20px; }
+
+.tree-chapter-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #424245;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.tree-chapter-header:hover { background: rgba(0,0,0,0.04); }
+
+.tree-toggle {
+  font-size: 9px;
+  color: #86868b;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.tree-keypoints {
+  margin: 2px 0 6px 44px;
+  padding: 0;
+  list-style: none;
+}
+
+.tree-keypoints li {
+  position: relative;
+  padding: 3px 0 3px 14px;
+  font-size: 13px;
+  color: #6e6e73;
+  line-height: 1.45;
+}
+
+.tree-keypoints li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d2d2d7;
 }

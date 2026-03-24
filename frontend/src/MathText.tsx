@@ -4,22 +4,15 @@ import "katex/dist/katex.min.css";
 
 type Segment = { type: "text" | "inline" | "block"; content: string };
 
-/**
- * 将文本按 LaTeX 分段：
- * 行内：\(...\) 或 $...$（单个 $，且非 $$）
- * 块级：\[...\] 或 $$...$$
- */
 function parseMathSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  let remaining = text;
-
-  // 先匹配 $$...$$，再 \(...\)、\[...\]，最后 $...$（避免 $$ 被拆成两个 $）
-  const regex = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$(?!\$)([^$]*?)\$(?!\$))/g;
+  const regex =
+    /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$(?!\$)([^$]*?)\$(?!\$))/g;
   let lastIndex = 0;
   let m: RegExpExecArray | null;
 
-  while ((m = regex.exec(remaining)) !== null) {
-    const before = remaining.slice(lastIndex, m.index);
+  while ((m = regex.exec(text)) !== null) {
+    const before = text.slice(lastIndex, m.index);
     if (before) segments.push({ type: "text", content: before });
 
     const raw = m[0];
@@ -37,16 +30,68 @@ function parseMathSegments(text: string): Segment[] {
     lastIndex = regex.lastIndex;
   }
 
-  const after = remaining.slice(lastIndex);
+  const after = text.slice(lastIndex);
   if (after) segments.push({ type: "text", content: after });
-
   if (!segments.length && text) segments.push({ type: "text", content: text });
   return segments;
 }
 
-/** KaTeX 渲染出错时显示原文，避免整条消息挂掉 */
+/**
+ * Render a plain-text string with basic markdown:
+ *   **bold**  →  <strong>
+ *   *italic*  →  <em>
+ *   \n        →  <br/>
+ */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // split by **...** first, then *...* inside the non-bold parts
+  const boldRe = /\*\*(.+?)\*\*/g;
+  let last = 0;
+  let bm: RegExpExecArray | null;
+
+  while ((bm = boldRe.exec(text)) !== null) {
+    if (bm.index > last) {
+      nodes.push(...renderItalic(text.slice(last, bm.index), nodes.length));
+    }
+    nodes.push(<strong key={`b${bm.index}`}>{renderItalic(bm[1], 0)}</strong>);
+    last = boldRe.lastIndex;
+  }
+  if (last < text.length) {
+    nodes.push(...renderItalic(text.slice(last), nodes.length));
+  }
+  return nodes;
+}
+
+function renderItalic(text: string, keyBase: number): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // match *text* but not ** (already consumed)
+  const italicRe = /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g;
+  let last = 0;
+  let im: RegExpExecArray | null;
+
+  while ((im = italicRe.exec(text)) !== null) {
+    if (im.index > last) {
+      nodes.push(
+        <React.Fragment key={`t${keyBase}_${im.index}`}>
+          {text.slice(last, im.index)}
+        </React.Fragment>
+      );
+    }
+    nodes.push(<em key={`i${keyBase}_${im.index}`}>{im[1]}</em>);
+    last = italicRe.lastIndex;
+  }
+  if (last < text.length) {
+    nodes.push(
+      <React.Fragment key={`t${keyBase}_${last}`}>
+        {text.slice(last)}
+      </React.Fragment>
+    );
+  }
+  return nodes;
+}
+
 class MathErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: string; inline?: boolean },
+  { children: React.ReactNode; fallback: string },
   { hasError: boolean }
 > {
   state = { hasError: false };
@@ -70,20 +115,18 @@ export default function MathText({ children, style }: MathTextProps) {
     <span style={{ whiteSpace: "pre-wrap", ...style }}>
       {segments.map((seg, i) => {
         if (seg.type === "text") {
-          return <span key={i}>{seg.content}</span>;
+          return <span key={i}>{renderMarkdown(seg.content)}</span>;
         }
         if (seg.type === "inline") {
-          const fallback = `\\(${seg.content}\\)`;
           return (
-            <MathErrorBoundary key={i} fallback={fallback}>
+            <MathErrorBoundary key={i} fallback={`\\(${seg.content}\\)`}>
               <InlineMath math={seg.content} />
             </MathErrorBoundary>
           );
         }
         if (seg.type === "block") {
-          const fallback = `\\[${seg.content}\\]`;
           return (
-            <MathErrorBoundary key={i} fallback={fallback}>
+            <MathErrorBoundary key={i} fallback={`\\[${seg.content}\\]`}>
               <span style={{ display: "block", margin: "0.5em 0" }}>
                 <BlockMath math={seg.content} />
               </span>
