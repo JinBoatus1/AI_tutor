@@ -20,8 +20,67 @@
   min-height: 0;
   overflow: hidden;
   border: 1px solid #ddd;
-  padding: 16px;
+  padding: 10px 12px;
   border-radius: 8px;
+  background: #fff;
+}
+
+.chat-panel-header-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.btn-show-textbook-panel {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5b4fc9;
+  background: linear-gradient(180deg, #faf9ff 0%, #f3f1fc 100%);
+  border: 1px solid #e2e0f0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-show-textbook-panel:hover {
+  border-color: #cfc8f0;
+  background: #f5f0ff;
+}
+
+.left-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.left-panel-header-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.left-panel-hide-btn {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.left-panel-hide-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .resize-handle {
@@ -42,6 +101,43 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  background: #fff;
+}
+
+/* Learning Mode：重新开始 / 新提问（替代默认按钮灰框） */
+.reset-box {
+  margin: 0 auto 8px;
+  width: 100%;
+  max-width: 34rem;
+}
+
+.reset-box button {
+  width: 100%;
+  display: block;
+  border: 1px solid #e2e0f0;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #5b4fc9;
+  background: linear-gradient(180deg, #faf9ff 0%, #f3f1fc 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 1px 3px rgba(90, 69, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+.reset-box button:hover {
+  color: #4a3dc4;
+  border-color: #cfc8f0;
+  background: linear-gradient(180deg, #f5f0ff 0%, #ebe6ff 100%);
+  box-shadow: 0 2px 8px rgba(90, 69, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.reset-box button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(90, 69, 255, 0.1);
 }
 
 .sidebar {
@@ -56,10 +152,45 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #fafafa;
-  padding: 10px;
+  background: #fff;
+  border: 1px solid #eee;
+  padding: 8px;
   border-radius: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+}
+
+/* 尚未提问时：欢迎语下方居中占位 */
+.chat-box--with-empty {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-empty-hint {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 12px 28px;
+  min-height: 120px;
+  color: #d1d5db;
+}
+
+.chat-empty-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.chat-empty-text {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #9ca3af;
+  text-align: center;
+  max-width: 18rem;
+  line-height: 1.45;
 }
 
 .chat-box a,
@@ -86,13 +217,13 @@
 .msg-user {
   text-align: right;
   color: #2c7be5;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .msg-ai {
   text-align: left;
   color: #333;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 /* Learning Mode：聊天气泡内 Markdown（粗体、标题、列表、代码、表格、公式） */
@@ -359,34 +490,94 @@
   pointer-events: none;
 }
 
+/* 底部输入：胶囊白底条 + 线框图标 + 纸飞机发送（与新版参考一致） */
+.learning-input-shell {
+  width: 100%;
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0;
+  padding: 3px 5px 3px 6px;
+  background: #fff;
+  border-radius: 999px;
+  border: 1px solid #e5e3ee;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
 .input-row {
   display: flex;
-  gap: 10px;
+  gap: 4px;
   align-items: center;
   width: 100%;
   min-width: 0;
 }
 
-.input-add-image-btn {
+.input-icon-btn {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   padding: 0;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fff;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #a1a7b3;
   cursor: pointer;
-  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.input-add-image-btn:hover {
-  background: #f0f0f0;
+.input-icon-btn:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.input-icon-svg {
+  width: 18px;
+  height: 18px;
 }
 
 .chat-input-text {
   flex: 1 1 0%;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 6px 8px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #374151;
+}
+
+.chat-input-text::placeholder {
+  color: #9ca3af;
+}
+
+.learning-send-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: #eef0f3;
+  color: #9ca3af;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.learning-send-btn:hover {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.learning-send-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .attached-images-row {
@@ -394,6 +585,13 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+
+.chat-panel .attached-images-row {
+  width: 100%;
+  max-width: 34rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .attached-img-wrap {

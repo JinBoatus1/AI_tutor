@@ -1,10 +1,11 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
 import MarkdownMessage from "./MarkdownMessage";
 
-const RIGHT_PANEL_MIN = 20;
-const RIGHT_PANEL_MAX = 55;
+/** 左侧书页区宽度占 layout 的百分比（与 state rightPanelWidth 一致） */
+const TEXTBOOK_PANEL_MIN_PCT = 15;
+const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
   "Hi! Which chapter do you want to learn or review? Type a chapter name or topic (e.g. \"Chapter 5\", \"Induction\", \"Proofs\"), and I’ll look up the textbook pages and walk you through the most important formulas and definitions.";
@@ -32,14 +33,38 @@ export default function LearningModel() {
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
 
+  const hasLeftPanelContent = Boolean(
+    dataMatchedTopic ||
+      matchedSection ||
+      (referenceSectionPages && referenceSectionPages.length > 0) ||
+      (referencePageSnippets && referencePageSnippets.length > 0) ||
+      referencePageImage
+  );
+
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const hadLeftContentRef = useRef(false);
+
+  useEffect(() => {
+    if (hasLeftPanelContent) {
+      if (!hadLeftContentRef.current) {
+        setLeftPanelOpen(true);
+      }
+      hadLeftContentRef.current = true;
+    } else {
+      hadLeftContentRef.current = false;
+    }
+  }, [hasLeftPanelContent]);
+
+  const showLeftColumn = hasLeftPanelContent && leftPanelOpen;
+
   const handleResizeMove = useCallback((e: MouseEvent) => {
     const start = resizeStartRef.current;
     if (!start || !layoutRef.current) return;
     const rect = layoutRef.current.getBoundingClientRect();
     const deltaPercent = ((e.clientX - start.x) / rect.width) * 100;
     const newWidth = Math.min(
-      RIGHT_PANEL_MAX,
-      Math.max(RIGHT_PANEL_MIN, start.width + deltaPercent)
+      TEXTBOOK_PANEL_MAX_PCT,
+      Math.max(TEXTBOOK_PANEL_MIN_PCT, start.width + deltaPercent)
     );
     setRightPanelWidth(newWidth);
   }, []);
@@ -276,6 +301,8 @@ export default function LearningModel() {
   // ============================
   // CLEAR EVERYTHING
   // ============================
+  const hasUserMessage = messages.some((m) => m.sender === "user");
+
   const reset = () => {
     setMessages([{ sender: "ai", text: WELCOME_MSG }]);
     setMatchedSection(null);
@@ -284,17 +311,29 @@ export default function LearningModel() {
     setReferencePageSnippets(null);
     setReferenceSectionPages(null);
     setSectionPageIndex(0);
+    setEnlargedImageSrc(null);
   };
 
   return (
     <div className="learning-page-wrapper">
     <div className="learning-layout" ref={layoutRef}>
-      {/* LEFT: 书页 / 参考区 */}
+      {/* LEFT: 书页 / 参考区（有教材/匹配内容时才出现；可手动收起） */}
+      {showLeftColumn && (
       <div
         className="right-panel"
         style={{ flex: `0 0 ${rightPanelWidth}%` }}
       >
-        <h3>📚 Related Section</h3>
+        <div className="left-panel-header">
+          <span className="left-panel-header-title">Textbook</span>
+          <button
+            type="button"
+            className="left-panel-hide-btn"
+            onClick={() => setLeftPanelOpen(false)}
+            title="Hide textbook sidebar"
+          >
+            Hide
+          </button>
+        </div>
 
         {dataMatchedTopic ? (
           <div className="match-box">
@@ -311,9 +350,7 @@ export default function LearningModel() {
               ))}
             </ul>
           </div>
-        ) : (
-          <p>No related topic yet. Ask a question!</p>
-        )}
+        ) : null}
 
         {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
           <>
@@ -327,7 +364,7 @@ export default function LearningModel() {
                       type="button"
                       disabled={sectionPageIndex <= 0}
                       onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}
-                      aria-label="上一页"
+                      aria-label="Previous page"
                     >
                       ‹ Prev
                     </button>
@@ -342,7 +379,7 @@ export default function LearningModel() {
                           Math.min(referenceSectionPages.length - 1, i + 1)
                         )
                       }
-                      aria-label="下一页"
+                      aria-label="Next page"
                     >
                       Next ›
                     </button>
@@ -364,7 +401,7 @@ export default function LearningModel() {
                   <img
                     key={i}
                     src={src}
-                    alt={`教材片段 ${i + 1}`}
+                    alt={`Textbook snippet ${i + 1}`}
                     className="reference-page-img reference-snippet reference-img-clickable"
                     onClick={() => setEnlargedImageSrc(src)}
                     role="button"
@@ -375,7 +412,7 @@ export default function LearningModel() {
               ) : referencePageImage ? (
                 <img
                   src={referencePageImage}
-                  alt="教材参考页"
+                  alt="Textbook reference page"
                   className="reference-page-img reference-img-clickable"
                   onClick={() => setEnlargedImageSrc(referencePageImage)}
                   role="button"
@@ -384,61 +421,51 @@ export default function LearningModel() {
                 />
               ) : null}
             </div>
-            {enlargedImageSrc && (
-              <div
-                className="reference-image-lightbox"
-                onClick={() => setEnlargedImageSrc(null)}
-                role="dialog"
-                aria-modal="true"
-                aria-label="放大查看图片"
-              >
-                <button
-                  type="button"
-                  className="reference-image-lightbox-close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEnlargedImageSrc(null);
-                  }}
-                  aria-label="关闭"
-                >
-                  ×
-                </button>
-                <img
-                  src={enlargedImageSrc}
-                  alt="放大查看"
-                  className="reference-image-lightbox-img"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            )}
           </>
         )}
       </div>
+      )}
 
-      {/* 可拖拽缩放条 */}
+      {showLeftColumn && (
       <div
         className="resize-handle"
         onMouseDown={handleResizeStart}
-        title="拖拽调整书页区宽度"
+        title="Drag to resize textbook panel"
       />
+      )}
 
       {/* RIGHT: 对话区（支持 Ctrl+V 粘贴截图） */}
       <div
         className="chat-panel"
-        style={{ flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }}
+        aria-label="Learning Mode"
+        style={
+          showLeftColumn
+            ? { flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }
+            : { flex: "1 1 100%", minWidth: 0 }
+        }
         onPaste={handlePaste}
       >
-        <h1 className="title">Learning Mode</h1>
+        {hasLeftPanelContent && !leftPanelOpen && (
+          <div className="chat-panel-header-row">
+            <button
+              type="button"
+              className="btn-show-textbook-panel"
+              onClick={() => setLeftPanelOpen(true)}
+            >
+              Show textbook sidebar
+            </button>
+          </div>
+        )}
 
         {/* Reset button */}
         <div className="reset-box">
-          <button onClick={reset}>
-            🔄 I already fully understand — Start a new question
+          <button type="button" onClick={reset}>
+            I already fully understand — Start a new question
           </button>
         </div>
 
         {/* Messages */}
-        <div className="chat-box">
+        <div className={`chat-box${!hasUserMessage ? " chat-box--with-empty" : ""}`}>
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
               <MarkdownMessage
@@ -459,6 +486,21 @@ export default function LearningModel() {
               )}
             </div>
           ))}
+          {!hasUserMessage && (
+            <div className="chat-empty-hint">
+              <svg className="chat-empty-icon" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+                />
+              </svg>
+              <p className="chat-empty-text">Type a math question below to get started</p>
+            </div>
+          )}
         </div>
 
         {/* 已选图片预览 */}
@@ -502,40 +544,97 @@ export default function LearningModel() {
             e.target.value = "";
           }}
         />
-        <div className="input-row">
-          <button
-            type="button"
-            className="input-add-image-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="选择本地图片"
-          >
-            📷
-          </button>
-          <button
-            type="button"
-            className="input-add-image-btn"
-            onClick={handleScreenshot}
-            title="截屏（选择窗口/屏幕）"
-          >
-            🖥️
-          </button>
-          <input
-            type="text"
-            className="chat-input-text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Ask or continue your question..."
-          />
-          <button onClick={handleSend}>▶</button>
+        <div className="learning-input-shell">
+          <div className="input-row">
+            <button
+              type="button"
+              className="input-icon-btn"
+              onClick={() => fileInputRef.current?.click()}
+              title="从相册选择图片"
+              aria-label="从相册选择图片"
+            >
+              <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                <path d="M21 15l-5-5L5 21" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="input-icon-btn"
+              onClick={handleScreenshot}
+              title="截屏（选择窗口/屏幕）"
+              aria-label="截屏"
+            >
+              <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />
+                <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+            </button>
+            <input
+              type="text"
+              className="chat-input-text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Ask a math question..."
+            />
+            <button
+              type="button"
+              className="learning-send-btn"
+              onClick={handleSend}
+              title="发送"
+              aria-label="发送"
+            >
+              <svg className="learning-send-icon" viewBox="0 0 24 24" aria-hidden>
+                <line x1="22" y1="2" x2="11" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path
+                  d="M22 2L15 22l-4-9-9-4 20-7z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
+    {enlargedImageSrc && (
+      <div
+        className="reference-image-lightbox"
+        onClick={() => setEnlargedImageSrc(null)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="放大查看图片"
+      >
+        <button
+          type="button"
+          className="reference-image-lightbox-close"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEnlargedImageSrc(null);
+          }}
+          aria-label="关闭"
+        >
+          ×
+        </button>
+        <img
+          src={enlargedImageSrc}
+          alt="放大查看"
+          className="reference-image-lightbox-img"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    )}
     </div>
   );
 }

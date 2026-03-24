@@ -3,6 +3,8 @@ html, body, #root {
   overflow: hidden !important;
   height: 100vh;
   max-height: 100vh;
+  /* 整页衬底色（后面的背景）；内容区卡片仍为白底 */
+  background: #e6eaf2;
 }
 
 .app-container {
@@ -10,6 +12,23 @@ html, body, #root {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background: transparent;
+}
+
+.app-container .navbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.app-container .nav-buttons {
+  display: flex;
+  gap: 15px;
+  align-items: center;
 }
 
 .app-container .content {
@@ -19,6 +38,7 @@ html, body, #root {
   padding: 40px;
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 .app {
