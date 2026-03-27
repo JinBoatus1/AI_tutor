@@ -63,6 +63,18 @@ def run(command, cwd=None, env=None):
 	)
 
 
+def stop_process(proc: subprocess.Popen, name: str, timeout: float = 5.0):
+	if proc.poll() is not None:
+		return
+	proc.terminate()
+	try:
+		proc.wait(timeout=timeout)
+	except subprocess.TimeoutExpired:
+		print(f"{name} did not exit in time, killing it")
+		proc.kill()
+		proc.wait(timeout=2)
+
+
 def _python_exec_from_env_root(root: str | None) -> Path | None:
 	if not root:
 		return None
@@ -362,18 +374,18 @@ def main():
 		while True:
 			if backend_proc.poll() is not None:
 				print("Backend exited, shutting down frontend")
-				frontend_proc.terminate()
+				stop_process(frontend_proc, "Frontend")
 				break
 			if frontend_proc.poll() is not None:
 				print("Frontend exited, shutting down backend")
-				backend_proc.terminate()
+				stop_process(backend_proc, "Backend")
 				break
 			time.sleep(0.5)
 	except KeyboardInterrupt:
 		print("Interrupted, terminating subprocesses")
-		backend_proc.terminate()
-		frontend_proc.terminate()
-		sys.exit(1)
+		stop_process(backend_proc, "Backend")
+		stop_process(frontend_proc, "Frontend")
+		return
 
 
 if __name__ == "__main__":
