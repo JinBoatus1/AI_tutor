@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ComponentProps } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -47,6 +47,35 @@ function splitSquashedTableRows(text: string): string {
     .join("\n");
 }
 
+/**
+ * AI 常把章节目录用「纯文本行」列出（无 `-`），不会生成 <li>，点击填入无效。
+ * 将形如 "8.1 Title (pp. …)" / "8 Chapter Title …" 的连续行转成 GFM 列表。
+ */
+function promoteOutlineLinesToList(text: string): string {
+  const isOutlineLine = (line: string) => {
+    const t = line.trim();
+    if (!t) return false;
+    return /^\d+(?:\.\d+)*\s+\S/.test(t);
+  };
+  const lines = text.split("\n");
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (isOutlineLine(lines[i])) {
+      const block: string[] = [];
+      while (i < lines.length && isOutlineLine(lines[i])) {
+        block.push(`- ${lines[i].trim()}`);
+        i++;
+      }
+      out.push(block.join("\n"));
+    } else {
+      out.push(lines[i]);
+      i++;
+    }
+  }
+  return out.join("\n");
+}
+
 function normalizeAiMarkdown(raw: string): string {
   let s = unwrapMarkdownFences(raw);
   s = normalizeMathDelimiters(s);
@@ -58,17 +87,71 @@ function normalizeAiMarkdown(raw: string): string {
 export interface MarkdownMessageProps {
   children: string;
   className?: string;
+  /** If set, each list item becomes clickable to insert plain text (e.g. fill the chat input). */
+  onPickLine?: (plainText: string) => void;
 }
 
 /**
  * 聊天气泡：Markdown（GFM 表格、粗体、标题等）+ KaTeX（$...$ / $$...$$）
  */
-export default function MarkdownMessage({ children, className }: MarkdownMessageProps) {
+export default function MarkdownMessage({
+  children,
+  className,
+  onPickLine,
+}: MarkdownMessageProps) {
   const raw = typeof children === "string" ? children : String(children ?? "");
-  const content = useMemo(() => normalizeAiMarkdown(raw), [raw]);
+  const content = useMemo(() => {
+    let s = normalizeAiMarkdown(raw);
+    if (onPickLine) s = promoteOutlineLinesToList(s);
+    return s;
+  }, [raw, onPickLine]);
+
+  const components = useMemo(() => {
+    if (!onPickLine) return undefined;
+
+    const Li = (props: ComponentProps<"li"> & { node?: unknown }) => {
+      const { children: liChildren, className: liClass, node: _node, ...rest } = props;
+      return (
+        <li {...rest} className={["markdown-pickable-li", liClass].filter(Boolean).join(" ")}>
+          <span
+            className="markdown-pickable-hit"
+            role="button"
+            tabIndex={0}
+            title="Click to insert into the question box"
+            onClick={(e) => {
+              const t = (e.currentTarget as HTMLElement).textContent
+                ?.replace(/\s+/g, " ")
+                .trim();
+              if (t) onPickLine(t);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                const t = (e.currentTarget as HTMLElement).textContent
+                  ?.replace(/\s+/g, " ")
+                  .trim();
+                if (t) onPickLine(t);
+              }
+            }}
+          >
+            {liChildren}
+          </span>
+        </li>
+      );
+    };
+
+    return { li: Li };
+  }, [onPickLine]);
+
+  const rootClass = [
+    className ?? "markdown-message",
+    onPickLine ? "markdown-message--pickable" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className={className ?? "markdown-message"}>
+    <div className={rootClass}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: true }]]}
         rehypePlugins={[
@@ -81,6 +164,7 @@ export default function MarkdownMessage({ children, className }: MarkdownMessage
             },
           ],
         ]}
+        components={components}
       >
         {content}
       </ReactMarkdown>

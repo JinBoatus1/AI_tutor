@@ -28,6 +28,7 @@ export default function LearningModel() {
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(67); // 左侧书页约 2/3，右侧对话 1/3
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -43,6 +44,8 @@ export default function LearningModel() {
 
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const hadLeftContentRef = useRef(false);
+  const [isAwaitingReply, setIsAwaitingReply] = useState(false);
+  const chatBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (hasLeftPanelContent) {
@@ -54,6 +57,14 @@ export default function LearningModel() {
       hadLeftContentRef.current = false;
     }
   }, [hasLeftPanelContent]);
+
+  useEffect(() => {
+    if (!chatBoxRef.current) return;
+    chatBoxRef.current.scrollTo({
+      top: chatBoxRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages, isAwaitingReply]);
 
   const showLeftColumn = hasLeftPanelContent && leftPanelOpen;
 
@@ -162,10 +173,12 @@ export default function LearningModel() {
     const userText = input.trim();
     const hasImages = attachedImages.length > 0;
     if (!userText && !hasImages) return;
+    if (isAwaitingReply) return;
 
     addUserMessage(userText || "(图片)", hasImages ? [...attachedImages] : undefined);
     setInput("");
     setAttachedImages([]);
+    setIsAwaitingReply(true);
 
     const imagesB64 = hasImages
       ? attachedImages.map((dataUrl) => dataUrl.replace(/^data:image\/\w+;base64,/, ""))
@@ -258,6 +271,8 @@ export default function LearningModel() {
       } else {
         addAIMessage("请求失败，无法连接后端。请确认后端已在 http://127.0.0.1:8000 运行。");
       }
+    } finally {
+      setIsAwaitingReply(false);
     }
   };
 
@@ -312,6 +327,7 @@ export default function LearningModel() {
     setReferenceSectionPages(null);
     setSectionPageIndex(0);
     setEnlargedImageSrc(null);
+    setIsAwaitingReply(false);
   };
 
   return (
@@ -459,13 +475,25 @@ export default function LearningModel() {
 
         {/* Reset button */}
         <div className="reset-box">
-          <button type="button" onClick={reset}>
+          <button type="button" onClick={reset} disabled={isAwaitingReply}>
             I already fully understand — Start a new question
           </button>
         </div>
 
+        {isAwaitingReply && (
+          <div className="learning-reply-status" role="status" aria-live="polite">
+            <span className="learning-reply-status-spinner" aria-hidden />
+            <span className="learning-reply-status-text">
+              Looking up the textbook and loading page images…
+            </span>
+          </div>
+        )}
+
         {/* Messages */}
-        <div className={`chat-box${!hasUserMessage ? " chat-box--with-empty" : ""}`}>
+        <div
+          ref={chatBoxRef}
+          className={`chat-box${!hasUserMessage ? " chat-box--with-empty" : ""}`}
+        >
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
               <MarkdownMessage
@@ -473,6 +501,14 @@ export default function LearningModel() {
                   m.sender === "user"
                     ? "markdown-message markdown-message--user"
                     : "markdown-message"
+                }
+                onPickLine={
+                  m.sender === "ai"
+                    ? (text) => {
+                        setInput(text);
+                        queueMicrotask(() => chatInputRef.current?.focus());
+                      }
+                    : undefined
                 }
               >
                 {m.text}
@@ -486,6 +522,17 @@ export default function LearningModel() {
               )}
             </div>
           ))}
+          {isAwaitingReply && (
+            <div className="msg-ai msg-ai-loading-placeholder" aria-busy="true">
+              <div className="msg-ai-loading-inner">
+                <span className="learning-inline-spinner" aria-hidden />
+                <div className="msg-ai-loading-lines">
+                  <span className="msg-ai-loading-line" />
+                  <span className="msg-ai-loading-line msg-ai-loading-line--short" />
+                </div>
+              </div>
+            </div>
+          )}
           {!hasUserMessage && (
             <div className="chat-empty-hint">
               <svg className="chat-empty-icon" viewBox="0 0 24 24" aria-hidden>
@@ -573,6 +620,7 @@ export default function LearningModel() {
               </svg>
             </button>
             <input
+              ref={chatInputRef}
               type="text"
               className="chat-input-text"
               value={input}
@@ -580,10 +628,11 @@ export default function LearningModel() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  handleSend();
+                  if (!isAwaitingReply) handleSend();
                 }
               }}
               placeholder="Ask a math question..."
+              disabled={isAwaitingReply}
             />
             <button
               type="button"
@@ -591,6 +640,7 @@ export default function LearningModel() {
               onClick={handleSend}
               title="发送"
               aria-label="发送"
+              disabled={isAwaitingReply}
             >
               <svg className="learning-send-icon" viewBox="0 0 24 24" aria-hidden>
                 <line x1="22" y1="2" x2="11" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

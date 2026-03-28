@@ -39,17 +39,18 @@
   padding: 6px 12px;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #5b4fc9;
-  background: linear-gradient(180deg, #faf9ff 0%, #f3f1fc 100%);
-  border: 1px solid #e2e0f0;
+  color: #0f766e;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  border: 1px solid #99f6e4;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .btn-show-textbook-panel:hover {
-  border-color: #cfc8f0;
-  background: #f5f0ff;
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #115e59;
 }
 
 .left-panel-header {
@@ -91,7 +92,7 @@
   transition: background 0.15s;
 }
 .resize-handle:hover {
-  background: #2c7be5;
+  background: #0d9488;
 }
 
 .right-panel {
@@ -114,30 +115,30 @@
 .reset-box button {
   width: 100%;
   display: block;
-  border: 1px solid #e2e0f0;
+  border: 1px solid #99f6e4;
   border-radius: 10px;
   padding: 7px 12px;
   font-size: 0.82rem;
   font-weight: 500;
   line-height: 1.35;
-  color: #5b4fc9;
-  background: linear-gradient(180deg, #faf9ff 0%, #f3f1fc 100%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 1px 3px rgba(90, 69, 255, 0.08);
+  color: #0f766e;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 1px 3px rgba(15, 118, 110, 0.08);
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 
 .reset-box button:hover {
-  color: #4a3dc4;
-  border-color: #cfc8f0;
-  background: linear-gradient(180deg, #f5f0ff 0%, #ebe6ff 100%);
-  box-shadow: 0 2px 8px rgba(90, 69, 255, 0.12);
+  color: #115e59;
+  border-color: #5eead4;
+  background: linear-gradient(180deg, #ccfbf1 0%, #99f6e4 100%);
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.12);
   transform: translateY(-1px);
 }
 
 .reset-box button:active {
   transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(90, 69, 255, 0.1);
+  box-shadow: 0 1px 2px rgba(15, 118, 110, 0.08);
 }
 
 .sidebar {
@@ -216,13 +217,13 @@
 
 .msg-user {
   text-align: right;
-  color: #2c7be5;
+  color: #0f766e;
   margin: 4px 0;
 }
 
 .msg-ai {
   text-align: left;
-  color: #333;
+  color: #1e293b;
   margin: 4px 0;
 }
 
@@ -236,6 +237,30 @@
 }
 .markdown-message.markdown-message--user {
   text-align: right;
+}
+
+/* AI 列表项：点击填入输入框 */
+.markdown-message--pickable .markdown-pickable-li {
+  list-style-position: outside;
+}
+
+.markdown-message--pickable .markdown-pickable-hit {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(13, 148, 136, 0.4);
+  text-underline-offset: 3px;
+  border-radius: 4px;
+  transition: background 0.12s, text-decoration-color 0.12s;
+}
+
+.markdown-message--pickable .markdown-pickable-hit:hover {
+  background: rgba(13, 148, 136, 0.1);
+  text-decoration-color: #0f766e;
+}
+
+.markdown-message--pickable .markdown-pickable-hit:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
 }
 .markdown-message > *:first-child {
   margin-top: 0;
@@ -329,8 +354,12 @@
   background: #f0f0f0;
 }
 .markdown-message a {
-  color: #2c7be5;
+  color: #0d9488;
   word-break: break-word;
+}
+
+.markdown-message a:hover {
+  color: #0f766e;
 }
 .markdown-message .katex-display {
   margin: 0.6em 0;
@@ -398,6 +427,14 @@
   gap: 12px;
   margin-bottom: 8px;
   flex-shrink: 0;
+  /* Stay visible while scrolling long textbook images inside .reference-page-sidebar */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f0f4f8;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid #dce4ee;
+  box-shadow: 0 6px 12px -4px rgba(15, 23, 42, 0.08);
 }
 
 .section-pages-nav button {
@@ -500,7 +537,7 @@
   padding: 3px 5px 3px 6px;
   background: #fff;
   border-radius: 999px;
-  border: 1px solid #e5e3ee;
+  border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
@@ -571,8 +608,8 @@
 }
 
 .learning-send-btn:hover {
-  background: #e5e7eb;
-  color: #6b7280;
+  background: #ccfbf1;
+  color: #0f766e;
 }
 
 .learning-send-icon {
@@ -643,4 +680,122 @@
   background: #f4f4f4;
   padding: 10px;
   border-radius: 6px;
+}
+
+/* Learning Mode: waiting for reply + textbook images */
+.learning-reply-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto 8px;
+  width: 100%;
+  max-width: 34rem;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f8faff 100%);
+  border: 1px solid #cfe2ff;
+  color: #1e40af;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.learning-reply-status-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid #bfdbfe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: learning-spin 0.75s linear infinite;
+}
+
+.learning-reply-status-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.learning-inline-spinner {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 2px solid #e2e8f0;
+  border-top-color: #0d9488;
+  border-radius: 50%;
+  animation: learning-spin 0.75s linear infinite;
+}
+
+@keyframes learning-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.msg-ai-loading-placeholder {
+  margin: 10px 0 6px;
+  max-width: 92%;
+}
+
+.msg-ai-loading-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.msg-ai-loading-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.msg-ai-loading-line {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 45%, #e2e8f0 90%);
+  background-size: 200% 100%;
+  animation: learning-shimmer 1.1s ease-in-out infinite;
+}
+
+.msg-ai-loading-line:first-child {
+  width: 100%;
+  max-width: 220px;
+}
+
+.msg-ai-loading-line--short {
+  max-width: 140px;
+  width: 70%;
+}
+
+@keyframes learning-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.reset-box button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chat-input-text:disabled {
+  opacity: 0.75;
+  cursor: wait;
+  background: #f9fafb;
+}
+
+.learning-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

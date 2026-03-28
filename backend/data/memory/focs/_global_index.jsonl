@@ -70,3 +70,13 @@
 {"id": "0b8a238913e54c568fa5ab19a887460d", "t": 1774387380, "address": "5_Induction_Proving_FOR_ALL", "stream": "summary", "offset": 4915, "len": 324}
 {"id": "421f2301629740a188745bc942cfd035", "t": 1774387467, "address": "5_Induction_Proving_FOR_ALL", "stream": "events", "offset": 25882, "len": 514}
 {"id": "fe9516bc8a2944da855dd3391b965061", "t": 1774387467, "address": "5_Induction_Proving_FOR_ALL", "stream": "summary", "offset": 5239, "len": 330}
+{"id": "05d3406a44854e92961a2080fe344c18", "t": 1774392638, "address": "1_A_Taste_of_Discrete_Mathematics", "stream": "events", "offset": 0, "len": 486}
+{"id": "a77b1fb490254c10a1bbc88023621348", "t": 1774392638, "address": "1_A_Taste_of_Discrete_Mathematics", "stream": "summary", "offset": 0, "len": 323}
+{"id": "329bfa967a33473ba8dfcedcfec96d41", "t": 1774642812, "address": "1_A_Taste_of_Discrete_Mathematics/1_6_Problems", "stream": "events", "offset": 0, "len": 3441}
+{"id": "0cc333792ec34cf0b5c1a8b89c10720f", "t": 1774642812, "address": "1_A_Taste_of_Discrete_Mathematics/1_6_Problems", "stream": "summary", "offset": 0, "len": 427}
+{"id": "656707dc888f4f3bbe83905d1c1bce0b", "t": 1774643028, "address": "4_Proofs/4_1_Direct_Proof", "stream": "events", "offset": 0, "len": 4329}
+{"id": "99994622e1544ecebed56fce8a60552a", "t": 1774643028, "address": "4_Proofs/4_1_Direct_Proof", "stream": "summary", "offset": 0, "len": 349}
+{"id": "01c45e5a791a424ea237e0ff95ee66d5", "t": 1774644387, "address": "7_Recursion", "stream": "events", "offset": 0, "len": 483}
+{"id": "3150b225a74b47bfbf89ecfa78373f9f", "t": 1774644387, "address": "7_Recursion", "stream": "summary", "offset": 0, "len": 331}
+{"id": "21103f7156b54d18aa82785ce77964e6", "t": 1774644715, "address": "8_Proofs_with_Recursive_Objects", "stream": "events", "offset": 0, "len": 561}
+{"id": "612de010d87746e9a12151dc4ef1535d", "t": 1774644715, "address": "8_Proofs_with_Recursive_Objects", "stream": "summary", "offset": 0, "len": 330}
