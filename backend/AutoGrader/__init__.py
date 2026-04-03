@@ -1,11 +1,41 @@
-from .grader import AutoGraderBase, PlaceholderAutoGrader
-from .models import AutoGradeRequest, AutoGradeResult
-from .service import get_autograder
+from .grader import AggregatorBase, AutoGraderBase, EvaluatorBase, SchedulerBase, WorkerPoolBase
+from .models import (
+    AutoGradeJobResultsResponse,
+    AutoGradeJobStatusResponse,
+    AutoGradeJobSubmitRequest,
+    AutoGradeJobSubmitResponse,
+    AutoGradePaperResult,
+    AutoGradeResult,
+    AutoGradeStatusCode,
+    BundleKind,
+    DocumentBundle,
+    EvaluationResult,
+    GradeTaskItem,
+    SourceItem,
+    SourceType,
+)
+from .service import get_autograder, has_autograder, register_autograder
 
 __all__ = [
-    "AutoGraderBase",
-    "PlaceholderAutoGrader",
-    "AutoGradeRequest",
+    "SourceType",
+    "BundleKind",
+    "AutoGradeStatusCode",
+    "SourceItem",
+    "DocumentBundle",
+    "GradeTaskItem",
+    "AutoGradeJobSubmitRequest",
+    "AutoGradeJobSubmitResponse",
+    "AutoGradeJobStatusResponse",
+    "AutoGradeJobResultsResponse",
     "AutoGradeResult",
+    "AutoGradePaperResult",
+    "EvaluationResult",
+    "AutoGraderBase",
+    "SchedulerBase",
+    "EvaluatorBase",
+    "AggregatorBase",
+    "WorkerPoolBase",
+    "register_autograder",
     "get_autograder",
+    "has_autograder",
 ]
