@@ -17,7 +17,7 @@ export default function AutoGrader() {
       formData.append("files", f);   // ← 注意这里用 "files"
     });
 
-    const resp = await fetch("http://127.0.0.1:8000/api/grade", {
+    const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/grade`, {
       method: "POST",
       body: formData,
     });

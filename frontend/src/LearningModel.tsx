@@ -214,7 +214,7 @@ export default function LearningModel() {
     let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
     try {
-      const resp = await fetch("http://127.0.0.1:8000/api/chat", {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -285,7 +285,7 @@ export default function LearningModel() {
       if ((err as Error).name === "AbortError") {
         addAIMessage("请求超时（约 2 分钟）。请检查后端是否正常运行，或稍后重试。");
       } else {
-        addAIMessage("请求失败，无法连接后端。请确认后端已在 http://127.0.0.1:8000 运行。");
+        addAIMessage("请求失败，无法连接后端。请确认后端服务正在运行。");
       }
     } finally {
       setIsAwaitingReply(false);

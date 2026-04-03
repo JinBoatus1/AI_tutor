@@ -37,7 +37,7 @@ export default function UploadTextbook() {
     formData.append("subject", subject);
     formData.append("file", file);
 
-    const resp = await fetch("http://127.0.0.1:8000/api/upload_textbook", {
+    const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/upload_textbook`, {
       method: "POST",
       body: formData,
     });
