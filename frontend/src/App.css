@@ -20,15 +20,61 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   padding: 12px 24px;
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.app-container .navbar .navbar-brand {
+  margin: 0;
+  font-size: clamp(0.95rem, 2.2vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #0f172a;
+  background: linear-gradient(135deg, #0f172a 0%, #115e59 50%, #0d9488 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  max-width: min(52vw, 26rem);
 }
 
 .app-container .nav-buttons {
   display: flex;
   gap: 15px;
   align-items: center;
+}
+
+.app-container .nav-buttons .btn-nav {
+  padding: 8px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.app-container .nav-buttons .btn-nav:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.app-container .nav-buttons .btn-nav--learning {
+  background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+  border: 1px solid #5eead4;
+  color: #fff;
+}
+
+.app-container .nav-buttons .btn-nav--learning:hover {
+  background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 100%);
+  border-color: #99f6e4;
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 .app-container .content {

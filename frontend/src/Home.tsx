@@ -6,8 +6,8 @@ function IconPolya() {
     <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
       <defs>
         <linearGradient id="home-grad-a" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#8b5cf6" />
+          <stop offset="0%" stopColor="#0f766e" />
+          <stop offset="100%" stopColor="#14b8a6" />
         </linearGradient>
       </defs>
       <circle cx="24" cy="24" r="20" fill="none" stroke="url(#home-grad-a)" strokeWidth="1.5" opacity="0.35" />
@@ -29,8 +29,8 @@ function IconGrade() {
     <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
       <defs>
         <linearGradient id="home-grad-b" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#a855f7" />
+          <stop offset="0%" stopColor="#0d9488" />
+          <stop offset="100%" stopColor="#2dd4bf" />
         </linearGradient>
       </defs>
       <rect x="10" y="14" width="28" height="22" rx="3" fill="none" stroke="url(#home-grad-b)" strokeWidth="1.75" />
@@ -52,8 +52,8 @@ function IconAdaptive() {
     <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
       <defs>
         <linearGradient id="home-grad-c" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#6366f1" />
+          <stop offset="0%" stopColor="#14b8a6" />
+          <stop offset="100%" stopColor="#0f766e" />
         </linearGradient>
       </defs>
       <circle cx="24" cy="20" r="8" fill="none" stroke="url(#home-grad-c)" strokeWidth="1.75" />
@@ -76,7 +76,7 @@ export default function Home() {
 
       <section className="home-hero">
         <p className="home-eyebrow">AI Tutor</p>
-        <h1 className="home-headline">Equal Education for Every Child</h1>
+        <h1 className="home-headline">Equal Education for Everyone</h1>
         <p className="home-lede">
           Step-by-step reasoning, textbook-grounded answers, and instant feedback — in one place.
         </p>

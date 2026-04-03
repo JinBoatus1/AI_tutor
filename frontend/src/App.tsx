@@ -11,11 +11,11 @@ function App() {
     <Router>
       <div className="app-container">
         <nav className="navbar">
-          <h2> AI Tutor Demo</h2>
+          <h2 className="navbar-brand">Equal Education for Everyone</h2>
             <div className="nav-buttons">
                 <Link to="/" className="btn-nav">Home</Link>
                 <Link to="/autograder" className="btn-nav">Auto Grader</Link>
-                <Link to="/learning" className="btn-nav">Learning Model</Link>
+                <Link to="/learning" className="btn-nav btn-nav--learning">Learning Model</Link>
             </div>
 
         </nav>

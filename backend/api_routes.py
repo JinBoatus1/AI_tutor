@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 from typing import Any, List, Optional
 
 import fitz  # PyMuPDF
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
 import learning_resources as lr
+import student_bar_store as sbs
 
 try:
     from memory import open_memory, Status
@@ -135,11 +137,78 @@ class ChatMessage(BaseModel):
     message: str
     history: List[dict] = []  # [{sender:"user"/"ai", text:"..."}]
     images_b64: Optional[List[str]] = None  # 当前轮用户附带的图片（base64，无 data URL 前缀）
+    student_id: Optional[str] = None
+
+
+def _should_compute_confidence(
+    user_message: str,
+    tutor_answer: str,
+    *,
+    section_hint: Optional[str],
+    has_prior_user_messages: bool,
+) -> bool:
+    """Only show confidence for concrete problem-solving Q&A."""
+    if not user_message or not user_message.strip():
+        return False
+    if not has_prior_user_messages:
+        # 首轮通常是 intake / 选章导航，不显示 confidence
+        return False
+
+    msg = user_message.strip().lower()
+    ans = (tutor_answer or "").lower()
+
+    # 纯章节/小节选择，不是解题
+    if re.fullmatch(r"(?:chapter|ch\.?|section|sec\.?|topic)?\s*\d+(?:\.\d+)*", msg):
+        return False
+
+    # 计划/选题/导航型提问：不显示 confidence
+    meta_keywords = [
+        "topic",
+        "chapter",
+        "section",
+        "plan",
+        "roadmap",
+        "curriculum",
+        "review plan",
+        "study plan",
+        "which chapter",
+        "what to learn",
+        "学到",
+        "章节",
+        "小节",
+        "计划",
+        "复习",
+        "新内容",
+        "topic tree",
+        "tree structure",
+    ]
+    if any(k in msg for k in meta_keywords):
+        return False
+
+    # Tutor reply is organizing tasks / navigation instead of solving
+    answer_meta_signals = [
+        "study plan",
+        "task 1",
+        "task 2",
+        "pick one section",
+        "quick summary of the whole topic",
+        "which section",
+    ]
+    if any(k in ans for k in answer_meta_signals):
+        return False
+
+    # 用户明确给了 section hint 且消息很短，通常是选章节
+    if section_hint and len(msg) <= 24:
+        return False
+
+    return True
 
 
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage):
     print("[Chat] request received", flush=True)
+    has_prior_user_messages = any((m.get("sender") == "user") for m in (chat_message.history or []))
+    student_id = chat_message.student_id or "default_student"
     # 0) LLM 匹配 topic → 从 data 书本提取对应页
     page_context = ""
     matched_topic: Optional[dict[str, Any]] = None
@@ -157,10 +226,42 @@ async def chat(chat_message: ChatMessage):
         print(f"[Learning] topic match/page extract failed: {e}")
 
     system_content = (
-        "You are an AI math tutor. Explain clearly and step-by-step. "
-        "When the student asks which chapter to learn or review, or names a topic/chapter (e.g. Chapter 5, Induction, Proofs), "
-        "use the reference below to guide them through the most important formulas and definitions from that section."
+        "You are an AI math tutor for FOCS. Explain clearly and step-by-step, and always ground guidance in the textbook tree/reference below. "
+        "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "
+        "Use concise bullet points and keep each turn focused on one clear next action."
     )
+    if not has_prior_user_messages:
+        system_content += (
+            "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these required intake questions in one place:\n"
+            "1) Are they learning a NEW topic or REVIEWING for exam/quiz?\n"
+            "2) Where are they now (chapter/section already learned)?\n"
+            "3) Which chapter(s)/section(s) do they want to study now?\n"
+            "4) Time budget for this session (minutes)?\n"
+            "5) Preferred depth: quick pass or detailed proof-level?\n"
+            "Do not teach yet in this first reply; only collect the above info.\n"
+            "\nAfter intake is answered, design a task list and execute tasks one by one in chat.\n"
+            "Use exactly this style:\n"
+            "- Study Plan (Task 1..N)\n"
+            "- Current Task (only one task in progress)\n"
+            "- Checkpoint question before moving to next task\n"
+            "\nTask template for NEW topic:\n"
+            "Task 1: Big picture of the selected topic/section\n"
+            "Task 2: Core formulas/definitions/proof templates\n"
+            "Task 3: Guided worked example\n"
+            "Task 4: Student practice with hints and feedback\n"
+            "\nTask template for REVIEW:\n"
+            "Task 1: Pick representative original-style textbook problems\n"
+            "Task 2: Ask what the student cannot solve\n"
+            "Task 3: Retrieve related formulas/definitions/proof templates\n"
+            "Task 4: Targeted gap-filling drills and recap\n"
+            "\nAlways map chapters/sections to the textbook tree names exactly. If student wording is vague, propose 2-4 closest options from the tree and ask them to choose."
+        )
+    # Hidden per-student progress bar from tree structure.
+    try:
+        bar = sbs.update_bar_from_message(student_id, chat_message.message)
+        system_content += sbs.build_bar_prompt(bar)
+    except Exception as e:
+        print(f"[StudentBar] update failed: {e}")
     section_hint = lr.extract_section_from_message(chat_message.message)
     section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
     is_subsection_request = bool(section_hint and "." in section_hint and section_info)
@@ -267,34 +368,39 @@ async def chat(chat_message: ChatMessage):
         enable_memory_tool=enable_memory_tool,
     )
 
-    # 2) Evaluator confidence (0-100)
-    eval_messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a strict evaluator for a math tutor. "
-                "Score the reliability of the tutor's answer for a student. "
-                "Return ONLY one integer from 0 to 100. No other words."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                f"Student question:\n{chat_message.message}\n\nTutor answer:\n{answer}\n\n"
-                "Give confidence score 0-100:"
-            ),
-        },
-    ]
+    result: dict[str, Any] = {"reply": answer}
+    if _should_compute_confidence(
+        chat_message.message,
+        answer,
+        section_hint=section_hint,
+        has_prior_user_messages=has_prior_user_messages,
+    ):
+        # 2) Evaluator confidence (0-100)
+        eval_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a strict evaluator for a math tutor. "
+                    "Score the reliability of the tutor's answer for a student. "
+                    "Return ONLY one integer from 0 to 100. No other words."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Student question:\n{chat_message.message}\n\nTutor answer:\n{answer}\n\n"
+                    "Give confidence score 0-100:"
+                ),
+            },
+        ]
 
-    eval_resp = create_chat_completion(
-        model="gpt-5.2",
-        messages=eval_messages,
-        temperature=0.0,
-    )
-    raw_score = eval_resp.choices[0].message.content
-    confidence = clamp_int_0_100(raw_score)
-
-    result: dict[str, Any] = {"reply": answer, "confidence": confidence}
+        eval_resp = create_chat_completion(
+            model="gpt-5.2",
+            messages=eval_messages,
+            temperature=0.0,
+        )
+        raw_score = eval_resp.choices[0].message.content
+        result["confidence"] = clamp_int_0_100(raw_score)
 
     # 若用户问的是某一章或小节（chapter 5 / 5.1 / 5.1.1），左侧显示该章/节全部页并可翻页，不跑 snippet 检索
     if section_hint:

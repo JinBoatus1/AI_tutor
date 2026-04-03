@@ -80,3 +80,7 @@
 {"id": "3150b225a74b47bfbf89ecfa78373f9f", "t": 1774644387, "address": "7_Recursion", "stream": "summary", "offset": 0, "len": 331}
 {"id": "21103f7156b54d18aa82785ce77964e6", "t": 1774644715, "address": "8_Proofs_with_Recursive_Objects", "stream": "events", "offset": 0, "len": 561}
 {"id": "612de010d87746e9a12151dc4ef1535d", "t": 1774644715, "address": "8_Proofs_with_Recursive_Objects", "stream": "summary", "offset": 0, "len": 330}
+{"id": "fd840aafc1604592b58cc667ba4132a1", "t": 1774831547, "address": "8_Proofs_with_Recursive_Objects", "stream": "events", "offset": 561, "len": 548}
+{"id": "2a576408d1464f81ae6271ad38b7a6ff", "t": 1774831547, "address": "8_Proofs_with_Recursive_Objects", "stream": "summary", "offset": 330, "len": 330}
+{"id": "cae091161ffe4b1494df0049a0afae06", "t": 1774993065, "address": "6_Strong_Induction/6_1_Strengthening_the_Induction_Hypothesis", "stream": "events", "offset": 0, "len": 3731}
+{"id": "f4cab98ca4b041d39300590acea2be86", "t": 1774993065, "address": "6_Strong_Induction/6_1_Strengthening_the_Induction_Hypothesis", "stream": "summary", "offset": 0, "len": 431}

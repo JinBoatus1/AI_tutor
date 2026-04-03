@@ -8,9 +8,24 @@ const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "Hi! Which chapter do you want to learn or review? Type a chapter name or topic (e.g. \"Chapter 5\", \"Induction\", \"Proofs\"), and I’ll look up the textbook pages and walk you through the most important formulas and definitions.";
+  "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 5 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n4) How much time do you have for this session (minutes)?\n5) Do you want a quick pass or proof-level detailed learning?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+
+const STUDENT_ID_KEY = "aiTutorStudentId";
+
+function getOrCreateStudentId(): string {
+  try {
+    const existed = localStorage.getItem(STUDENT_ID_KEY);
+    if (existed && existed.trim()) return existed;
+    const created = `student_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(STUDENT_ID_KEY, created);
+    return created;
+  } catch {
+    return `student_fallback_${Date.now()}`;
+  }
+}
 
 export default function LearningModel() {
+  const [studentId] = useState<string>(() => getOrCreateStudentId());
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
   const { curriculumTree } = useCurriculum();
@@ -206,6 +221,7 @@ export default function LearningModel() {
           message: userText || "(图片)",
           history: messages,
           images_b64: imagesB64,
+          student_id: studentId,
         }),
         signal: controller.signal,
       });
