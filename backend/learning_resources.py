@@ -9,7 +9,11 @@ from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
 from PIL import Image
-import pytesseract
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
 
 from deps import create_chat_completion, clamp_int_0_100
 
@@ -542,8 +546,8 @@ def extract_pdf_text_safe(file_bytes: bytes, max_chars: int = 500000) -> str:
         except Exception:
             page_text = ""
 
-        # fallback OCR
-        if len(page_text.strip()) < 20:
+        # fallback OCR (only if pytesseract is installed)
+        if len(page_text.strip()) < 20 and pytesseract is not None:
             pix = page.get_pixmap(dpi=120)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             page_text = pytesseract.image_to_string(img)
