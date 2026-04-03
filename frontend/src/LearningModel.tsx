@@ -234,6 +234,7 @@ export default function LearningModel() {
         addAIMessage(`Backend error: ${detail}`);
         return;
       }
+      if (!data) { addAIMessage("Empty response from backend."); return; }
 
       const reply = data.reply || "[Empty reply]";
       const conf = typeof data.confidence === "number" ? data.confidence : null;
