@@ -7,7 +7,7 @@ import re
 from typing import Any, List, Optional
 
 import fitz  # PyMuPDF
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
@@ -137,7 +137,19 @@ class ChatMessage(BaseModel):
     message: str
     history: List[dict] = []  # [{sender:"user"/"ai", text:"..."}]
     images_b64: Optional[List[str]] = None  # 当前轮用户附带的图片（base64，无 data URL 前缀）
+    pdf_b64: Optional[str] = None  # 单份 PDF（可带 data:application/pdf;base64, 前缀）；服务端渲染前若干页为图
     student_id: Optional[str] = None
+
+
+MAX_USER_PDF_BYTES = 14 * 1024 * 1024  # 约 14MB
+MAX_USER_PDF_PAGES_RENDER = 8
+
+
+def _strip_base64_payload(s: str) -> str:
+    t = (s or "").strip()
+    if "base64," in t:
+        return t.split("base64,", 1)[1]
+    return t
 
 
 def _should_compute_confidence(
@@ -209,6 +221,30 @@ async def chat(chat_message: ChatMessage):
     print("[Chat] request received", flush=True)
     has_prior_user_messages = any((m.get("sender") == "user") for m in (chat_message.history or []))
     student_id = chat_message.student_id or "default_student"
+
+    combined_images: List[str] = list(chat_message.images_b64 or [])
+    if chat_message.pdf_b64:
+        try:
+            raw = _strip_base64_payload(chat_message.pdf_b64)
+            pdf_bytes = base64.b64decode(raw, validate=False)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid PDF (base64).")
+        if len(pdf_bytes) > MAX_USER_PDF_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"PDF too large (max {MAX_USER_PDF_BYTES // (1024 * 1024)} MB).",
+            )
+        try:
+            pdf_pages = lr.render_user_pdf_first_pages_to_base64(
+                pdf_bytes, max_pages=MAX_USER_PDF_PAGES_RENDER
+            )
+        except Exception as e:
+            print(f"[Chat] user PDF render failed: {e}", flush=True)
+            raise HTTPException(status_code=400, detail="Could not open or render PDF.")
+        if not pdf_pages:
+            raise HTTPException(status_code=400, detail="PDF has no pages to render.")
+        combined_images.extend(pdf_pages)
+
     # 0) LLM 匹配 topic → 从 data 书本提取对应页
     page_context = ""
     matched_topic: Optional[dict[str, Any]] = None
@@ -232,12 +268,10 @@ async def chat(chat_message: ChatMessage):
     )
     if not has_prior_user_messages:
         system_content += (
-            "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these required intake questions in one place:\n"
+            "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these three required intake questions in one place:\n"
             "1) Are they learning a NEW topic or REVIEWING for exam/quiz?\n"
             "2) Where are they now (chapter/section already learned)?\n"
             "3) Which chapter(s)/section(s) do they want to study now?\n"
-            "4) Time budget for this session (minutes)?\n"
-            "5) Preferred depth: quick pass or detailed proof-level?\n"
             "Do not teach yet in this first reply; only collect the above info.\n"
             "\nAfter intake is answered, design a task list and execute tasks one by one in chat.\n"
             "Use exactly this style:\n"
@@ -346,17 +380,23 @@ async def chat(chat_message: ChatMessage):
         except Exception as e:
             print(f"[Memory] read for prompt failed ({memory_addr}): {e}")
 
+    if chat_message.pdf_b64:
+        system_content += (
+            "\n\nThe student attached a PDF file. Their message may include up to "
+            f"{MAX_USER_PDF_PAGES_RENDER} rendered page images from that PDF in order, after any separate photos."
+        )
+
     # 1) Tutor answer（当前轮可带图片，走 vision）
     messages: List[dict[str, Any]] = [{"role": "system", "content": system_content}]
     for msg in chat_message.history:
         role = "assistant" if msg["sender"] == "ai" else "user"
         messages.append({"role": role, "content": msg["text"]})
     # 最后一条 user：无图则纯文本，有图则 content 为多 part（text + image_url）
-    if not (chat_message.images_b64 and len(chat_message.images_b64) > 0):
+    if not combined_images:
         messages.append({"role": "user", "content": chat_message.message})
     else:
-        parts: List[dict[str, Any]] = [{"type": "text", "text": chat_message.message or "(用户发送了图片)"}]
-        for b64 in chat_message.images_b64:
+        parts: List[dict[str, Any]] = [{"type": "text", "text": chat_message.message or "(attachments)"}]
+        for b64 in combined_images:
             url = f"data:image/png;base64,{b64}" if not b64.startswith("data:") else b64
             parts.append({"type": "image_url", "image_url": {"url": url}})
         messages.append({"role": "user", "content": parts})
@@ -437,19 +477,13 @@ async def chat(chat_message: ChatMessage):
             "start": start_pdf,
             "end": end_pdf,
         }
-        # 教材裁剪：只输出公式/定义类片段（0～3 个），不足 3 不补齐；无公式/定义时不展示参考图
+        # 与显式 chapter/section 一致：展示该 topic 在目录中的整段书页（可翻页），避免仅在首页做
+        # snippet 裁剪导致「问 Induction 却像随机切块」的观感。
         _pdf = lr.load_focs_pdf()
         if _pdf:
-            snippets_b64 = lr.get_three_relevant_snippet_images(
-                _pdf, start_pdf, chat_message.message
-            )
-            if snippets_b64 is not None and len(snippets_b64) > 0:
-                result["reference_page_snippets_b64"] = snippets_b64
-            elif snippets_b64 is None:
-                # 仅异常时退回整页图
-                page_b64 = lr.render_pdf_page_to_base64(_pdf, start_pdf)
-                if page_b64:
-                    result["reference_page_image_b64"] = page_b64
+            pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
+            if pages_b64:
+                result["reference_section_pages_b64"] = pages_b64
 
         # 按 FOCS topic 写入 memory：事件（完整 Q&A，带时间）+ summary 流
         if _MEMORY_AVAILABLE and matched_topic:
@@ -468,6 +502,38 @@ async def chat(chat_message: ChatMessage):
                 print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
     print("[Chat] response sent", flush=True)
     return result
+
+
+@router.get("/api/focs_tree")
+async def focs_tree():
+    """FOCS 教材目录树（与 learning_resources.FOCS.json 一致）。"""
+    if not os.path.exists(lr.FOCS_JSON_PATH):
+        return {}
+    with open(lr.FOCS_JSON_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+class StudentBarUpdate(BaseModel):
+    student_id: Optional[str] = None
+    learned_sections: List[str]
+
+
+@router.get("/api/student_bar")
+async def get_student_bar(student_id: Optional[str] = Query(None)):
+    sid = student_id or "default_student"
+    return sbs.load_bar(sid)
+
+
+@router.put("/api/student_bar")
+async def put_student_bar(body: StudentBarUpdate):
+    sid = body.student_id or "default_student"
+    bar = sbs.load_bar(sid)
+    bar["learned_sections"] = sorted(
+        set(body.learned_sections),
+        key=lambda x: tuple(int(p) for p in str(x).split(".")),
+    )
+    sbs.save_bar(sid, bar)
+    return bar
 
 
 @router.post("/api/grade")

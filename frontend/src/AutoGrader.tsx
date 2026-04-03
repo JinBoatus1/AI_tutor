@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function AutoGrader() {
   const [prompt, setPrompt] = useState("");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [result, setResult] = useState("");
 
@@ -52,13 +53,29 @@ export default function AutoGrader() {
           onChange={(e) => setText(e.target.value)}
         />
 
-        <input
-          className="file-upload"
-          type="file"
-          accept="image/*"
-          multiple      // ← 关键
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
-        />
+        <div className="autograder-file-row">
+          <input
+            ref={fileInputRef}
+            className="autograder-file-input-hidden"
+            type="file"
+            accept="image/*"
+            multiple
+            aria-label="Attach answer images"
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+          <button
+            type="button"
+            className="autograder-file-choose-btn"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Choose images
+          </button>
+          <span className="autograder-file-status">
+            {files.length === 0
+              ? "No files selected"
+              : `${files.length} file(s): ${files.map((f) => f.name).join(", ")}`}
+          </span>
+        </div>
 
         <div className="preview-container">
           {files.map((f, idx) => (

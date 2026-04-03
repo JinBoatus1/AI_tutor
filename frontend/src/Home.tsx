@@ -87,8 +87,8 @@ export default function Home() {
           <Link to="/autograder" className="home-btn home-btn--ghost">
             Auto Grader
           </Link>
-          <Link to="/upload" className="home-btn home-btn--ghost">
-            Upload Textbook
+          <Link to="/learning-bar" className="home-btn home-btn--ghost">
+            My Learning bar
           </Link>
         </div>
       </section>
