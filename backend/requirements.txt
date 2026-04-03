@@ -20,3 +20,4 @@ typing-inspection==0.4.1
 typing_extensions==4.15.0
 uvicorn==0.37.0
 PyMuPDF>=1.26.0
+Pillow>=10.0.0
