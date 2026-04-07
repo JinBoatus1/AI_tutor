@@ -2,27 +2,17 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
 import { useCurriculum } from "./context/CurriculumContext";
 import MarkdownMessage from "./MarkdownMessage";
+import { getOrCreateStudentId } from "./utils/studentId";
 
 /** 左侧书页区宽度占 layout 的百分比（与 state rightPanelWidth 一致） */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 5 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n4) How much time do you have for this session (minutes)?\n5) Do you want a quick pass or proof-level detailed learning?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 3 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
-const STUDENT_ID_KEY = "aiTutorStudentId";
-
-function getOrCreateStudentId(): string {
-  try {
-    const existed = localStorage.getItem(STUDENT_ID_KEY);
-    if (existed && existed.trim()) return existed;
-    const created = `student_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(STUDENT_ID_KEY, created);
-    return created;
-  } catch {
-    return `student_fallback_${Date.now()}`;
-  }
-}
+/** 与后端 MAX_USER_PDF_BYTES 一致（约 14MB） */
+const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
 
 export default function LearningModel() {
   const [studentId] = useState<string>(() => getOrCreateStudentId());
@@ -42,6 +32,7 @@ export default function LearningModel() {
   const [sectionPageIndex, setSectionPageIndex] = useState(0);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [pdfAttachment, setPdfAttachment] = useState<{ name: string; dataUrl: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,16 +178,27 @@ export default function LearningModel() {
   const handleSend = async () => {
     const userText = input.trim();
     const hasImages = attachedImages.length > 0;
-    if (!userText && !hasImages) return;
+    const pdfSnapshot = pdfAttachment;
+    const hasPdf = Boolean(pdfSnapshot);
+    if (!userText && !hasImages && !hasPdf) return;
     if (isAwaitingReply) return;
 
-    addUserMessage(userText || "(图片)", hasImages ? [...attachedImages] : undefined);
+    const displayMessage =
+      userText ||
+      (hasPdf ? `(PDF: ${pdfSnapshot!.name})` : "") ||
+      (hasImages ? "(image)" : "") ||
+      "(attachments)";
+
+    addUserMessage(displayMessage, hasImages ? [...attachedImages] : undefined);
     setInput("");
     setAttachedImages([]);
+    setPdfAttachment(null);
     setIsAwaitingReply(true);
 
     const imagesB64 = hasImages
-      ? attachedImages.map((dataUrl) => dataUrl.replace(/^data:image\/\w+;base64,/, ""))
+      ? attachedImages.map((dataUrl) =>
+          dataUrl.replace(/^data:image\/[^;]+;base64,/, "")
+        )
       : undefined;
 
     let data:
@@ -218,9 +220,10 @@ export default function LearningModel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userText || "(图片)",
+          message: displayMessage,
           history: messages,
           images_b64: imagesB64,
+          pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
           student_id: studentId,
         }),
         signal: controller.signal,
@@ -279,7 +282,7 @@ export default function LearningModel() {
       }
 
       if (curriculumTree && data?.matched_topic) {
-        matchCurriculum(userText);
+        matchCurriculum(userText || displayMessage);
       }
     } catch (err) {
       if (timeoutId) clearTimeout(timeoutId);
@@ -344,6 +347,7 @@ export default function LearningModel() {
     setReferenceSectionPages(null);
     setSectionPageIndex(0);
     setEnlargedImageSrc(null);
+    setPdfAttachment(null);
     setIsAwaitingReply(false);
   };
 
@@ -356,24 +360,46 @@ export default function LearningModel() {
         className="right-panel"
         style={{ flex: `0 0 ${rightPanelWidth}%` }}
       >
-        <div className="left-panel-header">
-          <span className="left-panel-header-title">Textbook</span>
-          <button
-            type="button"
-            className="left-panel-hide-btn"
-            onClick={() => setLeftPanelOpen(false)}
-            title="Hide textbook sidebar"
-          >
-            Hide
-          </button>
-        </div>
-
         {dataMatchedTopic ? (
-          <div className="match-box">
-            <h4>📖 Textbook: {dataMatchedTopic.name}</h4>
-            <p>Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}</p>
+          <div className="left-panel-topic-bar">
+            <div
+              className="left-panel-topic-bar-text"
+              role="group"
+              aria-label="Current textbook section"
+            >
+              <span className="left-panel-topic-bar-title">
+                📖 Textbook: {dataMatchedTopic.name}
+              </span>
+              <span className="left-panel-topic-bar-sep" aria-hidden="true">
+                ·
+              </span>
+              <span className="left-panel-topic-bar-pages">
+                Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="left-panel-hide-btn left-panel-hide-btn--in-bar"
+              onClick={() => setLeftPanelOpen(false)}
+              title="Hide textbook sidebar"
+            >
+              Hide
+            </button>
           </div>
-        ) : matchedSection ? (
+        ) : (
+          <div className="left-panel-hide-row">
+            <button
+              type="button"
+              className="left-panel-hide-btn"
+              onClick={() => setLeftPanelOpen(false)}
+              title="Hide textbook sidebar"
+            >
+              Hide
+            </button>
+          </div>
+        )}
+
+        {matchedSection ? (
           <div className="match-box">
             <h4>🔍 Topic: {matchedSection.topic}</h4>
             <h5>📘 Chapter: {matchedSection.chapter}</h5>
@@ -386,10 +412,7 @@ export default function LearningModel() {
         ) : null}
 
         {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
-          <>
-            <hr />
-            <h3>📖 Original page in Textbook</h3>
-            <div className="reference-page-box reference-page-sidebar">
+          <div className="reference-page-box reference-page-sidebar">
               {referenceSectionPages?.length ? (
                 <>
                   <div className="section-pages-nav">
@@ -453,8 +476,7 @@ export default function LearningModel() {
                   onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
                 />
               ) : null}
-            </div>
-          </>
+          </div>
         )}
       </div>
       )}
@@ -568,8 +590,24 @@ export default function LearningModel() {
         </div>
 
         {/* 已选图片预览 */}
-        {attachedImages.length > 0 && (
+        {(attachedImages.length > 0 || pdfAttachment) && (
           <div className="attached-images-row">
+            {pdfAttachment && (
+              <span className="attached-img-wrap attached-pdf-wrap">
+                <span className="attached-pdf-chip" title={pdfAttachment.name}>
+                  PDF
+                </span>
+                <span className="attached-pdf-name">{pdfAttachment.name}</span>
+                <button
+                  type="button"
+                  className="attached-img-remove"
+                  onClick={() => setPdfAttachment(null)}
+                  aria-label="Remove PDF"
+                >
+                  ×
+                </button>
+              </span>
+            )}
             {attachedImages.map((src, i) => (
               <span key={i} className="attached-img-wrap">
                 <img src={src} alt="" className="attached-img-thumb" />
@@ -590,7 +628,7 @@ export default function LearningModel() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.pdf,application/pdf"
           multiple
           className="hidden-file-input"
           aria-hidden
@@ -598,6 +636,23 @@ export default function LearningModel() {
             const files = e.target.files;
             if (!files?.length) return;
             Array.from(files).forEach((file) => {
+              const isPdf =
+                file.type === "application/pdf" ||
+                file.name.toLowerCase().endsWith(".pdf");
+              if (isPdf) {
+                if (file.size > MAX_PDF_UPLOAD_BYTES) {
+                  alert(`PDF too large (max ${MAX_PDF_UPLOAD_BYTES / (1024 * 1024)} MB).`);
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = reader.result as string;
+                  if (dataUrl) setPdfAttachment({ name: file.name, dataUrl });
+                };
+                reader.readAsDataURL(file);
+                return;
+              }
+              if (!file.type.startsWith("image/")) return;
               const reader = new FileReader();
               reader.onload = () => {
                 const dataUrl = reader.result as string;
@@ -614,8 +669,8 @@ export default function LearningModel() {
               type="button"
               className="input-icon-btn"
               onClick={() => fileInputRef.current?.click()}
-              title="从相册选择图片"
-              aria-label="从相册选择图片"
+              title="Choose image or PDF"
+              aria-label="Choose image or PDF"
             >
               <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />

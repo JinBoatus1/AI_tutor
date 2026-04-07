@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Home from "./Home";
 import AutoGrader from "./AutoGrader";
 import LearningModel from "./LearningModel";
-import UploadTextbook from "./UploadTextbook";
+import MyLearningBar from "./MyLearningBar";
 
 import "./App.css";
 
@@ -16,6 +16,7 @@ function App() {
                 <Link to="/" className="btn-nav">Home</Link>
                 <Link to="/autograder" className="btn-nav">Auto Grader</Link>
                 <Link to="/learning" className="btn-nav btn-nav--learning">Learning Model</Link>
+                <Link to="/learning-bar" className="btn-nav">My Learning bar</Link>
             </div>
 
         </nav>
@@ -25,7 +26,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/autograder" element={<AutoGrader />} />
             <Route path="/learning" element={<LearningModel />} />
-            <Route path="/upload" element={<UploadTextbook />} />
+            <Route path="/learning-bar" element={<MyLearningBar />} />
           </Routes>
 
         </div>

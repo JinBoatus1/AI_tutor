@@ -53,20 +53,85 @@
   color: #115e59;
 }
 
-.left-panel-header {
-  display: flex;
-  justify-content: space-between;
+.attached-pdf-wrap {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: -4px 0 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  gap: 6px;
+  max-width: 100%;
 }
 
-.left-panel-header-title {
+.attached-pdf-chip {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.attached-pdf-name {
+  font-size: 0.75rem;
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12rem;
+}
+
+/* 当前教材小节 + 页码；右侧 Hide */
+.left-panel-topic-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  background: #e9f6ff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 0 0 10px;
+  border: 1px solid #bae6fd;
+}
+
+.left-panel-topic-bar-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.4rem;
+  line-height: 1.35;
+}
+
+.left-panel-topic-bar-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.left-panel-topic-bar-sep {
+  color: #7dd3fc;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: #555;
+  font-weight: 400;
+  user-select: none;
+}
+
+.left-panel-topic-bar-pages {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #0369a1;
+  white-space: nowrap;
+}
+
+/* 无小节条时仅保留 Hide，不占一整行标题 */
+.left-panel-hide-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
 }
 
 .left-panel-hide-btn {
@@ -77,6 +142,12 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+.left-panel-hide-btn--in-bar {
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 .left-panel-hide-btn:hover {

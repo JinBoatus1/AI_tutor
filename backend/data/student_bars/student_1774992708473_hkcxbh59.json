@@ -1,8 +1,11 @@
 {
   "student_id": "student_1774992708473_hkcxbh59",
   "current_section": null,
-  "learned_sections": [],
+  "learned_sections": [
+    "5"
+  ],
   "planned_sections": [
+    "5",
     "6",
     "6.1",
     "6.2",
@@ -25,5 +28,5 @@
     "8.6"
   ],
   "confusion_counts": {},
-  "updated_at": "2026-03-31T21:37:26.283875+00:00"
+  "updated_at": "2026-04-03T21:38:30.770046+00:00"
 }

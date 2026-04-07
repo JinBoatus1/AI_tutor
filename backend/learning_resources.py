@@ -357,6 +357,24 @@ def render_pdf_page_range_to_base64(
     return out
 
 
+def render_user_pdf_first_pages_to_base64(
+    pdf_bytes: bytes, *, max_pages: int = 8, dpi: int = 120
+) -> List[str]:
+    """用户上传的 PDF：将前 max_pages 页渲染为 PNG base64，供多模态对话使用。"""
+    out: List[str] = []
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        n = min(len(doc), max(1, int(max_pages)))
+        for i in range(n):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=dpi)
+            img_bytes = pix.tobytes("png")
+            out.append(base64.b64encode(img_bytes).decode("utf-8"))
+    finally:
+        doc.close()
+    return out
+
+
 def _fallback_indices_formula_only(
     blocks: List[Dict[str, Any]], max_n: int = 3
 ) -> List[int]:
