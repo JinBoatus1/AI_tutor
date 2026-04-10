@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
+import { API_BASE } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
@@ -216,7 +217,7 @@ export default function LearningModel() {
     let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
     try {
-      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
+      const resp = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

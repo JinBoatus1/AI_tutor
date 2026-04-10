@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./MyLearningBar.css";
+import { API_BASE } from "./apiBase";
 import { getOrCreateStudentId } from "./utils/studentId";
-
-const API = "http://127.0.0.1:8000";
 
 type FocsNode = Record<string, unknown>;
 
@@ -136,8 +135,8 @@ export default function MyLearningBar() {
     setError(null);
     try {
       const [tRes, bRes] = await Promise.all([
-        fetch(`${API}/api/focs_tree`),
-        fetch(`${API}/api/student_bar?student_id=${encodeURIComponent(studentId)}`),
+        fetch(`${API_BASE}/api/focs_tree`),
+        fetch(`${API_BASE}/api/student_bar?student_id=${encodeURIComponent(studentId)}`),
       ]);
       if (!tRes.ok) throw new Error("Failed to load FOCS tree.");
       if (!bRes.ok) throw new Error("Failed to load learning bar.");
@@ -162,7 +161,7 @@ export default function MyLearningBar() {
       setSaving(true);
       setError(null);
       try {
-        const resp = await fetch(`${API}/api/student_bar`, {
+        const resp = await fetch(`${API_BASE}/api/student_bar`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

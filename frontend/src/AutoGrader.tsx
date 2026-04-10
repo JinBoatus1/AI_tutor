@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { API_BASE } from "./apiBase";
 
 export default function AutoGrader() {
   const [prompt, setPrompt] = useState("");
@@ -18,7 +19,7 @@ export default function AutoGrader() {
       formData.append("files", f);   // ← 注意这里用 "files"
     });
 
-    const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/grade`, {
+    const resp = await fetch(`${API_BASE}/api/grade`, {
       method: "POST",
       body: formData,
     });
