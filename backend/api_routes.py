@@ -7,12 +7,17 @@ import re
 from typing import Any, List, Optional
 
 import fitz  # PyMuPDF
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
 import learning_resources as lr
 import student_bar_store as sbs
+from bson import ObjectId
+from datetime import datetime, timezone
+
+from auth import verify_token
+import database
 
 try:
     from memory import open_memory, Status
@@ -139,6 +144,7 @@ class ChatMessage(BaseModel):
     images_b64: Optional[List[str]] = None  # 当前轮用户附带的图片（base64，无 data URL 前缀）
     pdf_b64: Optional[str] = None  # 单份 PDF（可带 data:application/pdf;base64, 前缀）；服务端渲染前若干页为图
     student_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 MAX_USER_PDF_BYTES = 14 * 1024 * 1024  # 约 14MB
@@ -217,10 +223,11 @@ def _should_compute_confidence(
 
 
 @router.post("/api/chat")
-async def chat(chat_message: ChatMessage):
+async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(None)):
     print("[Chat] request received", flush=True)
     has_prior_user_messages = any((m.get("sender") == "user") for m in (chat_message.history or []))
     student_id = chat_message.student_id or "default_student"
+    user_email = verify_token(authorization)
 
     combined_images: List[str] = list(chat_message.images_b64 or [])
     if chat_message.pdf_b64:
@@ -500,6 +507,42 @@ async def chat(chat_message: ChatMessage):
                     mem.write(f"{addr}/__summary__", summary_line)
             except Exception as e:
                 print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
+    # Save to MongoDB if user is authenticated
+    if user_email:
+        col = database.chat_sessions()
+        if col is not None:
+            now = datetime.now(timezone.utc).isoformat()
+            new_msg_pair = [
+                {"sender": "user", "text": chat_message.message, "ts": now},
+                {"sender": "ai", "text": answer, "ts": now},
+            ]
+            if chat_message.session_id:
+                # Append to existing session
+                try:
+                    col.update_one(
+                        {"_id": ObjectId(chat_message.session_id), "user_email": user_email},
+                        {
+                            "$push": {"messages": {"$each": new_msg_pair}},
+                            "$set": {"updated_at": now},
+                        },
+                    )
+                except Exception as e:
+                    print(f"[DB] session update failed: {e}", flush=True)
+            else:
+                # Create new session
+                try:
+                    title = chat_message.message[:80]
+                    doc = col.insert_one({
+                        "user_email": user_email,
+                        "title": title,
+                        "created_at": now,
+                        "updated_at": now,
+                        "messages": new_msg_pair,
+                    })
+                    result["session_id"] = str(doc.inserted_id)
+                except Exception as e:
+                    print(f"[DB] session create failed: {e}", flush=True)
+
     print("[Chat] response sent", flush=True)
     return result
 
@@ -534,6 +577,67 @@ async def put_student_bar(body: StudentBarUpdate):
     )
     sbs.save_bar(sid, bar)
     return bar
+
+
+# ============================================================
+# Chat session endpoints (requires auth)
+# ============================================================
+
+@router.get("/api/sessions")
+async def list_sessions(authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    col = database.chat_sessions()
+    if col is None:
+        return []
+    cursor = col.find(
+        {"user_email": email},
+        {"messages": 0},  # exclude messages for list view
+    ).sort("updated_at", -1)
+    sessions = []
+    for doc in cursor:
+        sessions.append({
+            "id": str(doc["_id"]),
+            "title": doc.get("title", "Untitled"),
+            "created_at": doc.get("created_at"),
+            "updated_at": doc.get("updated_at"),
+        })
+    return sessions
+
+
+@router.get("/api/sessions/{session_id}")
+async def get_session(session_id: str, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    col = database.chat_sessions()
+    if col is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    doc = col.find_one({"_id": ObjectId(session_id), "user_email": email})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {
+        "id": str(doc["_id"]),
+        "title": doc.get("title", "Untitled"),
+        "created_at": doc.get("created_at"),
+        "updated_at": doc.get("updated_at"),
+        "messages": doc.get("messages", []),
+    }
+
+
+@router.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    col = database.chat_sessions()
+    if col is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    result = col.delete_one({"_id": ObjectId(session_id), "user_email": email})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"ok": True}
 
 
 @router.post("/api/grade")
