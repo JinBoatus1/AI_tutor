@@ -145,7 +145,8 @@ export default function MyLearningBar() {
       setTree(tJson);
       setLearned(Array.isArray(bJson.learned_sections) ? bJson.learned_sections : []);
     } catch (e) {
-      setError((e as Error).message || "Network error.");
+      const msg = (e as Error).message || "Network error.";
+      setError(`${msg} · 当前 API 根地址：${API_BASE}`);
       setTree(null);
     } finally {
       setLoading(false);
@@ -176,7 +177,8 @@ export default function MyLearningBar() {
         const data = (await resp.json()) as { learned_sections?: string[] };
         setLearned(Array.isArray(data.learned_sections) ? data.learned_sections : next);
       } catch (e) {
-        setError((e as Error).message || "Save failed.");
+        const msg = (e as Error).message || "Save failed.";
+        setError(`${msg} · 当前 API 根地址：${API_BASE}`);
       } finally {
         setSaving(false);
       }
