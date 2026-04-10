@@ -23,7 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
+# Environment variables（.env.production 可提交：仅含 VITE_API_URL 等非密钥；密钥放 .env.local）
 .env
 .env.local
-.env.production
