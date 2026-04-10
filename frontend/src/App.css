@@ -881,3 +881,73 @@ input[type="text"]:disabled {
       font-size: 13px;
       color: #444;
     }
+
+/* Auth banner */
+.auth-banner {
+  background: #0d9488;
+  color: #fff;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.auth-banner-btn {
+  background: #fff;
+  color: #0d9488;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.auth-banner-btn:hover {
+  background: #f0fdfa;
+}
+
+/* Nav auth section */
+.nav-auth {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.nav-user-name {
+  color: #334155;
+  font-size: 0.85rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-nav--login {
+  background: #0d9488;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  border: 1px solid #0d9488;
+}
+.btn-nav--login:hover {
+  background: #14b8a6;
+  border-color: #14b8a6;
+}
+.btn-nav--logout {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.btn-nav--logout:hover {
+  opacity: 1;
+}
