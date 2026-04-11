@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./MyLearningBar.css";
 import { getOrCreateStudentId } from "./utils/studentId";
+import { useAuth } from "./context/AuthContext";
 
-const API = "http://127.0.0.1:8000";
+const API = import.meta.env.VITE_API_URL;
 
 type FocsNode = Record<string, unknown>;
 
@@ -122,6 +123,7 @@ function FocsTreeBranch({
 
 export default function MyLearningBar() {
   const [studentId] = useState(() => getOrCreateStudentId());
+  const { user, token } = useAuth();
   const [tree, setTree] = useState<FocsNode | null>(null);
   const [learned, setLearned] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,9 +137,16 @@ export default function MyLearningBar() {
     setLoading(true);
     setError(null);
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const [tRes, bRes] = await Promise.all([
         fetch(`${API}/api/focs_tree`),
-        fetch(`${API}/api/student_bar?student_id=${encodeURIComponent(studentId)}`),
+        fetch(
+          `${API}/api/student_bar?student_id=${encodeURIComponent(studentId)}`,
+          { headers }
+        ),
       ]);
       if (!tRes.ok) throw new Error("Failed to load FOCS tree.");
       if (!bRes.ok) throw new Error("Failed to load learning bar.");
@@ -151,7 +160,7 @@ export default function MyLearningBar() {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, token]);
 
   useEffect(() => {
     load();
@@ -162,9 +171,15 @@ export default function MyLearningBar() {
       setSaving(true);
       setError(null);
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         const resp = await fetch(`${API}/api/student_bar`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             student_id: studentId,
             learned_sections: next,
@@ -182,7 +197,7 @@ export default function MyLearningBar() {
         setSaving(false);
       }
     },
-    [studentId]
+    [studentId, token]
   );
 
   const onToggleToken = useCallback(
@@ -218,6 +233,16 @@ export default function MyLearningBar() {
     if (!tree) return [];
     return childEntries(tree);
   }, [tree]);
+
+  if (!user) {
+    return (
+      <div className="my-learning-bar-page">
+        <p className="my-learning-bar-status">
+          Please sign in to view your learning progress.
+        </p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
