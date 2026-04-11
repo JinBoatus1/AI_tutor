@@ -299,7 +299,12 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         )
     # Hidden per-student progress bar from tree structure.
     try:
-        bar = sbs.update_bar_from_message(student_id, chat_message.message)
+        if user_email:
+            bar = sbs.load_bar_mongo(user_email)
+            bar = sbs.update_bar_from_message_on_bar(bar, chat_message.message)
+            sbs.save_bar_mongo(user_email, bar)
+        else:
+            bar = sbs.update_bar_from_message(student_id, chat_message.message)
         system_content += sbs.build_bar_prompt(bar)
     except Exception as e:
         print(f"[StudentBar] update failed: {e}")
@@ -562,13 +567,28 @@ class StudentBarUpdate(BaseModel):
 
 
 @router.get("/api/student_bar")
-async def get_student_bar(student_id: Optional[str] = Query(None)):
+async def get_student_bar(
+    student_id: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+):
+    email = verify_token(authorization)
+    if email:
+        return sbs.load_bar_mongo(email)
     sid = student_id or "default_student"
     return sbs.load_bar(sid)
 
 
 @router.put("/api/student_bar")
-async def put_student_bar(body: StudentBarUpdate):
+async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if email:
+        bar = sbs.load_bar_mongo(email)
+        bar["learned_sections"] = sorted(
+            set(body.learned_sections),
+            key=lambda x: tuple(int(p) for p in str(x).split(".")),
+        )
+        sbs.save_bar_mongo(email, bar)
+        return bar
     sid = body.student_id or "default_student"
     bar = sbs.load_bar(sid)
     bar["learned_sections"] = sorted(
