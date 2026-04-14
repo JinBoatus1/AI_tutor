@@ -7,6 +7,10 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
+if (!firebaseConfig.apiKey) {
+  console.warn("[Firebase] VITE_FIREBASE_API_KEY not set — auth will not work");
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

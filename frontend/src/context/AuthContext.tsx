@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 
 interface AuthUser {
@@ -25,23 +26,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-      if (firebaseUser) {
-        const idToken = await firebaseUser.getIdToken();
-        setUser({
-          email: firebaseUser.email || "",
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          uid: firebaseUser.uid,
-        });
-        setToken(idToken);
-      } else {
-        setUser(null);
-        setToken(null);
+    let unsub: (() => void) | undefined;
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        console.warn("[Auth] onAuthStateChanged did not fire within 3 s — forcing loading=false");
+        settled = true;
+        setLoading(false);
       }
+    }, 3000);
+
+    try {
+      unsub = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+        settled = true;
+        clearTimeout(timeout);
+        if (firebaseUser) {
+          const idToken = await firebaseUser.getIdToken();
+          setUser({
+            email: firebaseUser.email || "",
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            uid: firebaseUser.uid,
+          });
+          setToken(idToken);
+        } else {
+          setUser(null);
+          setToken(null);
+        }
+        setLoading(false);
+      });
+    } catch (e) {
+      console.error("[Auth] Firebase auth init failed:", e);
+      clearTimeout(timeout);
       setLoading(false);
-    });
-    return unsub;
+    }
+    return () => {
+      clearTimeout(timeout);
+      unsub?.();
+    };
   }, []);
 
   const login = async () => {
