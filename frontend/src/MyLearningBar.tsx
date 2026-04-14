@@ -42,6 +42,31 @@ function childEntries(node: FocsNode): [string, FocsNode][] {
   ) as [string, FocsNode][];
 }
 
+/** All section tokens under this node (children only; does not include the parent row's own token). */
+function collectDescendantSectionTokens(n: FocsNode): string[] {
+  const out: string[] = [];
+  for (const [childTitle, childNode] of childEntries(n)) {
+    const t = firstSectionToken(childTitle);
+    if (t) out.push(t);
+    out.push(...collectDescendantSectionTokens(childNode));
+  }
+  return out;
+}
+
+function sortSectionTokens(tokens: string[]): string[] {
+  return [...tokens].sort((a, b) => {
+    const pa = a.split(".").map((x) => parseInt(x, 10));
+    const pb = b.split(".").map((x) => parseInt(x, 10));
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const da = pa[i] ?? 0;
+      const db = pb[i] ?? 0;
+      if (da !== db) return da - db;
+    }
+    return 0;
+  });
+}
+
 function FocsTreeBranch({
   title,
   node,
@@ -54,7 +79,7 @@ function FocsTreeBranch({
   title: string;
   node: FocsNode;
   learnedSet: Set<string>;
-  onToggleToken: (token: string) => void;
+  onToggleToken: (token: string, subtreeRoot?: FocsNode) => void;
   expanded: Record<string, boolean>;
   onToggleExpand: (path: string) => void;
   path: string;
@@ -94,12 +119,16 @@ function FocsTreeBranch({
               : "focs-node__label--not"
           }`}
           disabled={!token}
-          onClick={() => token && onToggleToken(token)}
+          onClick={() => token && onToggleToken(token, hasKids ? node : undefined)}
           title={
             token
               ? learned
-                ? "Mark as not yet learned"
-                : "Mark as learned"
+                ? hasKids
+                  ? "Mark this chapter and all subsections as not learned"
+                  : "Mark as not yet learned"
+                : hasKids
+                  ? "Mark this chapter and all subsections as learned"
+                  : "Mark as learned"
               : undefined
           }
         >
@@ -138,14 +167,14 @@ export default function MyLearningBar() {
 
   const learnedSet = useMemo(() => new Set(learned), [learned]);
 
-  /** 目录树始终来自打包的 JSON，不依赖网络。 */
+  /** Tree is bundled JSON; no network required to render. */
   useEffect(() => {
     const local = loadLocalLearningBar(studentId);
     setLearned(local.learned_sections);
     setHydrated(true);
   }, [studentId]);
 
-  /** 本机无进度时，尝试从服务器补一次（仅在有后端时有用）。 */
+  /** If local progress is empty, try once to pull from the server (when API is available). */
   useEffect(() => {
     if (!hydrated) return;
     if (learned.length > 0) return;
@@ -171,8 +200,8 @@ export default function MyLearningBar() {
         const ok = await trySyncLearnedToServer(studentId, next);
         setSyncHint(
           ok
-            ? "已同步到服务器（Learning Mode 将使用相同进度）。"
-            : "已保存在本机；当前无法连接服务器，Learning Mode 侧进度可能不一致。"
+            ? "Synced to server (Learning Mode will use the same progress)."
+            : "Saved on this device; could not reach the server—Learning Mode may be out of sync."
         );
       } catch (e) {
         const msg = (e as Error).message || "Save failed.";
@@ -185,22 +214,21 @@ export default function MyLearningBar() {
   );
 
   const onToggleToken = useCallback(
-    (token: string) => {
+    (token: string, subtreeRoot?: FocsNode) => {
+      const batch =
+        subtreeRoot != null
+          ? Array.from(
+              new Set([token, ...collectDescendantSectionTokens(subtreeRoot)])
+            )
+          : [token];
       const next = new Set(learned);
-      if (next.has(token)) next.delete(token);
-      else next.add(token);
-      const sorted = Array.from(next).sort((a, b) => {
-        const pa = a.split(".").map((x) => parseInt(x, 10));
-        const pb = b.split(".").map((x) => parseInt(x, 10));
-        const len = Math.max(pa.length, pb.length);
-        for (let i = 0; i < len; i++) {
-          const da = pa[i] ?? 0;
-          const db = pb[i] ?? 0;
-          if (da !== db) return da - db;
-        }
-        return 0;
-      });
-      void persistLearned(sorted);
+      const allMarked = batch.every((t) => next.has(t));
+      if (allMarked) {
+        for (const t of batch) next.delete(t);
+      } else {
+        for (const t of batch) next.add(t);
+      }
+      void persistLearned(sortSectionTokens(Array.from(next)));
     },
     [learned, persistLearned]
   );
@@ -217,7 +245,7 @@ export default function MyLearningBar() {
   if (!hydrated) {
     return (
       <div className="my-learning-bar-page">
-        <p className="my-learning-bar-status">正在加载本地进度…</p>
+        <p className="my-learning-bar-status">Loading local progress…</p>
       </div>
     );
   }
@@ -227,11 +255,14 @@ export default function MyLearningBar() {
       <header className="my-learning-bar-header">
         <h1 className="my-learning-bar-title">My Learning bar</h1>
         <p className="my-learning-bar-meta">
-          教材目录已内置在前端，无需联网即可展开查看。青绿色 = 已勾选为已学；灰色 = 未学。点击带节号的条目可切换。
-          学习进度保存在本机浏览器（localStorage），与目录数据分离。
+          The syllabus is built into the app—expand it without a network. Teal = learned; gray = not learned.
+          Click a <strong>chapter</strong> to mark or clear the whole chapter (all subsections). Click a leaf
+          subsection to toggle only that item.
+          Progress is stored in this browser (localStorage), separate from the syllabus data.
           <br />
-          学生 ID（与 Learning Mode 一致）：<code style={{ fontSize: "0.85em" }}>{studentId}</code>
-          {saving ? " · 保存中…" : ""}
+          Student ID (same as Learning Mode):{" "}
+          <code style={{ fontSize: "0.85em" }}>{studentId}</code>
+          {saving ? " · Saving…" : ""}
         </p>
         {error ? (
           <p className="my-learning-bar-status my-learning-bar-status--error">{error}</p>
@@ -244,11 +275,11 @@ export default function MyLearningBar() {
         <div className="my-learning-bar-legend">
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--learned" aria-hidden />
-            已学
+            Learned
           </span>
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--not" aria-hidden />
-            未学
+            Not learned
           </span>
         </div>
       </header>

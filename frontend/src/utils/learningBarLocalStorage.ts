@@ -1,6 +1,6 @@
 /**
- * My Learning Bar：进度与内置目录树分离，存在本机 localStorage。
- * 联网时尽力同步到后端 /api/student_bar，供 Learning Mode 聊天侧使用同一 student_id。
+ * My Learning Bar: progress is separate from the bundled syllabus; stored in localStorage.
+ * When online, best-effort sync to GET/PUT /api/student_bar so Learning Mode shares the same student_id.
  */
 
 import { API_BASE } from "../apiBase";
@@ -48,7 +48,7 @@ function fetchWithTimeout(url: string, init: RequestInit & { timeoutMs?: number 
   return fetch(url, { ...rest, signal: ac.signal }).finally(() => clearTimeout(t));
 }
 
-/** 本机无记录时，尝试从服务器拉一次已学列表并写入本机（静默失败）。 */
+/** If local storage is empty, try once to GET learned list from server and save locally (fails silently). */
 export async function tryHydrateLearnedFromServer(studentId: string): Promise<string[] | null> {
   try {
     const r = await fetchWithTimeout(
@@ -65,12 +65,12 @@ export async function tryHydrateLearnedFromServer(studentId: string): Promise<st
       return learned;
     }
   } catch {
-    /* 离线或 CORS 等 */
+    /* offline, CORS, timeout, etc. */
   }
   return null;
 }
 
-/** 尽力把当前已学列表同步到后端（静默失败，本机数据已先写入）。 */
+/** Best-effort PUT learned list to server (fails silently; local save already done). */
 export async function trySyncLearnedToServer(studentId: string, learned: string[]): Promise<boolean> {
   try {
     const r = await fetchWithTimeout(`${API_BASE}/api/student_bar`, {
