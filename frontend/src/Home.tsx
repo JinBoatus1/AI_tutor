@@ -1,52 +1,123 @@
 import { Link } from "react-router-dom";
 import "./Home.css";
 
+function IconPolya() {
+  return (
+    <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
+      <defs>
+        <linearGradient id="home-grad-a" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0f766e" />
+          <stop offset="100%" stopColor="#14b8a6" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="20" fill="none" stroke="url(#home-grad-a)" strokeWidth="1.5" opacity="0.35" />
+      <path
+        fill="none"
+        stroke="url(#home-grad-a)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 32V16l8 8 8-8v16"
+      />
+      <circle cx="24" cy="14" r="2" fill="url(#home-grad-a)" />
+    </svg>
+  );
+}
+
+function IconGrade() {
+  return (
+    <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
+      <defs>
+        <linearGradient id="home-grad-b" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0d9488" />
+          <stop offset="100%" stopColor="#2dd4bf" />
+        </linearGradient>
+      </defs>
+      <rect x="10" y="14" width="28" height="22" rx="3" fill="none" stroke="url(#home-grad-b)" strokeWidth="1.75" />
+      <path d="M16 22h16M16 28h10" stroke="url(#home-grad-b)" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M30 8l4 4-4 4"
+        fill="none"
+        stroke="url(#home-grad-b)"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconAdaptive() {
+  return (
+    <svg className="home-feature-icon-svg" viewBox="0 0 48 48" aria-hidden>
+      <defs>
+        <linearGradient id="home-grad-c" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#14b8a6" />
+          <stop offset="100%" stopColor="#0f766e" />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="20" r="8" fill="none" stroke="url(#home-grad-c)" strokeWidth="1.75" />
+      <path
+        d="M14 36c4-6 20-6 24 0"
+        fill="none"
+        stroke="url(#home-grad-c)"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <circle cx="24" cy="20" r="3" fill="url(#home-grad-c)" opacity="0.4" />
+    </svg>
+  );
+}
+
 export default function Home() {
   return (
-    <div className="home-container">
+    <div className="home-page">
+      <div className="home-page-bg" aria-hidden />
 
-      {/* Hero Section */}
-      <section className="hero">
-        <h1 className="title">AI Tutor Demo</h1>
-        <p className="subtitle">
-          Empowering Math Learning with AI-guided Teaching, Polya Reasoning, and Auto Grading.
+      <section className="home-hero">
+        <p className="home-eyebrow">AI Tutor</p>
+        <h1 className="home-headline">Equal Education for Everyone</h1>
+        <p className="home-lede">
+          Step-by-step reasoning, textbook-grounded answers, and instant feedback — in one place.
         </p>
-
-        <div className="hero-buttons">
-          <Link to="/learning" className="btn primary">Go to Learning Mode</Link>
-          <Link to="/autograder" className="btn secondary">Go to Auto Grader</Link>
-
-          {/* ★ Add Upload Textbook Button Here */}
-          <Link to="/upload" className="btn tertiary">Upload Textbook</Link>
+        <div className="home-actions">
+          <Link to="/learning" className="home-btn home-btn--primary">
+            Learning Mode
+          </Link>
+          <Link to="/autograder" className="home-btn home-btn--ghost">
+            Auto Grader
+          </Link>
+          <Link to="/learning-bar" className="home-btn home-btn--ghost">
+            My Learning bar
+          </Link>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="features">
-        <div className="feature-card">
-          <img src="https://cdn-icons-png.flaticon.com/512/4341/4341139.png" />
-          <h3>Step-by-Step Teaching</h3>
-          <p>Interactive multi-round guidance using Polya’s method.</p>
-        </div>
+      <section className="home-features" aria-label="Features">
+        <article className="home-feature-card">
+          <div className="home-feature-icon-wrap">
+            <IconPolya />
+          </div>
+          <h2 className="home-feature-title">Step-by-Step Teaching</h2>
+          <p className="home-feature-desc">Interactive guidance inspired by Polya’s method — understand the problem before the proof.</p>
+        </article>
 
-        <div className="feature-card">
-          <img src="https://cdn-icons-png.flaticon.com/512/2907/2907300.png" />
-          <h3>Auto Grading</h3>
-          <p>Upload multiple answers or images and receive instant AI grading.</p>
-        </div>
+        <article className="home-feature-card">
+          <div className="home-feature-icon-wrap">
+            <IconGrade />
+          </div>
+          <h2 className="home-feature-title">Auto Grading</h2>
+          <p className="home-feature-desc">Submit text or images and get structured feedback when you need it.</p>
+        </article>
 
-        <div className="feature-card">
-          <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" />
-          <h3>Adaptive Learning</h3>
-          <p>Instant response and personalized learning database.</p>
-        </div>
+        <article className="home-feature-card">
+          <div className="home-feature-icon-wrap">
+            <IconAdaptive />
+          </div>
+          <h2 className="home-feature-title">Adaptive Learning</h2>
+          <p className="home-feature-desc">Responses tuned to your chapter and pace, with memory of what you’ve covered.</p>
+        </article>
       </section>
-
-      {/* Footer */}
-      <footer className="footer">
-        © 2025 AI Tutor Research Project — Bo Jin
-      </footer>
-
     </div>
   );
 }

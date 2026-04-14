@@ -6,6 +6,8 @@
 .env.local
 .env.development
 .env.production
+# 允许提交前端公网 API 根地址（无密钥）；其余目录的 .env.production 仍忽略
+!frontend/.env.production
 .env.test
 
 # API keys and credentials

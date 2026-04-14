@@ -1,0 +1,1 @@
+{"id": "fae8202883de435d812750a4242ca0c5", "ts": "2026-03-13T20:49:42Z", "t": 1773434982, "content": "Q: Why is a polyhedron graph planar | A: A **polyhedron graph** (more precisely: the **edge–vertex graph (1-skeleton)** of a polyhedron) is planar because you can draw it on a plane **without any edge crossings**.\n\nStep-by-step:\n\n1. **Start ..."}

@@ -1,17 +1,20 @@
+import React from "react";
 import { InlineMath, BlockMath } from "react-katex";
 import "katex/dist/katex.min.css";
 
 type Segment = { type: "text" | "inline" | "block"; content: string };
 
 /**
- * 将文本按 LaTeX 分段：支持 \(...\) 行内公式、\[...\] 或 $$...$$ 块级公式
+ * Split text into LaTeX segments.
+ * Inline: \\(...\\) or $...$ (single $, not $$)
+ * Block: \\[...\\] or $$...$$
  */
 function parseMathSegments(text: string): Segment[] {
   const segments: Segment[] = [];
   let remaining = text;
 
-  // 匹配 \(...\) 或 \[...\] 或 $$...$$
-  const regex = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$)/g;
+  // Order: $$...$$, then \\(...\\) / \\[...\\], then $...$ (avoid splitting $$ as two $)
+  const regex = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$(?!\$)([^$]*?)\$(?!\$))/g;
   let lastIndex = 0;
   let m: RegExpExecArray | null;
 
@@ -19,13 +22,15 @@ function parseMathSegments(text: string): Segment[] {
     const before = remaining.slice(lastIndex, m.index);
     if (before) segments.push({ type: "text", content: before });
 
-    const raw = m[1];
+    const raw = m[0];
     if (raw.startsWith("\\(") && raw.endsWith("\\)")) {
       segments.push({ type: "inline", content: raw.slice(2, -2).trim() });
     } else if (raw.startsWith("\\[") && raw.endsWith("\\]")) {
       segments.push({ type: "block", content: raw.slice(2, -2).trim() });
     } else if (raw.startsWith("$$") && raw.endsWith("$$")) {
       segments.push({ type: "block", content: raw.slice(2, -2).trim() });
+    } else if (raw.startsWith("$") && raw.endsWith("$") && raw.length > 1) {
+      segments.push({ type: "inline", content: raw.slice(1, -1).trim() });
     } else {
       segments.push({ type: "text", content: raw });
     }
@@ -37,6 +42,19 @@ function parseMathSegments(text: string): Segment[] {
 
   if (!segments.length && text) segments.push({ type: "text", content: text });
   return segments;
+}
+
+/** On KaTeX error, show raw TeX so the whole message does not crash. */
+class MathErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: string; inline?: boolean },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError = () => ({ hasError: true });
+  render() {
+    if (this.state.hasError) return <span>{this.props.fallback}</span>;
+    return this.props.children;
+  }
 }
 
 interface MathTextProps {
@@ -55,24 +73,22 @@ export default function MathText({ children, style }: MathTextProps) {
           return <span key={i}>{seg.content}</span>;
         }
         if (seg.type === "inline") {
-          try {
-            return <InlineMath key={i} math={seg.content} />;
-          } catch {
-            return <span key={i}>{`\\(${seg.content}\\)`}</span>;
-          }
+          const fallback = `\\(${seg.content}\\)`;
+          return (
+            <MathErrorBoundary key={i} fallback={fallback}>
+              <InlineMath math={seg.content} />
+            </MathErrorBoundary>
+          );
         }
         if (seg.type === "block") {
-          try {
-            return (
-              <span key={i} style={{ display: "block", margin: "0.5em 0" }}>
+          const fallback = `\\[${seg.content}\\]`;
+          return (
+            <MathErrorBoundary key={i} fallback={fallback}>
+              <span style={{ display: "block", margin: "0.5em 0" }}>
                 <BlockMath math={seg.content} />
               </span>
-            );
-          } catch {
-            return (
-              <span key={i} style={{ display: "block" }}>{`\\[${seg.content}\\]`}</span>
-            );
-          }
+            </MathErrorBoundary>
+          );
         }
         return null;
       })}
