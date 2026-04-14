@@ -1,4 +1,5 @@
 from .grader import AggregatorBase, AutoGraderBase, EvaluatorBase, SchedulerBase, WorkerPoolBase
+from .inmemory import InMemoryAutoGrader
 from .models import (
     AutoGradeJobResultsResponse,
     AutoGradeJobStatusResponse,
@@ -35,6 +36,7 @@ __all__ = [
     "EvaluatorBase",
     "AggregatorBase",
     "WorkerPoolBase",
+    "InMemoryAutoGrader",
     "register_autograder",
     "get_autograder",
     "has_autograder",
