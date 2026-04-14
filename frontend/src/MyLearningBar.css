@@ -27,6 +27,11 @@
   line-height: 1.45;
 }
 
+.my-learning-bar-saving {
+  color: #0f766e;
+  font-weight: 600;
+}
+
 .my-learning-bar-legend {
   display: flex;
   flex-wrap: wrap;
@@ -64,6 +69,31 @@
   border-radius: 14px;
   padding: 14px 16px 18px;
   box-shadow: 0 4px 24px rgba(15, 118, 110, 0.06);
+}
+
+.my-learning-bar-expand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.my-learning-bar-expand-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.my-learning-bar-expand-btn:hover {
+  background: #ccfbf1;
 }
 
 .my-learning-bar-status {
