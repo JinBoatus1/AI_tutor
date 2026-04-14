@@ -1,0 +1,205 @@
+{
+  "total_classified": 1,
+  "layer_counts": {
+    "L1": 1,
+    "L2": 0,
+    "L3": 0
+  },
+  "layer_percent": {
+    "L1": 100.0,
+    "L2": 0.0,
+    "L3": 0.0
+  },
+  "subcategory_counts": {
+    "1": 1,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0,
+    "8": 0,
+    "9": 0,
+    "10": 0
+  },
+  "subcategory_percent": {
+    "1": 100.0,
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 0.0,
+    "6": 0.0,
+    "7": 0.0,
+    "8": 0.0,
+    "9": 0.0,
+    "10": 0.0
+  },
+  "layers": [
+    {
+      "layer": "L1",
+      "name_zh": "空间基元 (Spatial Primitives)",
+      "count": 1,
+      "percent": 100.0,
+      "subcategories": [
+        {
+          "id": 1,
+          "key": "localization",
+          "name_zh": "定位 (Localization)",
+          "count": 1,
+          "percent": 100.0
+        },
+        {
+          "id": 2,
+          "key": "transformation",
+          "name_zh": "变换 (Transformation)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 3,
+          "key": "connectivity",
+          "name_zh": "连接 (Connectivity)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 4,
+          "key": "state_encoding",
+          "name_zh": "状态表达 (State Encoding)",
+          "count": 0,
+          "percent": 0.0
+        }
+      ]
+    },
+    {
+      "layer": "L2",
+      "name_zh": "空间操作 (Spatial Operations)",
+      "count": 0,
+      "percent": 0.0,
+      "subcategories": [
+        {
+          "id": 5,
+          "key": "path_tracing",
+          "name_zh": "路径跟踪 (Path Tracing)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 6,
+          "key": "state_update",
+          "name_zh": "状态更新 (State Update)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 7,
+          "key": "structure_preservation",
+          "name_zh": "结构保持 (Structure Preservation)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 8,
+          "key": "constraint_propagation",
+          "name_zh": "约束传播 (Constraint Propagation)",
+          "count": 0,
+          "percent": 0.0
+        }
+      ]
+    },
+    {
+      "layer": "L3",
+      "name_zh": "全局推理 (Global Reasoning)",
+      "count": 0,
+      "percent": 0.0,
+      "subcategories": [
+        {
+          "id": 9,
+          "key": "multi_step_simulation",
+          "name_zh": "多步模拟 (Multi-step Simulation)",
+          "count": 0,
+          "percent": 0.0
+        },
+        {
+          "id": 10,
+          "key": "consistency_checking",
+          "name_zh": "一致性检查 (Consistency Checking)",
+          "count": 0,
+          "percent": 0.0
+        }
+      ]
+    }
+  ],
+  "subcategories": [
+    {
+      "id": 1,
+      "key": "localization",
+      "name_zh": "定位 (Localization)",
+      "count": 1,
+      "percent": 100.0
+    },
+    {
+      "id": 2,
+      "key": "transformation",
+      "name_zh": "变换 (Transformation)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 3,
+      "key": "connectivity",
+      "name_zh": "连接 (Connectivity)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 4,
+      "key": "state_encoding",
+      "name_zh": "状态表达 (State Encoding)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 5,
+      "key": "path_tracing",
+      "name_zh": "路径跟踪 (Path Tracing)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 6,
+      "key": "state_update",
+      "name_zh": "状态更新 (State Update)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 7,
+      "key": "structure_preservation",
+      "name_zh": "结构保持 (Structure Preservation)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 8,
+      "key": "constraint_propagation",
+      "name_zh": "约束传播 (Constraint Propagation)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 9,
+      "key": "multi_step_simulation",
+      "name_zh": "多步模拟 (Multi-step Simulation)",
+      "count": 0,
+      "percent": 0.0
+    },
+    {
+      "id": 10,
+      "key": "consistency_checking",
+      "name_zh": "一致性检查 (Consistency Checking)",
+      "count": 0,
+      "percent": 0.0
+    }
+  ]
+}

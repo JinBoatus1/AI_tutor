@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./MyLearningBar.css";
-import { API_BASE } from "./apiBase";
+import focsTreeBundled from "./data/focsTree.json";
 import { getOrCreateStudentId } from "./utils/studentId";
+import {
+  loadLocalLearningBar,
+  saveLocalLearningBar,
+  tryHydrateLearnedFromServer,
+  trySyncLearnedToServer,
+} from "./utils/learningBarLocalStorage";
 
 type FocsNode = Record<string, unknown>;
+
+const FOCS_TREE = focsTreeBundled as FocsNode;
 
 function firstSectionToken(title: string): string | null {
   const w = title.trim().split(/\s+/)[0] ?? "";
@@ -121,64 +129,54 @@ function FocsTreeBranch({
 
 export default function MyLearningBar() {
   const [studentId] = useState(() => getOrCreateStudentId());
-  const [tree, setTree] = useState<FocsNode | null>(null);
   const [learned, setLearned] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [syncHint, setSyncHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const learnedSet = useMemo(() => new Set(learned), [learned]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [tRes, bRes] = await Promise.all([
-        fetch(`${API_BASE}/api/focs_tree`),
-        fetch(`${API_BASE}/api/student_bar?student_id=${encodeURIComponent(studentId)}`),
-      ]);
-      if (!tRes.ok) throw new Error("Failed to load FOCS tree.");
-      if (!bRes.ok) throw new Error("Failed to load learning bar.");
-      const tJson = (await tRes.json()) as FocsNode;
-      const bJson = (await bRes.json()) as { learned_sections?: string[] };
-      setTree(tJson);
-      setLearned(Array.isArray(bJson.learned_sections) ? bJson.learned_sections : []);
-    } catch (e) {
-      const msg = (e as Error).message || "Network error.";
-      setError(`${msg} · 当前 API 根地址：${API_BASE}`);
-      setTree(null);
-    } finally {
-      setLoading(false);
-    }
+  /** 目录树始终来自打包的 JSON，不依赖网络。 */
+  useEffect(() => {
+    const local = loadLocalLearningBar(studentId);
+    setLearned(local.learned_sections);
+    setHydrated(true);
   }, [studentId]);
 
+  /** 本机无进度时，尝试从服务器补一次（仅在有后端时有用）。 */
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!hydrated) return;
+    if (learned.length > 0) return;
+    let cancelled = false;
+    void (async () => {
+      const fromServer = await tryHydrateLearnedFromServer(studentId);
+      if (cancelled || !fromServer?.length) return;
+      setLearned(fromServer);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, learned.length, studentId]);
 
   const persistLearned = useCallback(
     async (next: string[]) => {
       setSaving(true);
       setError(null);
+      setSyncHint(null);
       try {
-        const resp = await fetch(`${API_BASE}/api/student_bar`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            student_id: studentId,
-            learned_sections: next,
-          }),
-        });
-        if (!resp.ok) {
-          const d = await resp.json().catch(() => ({}));
-          throw new Error(d.detail || "Save failed.");
-        }
-        const data = (await resp.json()) as { learned_sections?: string[] };
-        setLearned(Array.isArray(data.learned_sections) ? data.learned_sections : next);
+        saveLocalLearningBar(studentId, next);
+        setLearned(next);
+        const ok = await trySyncLearnedToServer(studentId, next);
+        setSyncHint(
+          ok
+            ? "已同步到服务器（Learning Mode 将使用相同进度）。"
+            : "已保存在本机；当前无法连接服务器，Learning Mode 侧进度可能不一致。"
+        );
       } catch (e) {
         const msg = (e as Error).message || "Save failed.";
-        setError(`${msg} · 当前 API 根地址：${API_BASE}`);
+        setError(msg);
       } finally {
         setSaving(false);
       }
@@ -202,7 +200,6 @@ export default function MyLearningBar() {
         }
         return 0;
       });
-      setLearned(sorted);
       void persistLearned(sorted);
     },
     [learned, persistLearned]
@@ -215,28 +212,12 @@ export default function MyLearningBar() {
     });
   }, []);
 
-  const rootEntries = useMemo(() => {
-    if (!tree) return [];
-    return childEntries(tree);
-  }, [tree]);
+  const rootEntries = useMemo(() => childEntries(FOCS_TREE), []);
 
-  if (loading) {
+  if (!hydrated) {
     return (
       <div className="my-learning-bar-page">
-        <p className="my-learning-bar-status">Loading FOCS tree and your bar…</p>
-      </div>
-    );
-  }
-
-  if (error && !tree) {
-    return (
-      <div className="my-learning-bar-page">
-        <p className="my-learning-bar-status my-learning-bar-status--error">{error}</p>
-        <p className="my-learning-bar-status">
-          <button type="button" className="my-learning-bar-retry" onClick={() => load()}>
-            Retry
-          </button>
-        </p>
+        <p className="my-learning-bar-status">正在加载本地进度…</p>
       </div>
     );
   }
@@ -246,23 +227,28 @@ export default function MyLearningBar() {
       <header className="my-learning-bar-header">
         <h1 className="my-learning-bar-title">My Learning bar</h1>
         <p className="my-learning-bar-meta">
-          FOCS textbook outline. Teal = marked learned; slate = not yet. Click a numbered
-          section to toggle. Same progress syncs with Learning Mode (
-          <code style={{ fontSize: "0.8em" }}>{studentId}</code>
-          ).
-          {saving ? " Saving…" : ""}
+          教材目录已内置在前端，无需联网即可展开查看。青绿色 = 已勾选为已学；灰色 = 未学。点击带节号的条目可切换。
+          学习进度保存在本机浏览器（localStorage），与目录数据分离。
+          <br />
+          学生 ID（与 Learning Mode 一致）：<code style={{ fontSize: "0.85em" }}>{studentId}</code>
+          {saving ? " · 保存中…" : ""}
         </p>
         {error ? (
           <p className="my-learning-bar-status my-learning-bar-status--error">{error}</p>
         ) : null}
+        {syncHint && !error ? (
+          <p className="my-learning-bar-status" style={{ fontSize: "0.9rem", opacity: 0.9 }}>
+            {syncHint}
+          </p>
+        ) : null}
         <div className="my-learning-bar-legend">
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--learned" aria-hidden />
-            Learned
+            已学
           </span>
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--not" aria-hidden />
-            Not learned
+            未学
           </span>
         </div>
       </header>
