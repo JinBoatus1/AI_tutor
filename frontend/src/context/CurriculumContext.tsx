@@ -10,7 +10,7 @@ const CurriculumContext = createContext<CurriculumContextType | null>(null);
 export function CurriculumProvider({ children }: { children: any }) {
   const [curriculumTree, setCurriculumTree] = useState<any>(null);
 
-  // 组件挂载时从 localStorage 读取
+  // Load from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem("curriculumTree");
@@ -23,7 +23,7 @@ export function CurriculumProvider({ children }: { children: any }) {
     }
   }, []);
 
-  // 写入 localStorage
+  // Persist to localStorage
   useEffect(() => {
     if (curriculumTree) {
       localStorage.setItem("curriculumTree", JSON.stringify(curriculumTree));

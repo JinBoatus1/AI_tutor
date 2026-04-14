@@ -5,14 +5,14 @@ import { useCurriculum } from "./context/CurriculumContext";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 
-/** 左侧书页区宽度占 layout 的百分比（与 state rightPanelWidth 一致） */
+/** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
   "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 3 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
-/** 与后端 MAX_USER_PDF_BYTES 一致（约 14MB） */
+/** Must match backend MAX_USER_PDF_BYTES (~14MB). */
 const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
 
 export default function LearningModel() {
@@ -37,7 +37,7 @@ export default function LearningModel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  const [rightPanelWidth, setRightPanelWidth] = useState(67); // 左侧书页约 2/3，右侧对话 1/3
+  const [rightPanelWidth, setRightPanelWidth] = useState(67); // ~2/3 textbook, ~1/3 chat
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
 
@@ -103,10 +103,10 @@ export default function LearningModel() {
     [rightPanelWidth, handleResizeMove, handleResizeEnd]
   );
 
-  /** 点击截图：屏幕/窗口捕获，取一帧加入附件 */
+  /** Screen/window capture: grab one frame and attach. */
   const handleScreenshot = useCallback(async () => {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      alert("当前浏览器不支持屏幕截图，请用「选择图片」或粘贴截图 (Ctrl+V)");
+      alert('This browser does not support screen capture. Use "Choose image" or paste a screenshot (Ctrl+V).');
       return;
     }
     try {
@@ -136,12 +136,12 @@ export default function LearningModel() {
     } catch (err) {
       if ((err as Error).name !== "NotAllowedError") {
         console.error("Screenshot failed:", err);
-        alert("截图失败，请重试或使用「选择图片」/ 粘贴 (Ctrl+V)");
+        alert('Screenshot failed. Try again, or use "Choose image" / paste (Ctrl+V).');
       }
     }
   }, []);
 
-  /** 粘贴时若剪贴板有图片则加入附件 */
+  /** On paste, attach images from the clipboard if present. */
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -288,9 +288,9 @@ export default function LearningModel() {
     } catch (err) {
       if (timeoutId) clearTimeout(timeoutId);
       if ((err as Error).name === "AbortError") {
-        addAIMessage("请求超时（约 2 分钟）。请检查后端是否正常运行，或稍后重试。");
+        addAIMessage("Request timed out (~2 min). Check that the backend is running, or try again later.");
       } else {
-        addAIMessage("请求失败，无法连接后端。请确认后端服务正在运行。");
+        addAIMessage("Request failed—could not reach the backend. Make sure the API server is running.");
       }
     } finally {
       setIsAwaitingReply(false);
@@ -355,7 +355,7 @@ export default function LearningModel() {
   return (
     <div className="learning-page-wrapper">
     <div className="learning-layout" ref={layoutRef}>
-      {/* LEFT: 书页 / 参考区（有教材/匹配内容时才出现；可手动收起） */}
+      {/* LEFT: textbook / reference (when content exists; can collapse) */}
       {showLeftColumn && (
       <div
         className="right-panel"
@@ -490,7 +490,7 @@ export default function LearningModel() {
       />
       )}
 
-      {/* RIGHT: 对话区（支持 Ctrl+V 粘贴截图） */}
+      {/* RIGHT: chat (Ctrl+V to paste screenshots) */}
       <div
         className="chat-panel"
         aria-label="Learning Mode"
@@ -590,7 +590,7 @@ export default function LearningModel() {
           )}
         </div>
 
-        {/* 已选图片预览 */}
+        {/* Selected image previews */}
         {(attachedImages.length > 0 || pdfAttachment) && (
           <div className="attached-images-row">
             {pdfAttachment && (
@@ -616,7 +616,7 @@ export default function LearningModel() {
                   type="button"
                   className="attached-img-remove"
                   onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
-                  aria-label="移除图片"
+                  aria-label="Remove image"
                 >
                   ×
                 </button>
@@ -683,8 +683,8 @@ export default function LearningModel() {
               type="button"
               className="input-icon-btn"
               onClick={handleScreenshot}
-              title="截屏（选择窗口/屏幕）"
-              aria-label="截屏"
+              title="Screenshot (pick window or screen)"
+              aria-label="Screenshot"
             >
               <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />
@@ -711,8 +711,8 @@ export default function LearningModel() {
               type="button"
               className="learning-send-btn"
               onClick={handleSend}
-              title="发送"
-              aria-label="发送"
+              title="Send"
+              aria-label="Send"
               disabled={isAwaitingReply}
             >
               <svg className="learning-send-icon" viewBox="0 0 24 24" aria-hidden>
@@ -737,7 +737,7 @@ export default function LearningModel() {
         onClick={() => setEnlargedImageSrc(null)}
         role="dialog"
         aria-modal="true"
-        aria-label="放大查看图片"
+        aria-label="Enlarged image"
       >
         <button
           type="button"
@@ -746,13 +746,13 @@ export default function LearningModel() {
             e.stopPropagation();
             setEnlargedImageSrc(null);
           }}
-          aria-label="关闭"
+          aria-label="Close"
         >
           ×
         </button>
         <img
           src={enlargedImageSrc}
-          alt="放大查看"
+          alt="Enlarged view"
           className="reference-image-lightbox-img"
           onClick={(e) => e.stopPropagation()}
         />

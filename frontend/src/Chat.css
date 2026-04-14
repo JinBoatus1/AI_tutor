@@ -81,7 +81,7 @@
   max-width: 12rem;
 }
 
-/* 当前教材小节 + 页码；右侧 Hide */
+/* Current section title + page range; Hide on the right */
 .left-panel-topic-bar {
   flex-shrink: 0;
   display: flex;
@@ -127,7 +127,7 @@
   white-space: nowrap;
 }
 
-/* 无小节条时仅保留 Hide，不占一整行标题 */
+/* When there is no topic bar, only show Hide (no full-width title row) */
 .left-panel-hide-row {
   display: flex;
   justify-content: flex-end;
@@ -176,7 +176,7 @@
   background: #fff;
 }
 
-/* Learning Mode：重新开始 / 新提问（替代默认按钮灰框） */
+/* Learning Mode: restart / new question (styled button row) */
 .reset-box {
   margin: 0 auto 8px;
   width: 100%;
@@ -231,7 +231,7 @@
   margin-bottom: 6px;
 }
 
-/* 尚未提问时：欢迎语下方居中占位 */
+/* Before first message: centered placeholder under welcome */
 .chat-box--with-empty {
   display: flex;
   flex-direction: column;
@@ -298,7 +298,7 @@
   margin: 4px 0;
 }
 
-/* Learning Mode：聊天气泡内 Markdown（粗体、标题、列表、代码、表格、公式） */
+/* Learning Mode: Markdown inside AI bubbles (GFM + math) */
 .markdown-message {
   font-size: 0.95rem;
   line-height: 1.55;
@@ -310,7 +310,7 @@
   text-align: right;
 }
 
-/* AI 列表项：点击填入输入框 */
+/* Pickable list items: click inserts into the input */
 .markdown-message--pickable .markdown-pickable-li {
   list-style-position: outside;
 }
@@ -530,7 +530,7 @@
   cursor: pointer;
 }
 
-/* 点击放大：遮罩 + 居中大图 */
+/* Lightbox: dimmed overlay + centered image */
 .reference-image-lightbox {
   position: fixed;
   inset: 0;
@@ -598,7 +598,7 @@
   pointer-events: none;
 }
 
-/* 底部输入：胶囊白底条 + 线框图标 + 纸飞机发送（与新版参考一致） */
+/* Bottom input: pill shell + icon buttons + send */
 .learning-input-shell {
   width: 100%;
   max-width: 34rem;

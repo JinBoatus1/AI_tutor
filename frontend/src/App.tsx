@@ -16,10 +16,9 @@ function App() {
         {showDeployWarning ? (
           <div className="deploy-config-banner" role="alert">
             <p>
-              <strong>混合内容被拦截：</strong>
-              本站为 HTTPS，但当前 API 为 <code>{API_BASE}</code>
-              。请把后端改为 <code>https://</code>，并把{" "}
-              <code>VITE_API_URL</code> 设为该 HTTPS 地址后重新构建部署。
+              <strong>Mixed content blocked:</strong> This site is served over HTTPS, but the configured
+              API base URL is <code>{API_BASE}</code>. Serve the API over <code>https://</code> and set{" "}
+              <code>VITE_API_URL</code> to that HTTPS origin, then rebuild and redeploy.
             </p>
           </div>
         ) : null}

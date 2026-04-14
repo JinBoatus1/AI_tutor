@@ -217,8 +217,8 @@ export default function MyLearningBar() {
         const ok = await trySyncLearnedToServer(studentId, next);
         setSyncHint(
           ok
-            ? "已同步到服务器（Learning Mode 将使用相同进度）。"
-            : "已保存在本机；当前无法连接服务器，Learning Mode 进度可能不一致。"
+            ? "Synced to server (Learning Mode will use the same progress)."
+            : "Saved on this device; could not reach the server—Learning Mode may be out of sync."
         );
       } catch (e) {
         const msg = (e as Error).message || "Save failed.";
@@ -268,7 +268,7 @@ export default function MyLearningBar() {
   if (!hydrated) {
     return (
       <div className="my-learning-bar-page">
-        <p className="my-learning-bar-status">正在加载…</p>
+        <p className="my-learning-bar-status">Loading…</p>
       </div>
     );
   }
@@ -276,12 +276,12 @@ export default function MyLearningBar() {
   return (
     <div className="my-learning-bar-page">
       <header className="my-learning-bar-header">
-        <h1 className="my-learning-bar-title">学习进度</h1>
+        <h1 className="my-learning-bar-title">Learning progress</h1>
         <p className="my-learning-bar-meta">
-          本页展示你在教材目录上的学习进度。
+          This page shows your progress against the textbook outline.
           <br />
-          点击带节号的主题即可切换已学 / 未学。
-          {saving ? <span className="my-learning-bar-saving"> · 保存中…</span> : null}
+          Click any topic that starts with a section number to toggle learned / not learned.
+          {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
         </p>
         {error ? (
           <p className="my-learning-bar-status my-learning-bar-status--error">{error}</p>
@@ -294,11 +294,11 @@ export default function MyLearningBar() {
         <div className="my-learning-bar-legend">
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--learned" aria-hidden />
-            已学
+            Learned
           </span>
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--not" aria-hidden />
-            未学
+            Not learned
           </span>
         </div>
       </header>
@@ -311,14 +311,14 @@ export default function MyLearningBar() {
               className="my-learning-bar-expand-btn"
               onClick={expandAllSections}
             >
-              全部展开
+              Expand all
             </button>
             <button
               type="button"
               className="my-learning-bar-expand-btn"
               onClick={collapseAllSections}
             >
-              全部收起
+              Collapse all
             </button>
           </div>
         ) : null}

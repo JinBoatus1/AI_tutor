@@ -5,9 +5,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
-/**
- * 若整段被包在 ``` / ```markdown 里，拆出正文（否则会整段当代码块显示）
- */
+/** If the reply is wrapped in ``` / ```markdown fences, unwrap so it is not one big code block. */
 function unwrapMarkdownFences(text: string): string {
   const t = text.trim();
   const m = t.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i);
@@ -15,9 +13,7 @@ function unwrapMarkdownFences(text: string): string {
   return text;
 }
 
-/**
- * 将 \(...\) / \[...\] 转为 remark-math 识别的 $ / $$
- */
+/** Map \\(...\\) / \\[...\\] to remark-math $ / $$ delimiters. */
 function normalizeMathDelimiters(text: string): string {
   let s = text;
   s = s.replace(/\\\[\s*([\s\S]*?)\\\]/g, (_, inner: string) => `$$\n${inner.trim()}\n$$`);
@@ -25,16 +21,12 @@ function normalizeMathDelimiters(text: string): string {
   return s;
 }
 
-/**
- * 标题前若无换行则补上，便于解析 ## / ###
- */
+/** Ensure a newline before ## / ### so headers parse correctly. */
 function ensureHeaderNewlines(text: string): string {
   return text.replace(/([^\n])(#{1,6}\s)/g, "$1\n$2");
 }
 
-/**
- * AI 常把 GFM 表格多行挤成一行：| a | b || --- | --- | 拆成多行
- */
+/** Split squashed GFM tables where `||` glued rows together. */
 function splitSquashedTableRows(text: string): string {
   return text
     .split("\n")
@@ -48,8 +40,7 @@ function splitSquashedTableRows(text: string): string {
 }
 
 /**
- * AI 常把章节目录用「纯文本行」列出（无 `-`），不会生成 <li>，点击填入无效。
- * 将形如 "8.1 Title (pp. …)" / "8 Chapter Title …" 的连续行转成 GFM 列表。
+ * Turn consecutive outline lines like "8.1 Title (pp. …)" into a GFM list so list-item clicks work.
  */
 function promoteOutlineLinesToList(text: string): string {
   const isOutlineLine = (line: string) => {
@@ -91,9 +82,7 @@ export interface MarkdownMessageProps {
   onPickLine?: (plainText: string) => void;
 }
 
-/**
- * 聊天气泡：Markdown（GFM 表格、粗体、标题等）+ KaTeX（$...$ / $$...$$）
- */
+/** Chat bubble: Markdown (GFM, headings, etc.) + KaTeX ($...$ / $$...$$). */
 export default function MarkdownMessage({
   children,
   className,

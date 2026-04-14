@@ -16,7 +16,7 @@ export default function AutoGrader() {
     formData.append("text", text);
 
     files.forEach((f) => {
-      formData.append("files", f);   // ← 注意这里用 "files"
+      formData.append("files", f); // field name must be "files" for the API
     });
 
     const resp = await fetch(`${API_BASE}/api/grade`, {

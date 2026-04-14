@@ -1,9 +1,9 @@
-/* 防止整个页面滚动，固定视口内（回复后新增内容也不能让页面滚动） */
+/* Lock scroll to the viewport (new chat content must not grow the page). */
 html, body, #root {
   overflow: hidden !important;
   height: 100vh;
   max-height: 100vh;
-  /* 整页衬底色（后面的背景）；内容区卡片仍为白底 */
+  /* Page chrome tint; inner cards stay white. */
   background: #e6eaf2;
 }
 
@@ -108,7 +108,7 @@ html, body, #root {
   background: transparent;
 }
 
-/* Learning Mode：减少外圈灰边，把空间留给教材与对话 */
+/* Learning Mode: tighter outer padding for textbook + chat */
 .app-container .content:has(.learning-page-wrapper) {
   padding: 6px 10px;
 }

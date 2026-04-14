@@ -11,14 +11,14 @@ export default defineConfig(({ mode }) => {
       /127\.0\.0\.1|localhost/i.test(apiUrl)
     ) {
       throw new Error(
-        "生产构建的 VITE_API_URL 指向了回环地址（本机），打进 JS 后外网用户无法访问。请改为公网 HTTPS 后端根地址，或留空走同域 /api，并检查部署平台环境变量与 frontend/.env.production。",
+        "Production VITE_API_URL points to localhost/loopback; bundled clients cannot reach your machine. Use a public HTTPS API origin, or leave it empty for same-origin /api. Check deploy env vars and frontend/.env.production.",
       );
     }
   }
 
-  // 仅给 Vite 用，不打进浏览器；用 DEV_API_ 前缀避免 loadEnv 混入整份系统环境变量
+  // Node-only; not shipped to the browser. DEV_API_ limits what loadEnv pulls in.
   const env = loadEnv(mode, process.cwd(), "DEV_API_");
-  /** 与 frontend/.env.production 中公网后端一致；本机只跑 uvicorn 时请设 DEV_API_PROXY_TARGET */
+  /** Same public API as frontend/.env.production; set DEV_API_PROXY_TARGET for local uvicorn only */
   const defaultDevProxy = "https://ai-tutor-3roc.onrender.com";
   const proxyTarget = (env.DEV_API_PROXY_TARGET || defaultDevProxy).replace(
     /\/$/,
