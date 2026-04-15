@@ -27,6 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      // Firebase not configured; keep app usable without auth.
+      setUser(null);
+      setToken(null);
+      setLoading(false);
+      return;
+    }
     let unsub: (() => void) | undefined;
     let settled = false;
 
@@ -69,10 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async () => {
+    if (!auth || !googleProvider) {
+      throw new Error(
+        "Auth is not configured. Set VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID."
+      );
+    }
     await signInWithPopup(auth, googleProvider);
   };
 
   const logout = async () => {
+    if (!auth) return;
     await signOut(auth);
   };
 

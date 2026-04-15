@@ -1,16 +1,31 @@
+import type { FirebaseApp } from "firebase/app";
 import { initializeApp } from "firebase/app";
+import type { Auth } from "firebase/auth";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-const firebaseConfig = {
+type FirebaseConfig = {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+};
+
+const firebaseConfig: FirebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
-if (!firebaseConfig.apiKey) {
-  console.warn("[Firebase] VITE_FIREBASE_API_KEY not set — auth will not work");
+const firebaseReady =
+  Boolean(firebaseConfig.apiKey) &&
+  Boolean(firebaseConfig.authDomain) &&
+  Boolean(firebaseConfig.projectId);
+
+if (!firebaseReady) {
+  console.warn(
+    "[Firebase] Missing VITE_FIREBASE_* env vars. Auth is disabled (the app will still work)."
+  );
 }
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+export const app: FirebaseApp | null = firebaseReady ? initializeApp(firebaseConfig) : null;
+export const auth: Auth | null = app ? getAuth(app) : null;
+export const googleProvider: GoogleAuthProvider | null = app ? new GoogleAuthProvider() : null;
