@@ -22,3 +22,5 @@ uvicorn==0.37.0
 PyMuPDF>=1.26.0
 Pillow>=10.0.0
 python-multipart>=0.0.6
+firebase-admin>=6.0.0
+pymongo>=4.6.0

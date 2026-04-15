@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import learning_resources as lr
+import database
 
 
 STUDENT_BAR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "student_bars")
@@ -70,6 +71,43 @@ def save_bar(student_id: str, bar: Dict[str, Any]) -> None:
     bar["updated_at"] = _now_iso()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(bar, f, ensure_ascii=False, indent=2)
+
+
+def load_bar_mongo(user_email: str) -> Dict[str, Any]:
+    """Load learning bar from MongoDB for a logged-in user."""
+    col = database.learning_bars()
+    if col is None:
+        return _empty_bar(user_email)
+    doc = col.find_one({"user_email": user_email, "subject": "focs"})
+    if not doc:
+        return _empty_bar(user_email)
+    bar = dict(doc)
+    bar.pop("_id", None)
+    bar.pop("user_email", None)
+    bar.pop("subject", None)
+    bar.setdefault("student_id", user_email)
+    bar.setdefault("current_section", None)
+    bar.setdefault("learned_sections", [])
+    bar.setdefault("planned_sections", [])
+    bar.setdefault("confusion_counts", {})
+    bar.setdefault("updated_at", _now_iso())
+    return bar
+
+
+def save_bar_mongo(user_email: str, bar: Dict[str, Any]) -> None:
+    """Save learning bar to MongoDB for a logged-in user."""
+    col = database.learning_bars()
+    if col is None:
+        return
+    bar["updated_at"] = _now_iso()
+    doc = {k: v for k, v in bar.items() if k not in ("_id",)}
+    doc["user_email"] = user_email
+    doc["subject"] = "focs"
+    col.update_one(
+        {"user_email": user_email, "subject": "focs"},
+        {"$set": doc},
+        upsert=True,
+    )
 
 
 def _load_tree_token_map() -> Dict[str, str]:
@@ -381,6 +419,90 @@ def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
         bar["confusion_counts"] = confusion_counts
 
     save_bar(student_id, bar)
+    return bar
+
+
+def update_bar_from_message_on_bar(bar: Dict[str, Any], message: str) -> Dict[str, Any]:
+    """Same heuristic update as update_bar_from_message but operates on an existing bar dict (no file I/O)."""
+    token_map = _load_tree_token_map()
+    valid = set(token_map.keys())
+    msg = (message or "").strip()
+    tokens = _extract_section_tokens(msg, valid)
+    msg_lower = msg.lower()
+
+    learned_kw = [
+        "学过", "已经学", "学完了", "学会", "掌握", "finished", "completed",
+        "already learned", "already learnt", "have learned", "have learnt",
+        "have done", "i've done", "ive done", "done with", "mastered",
+        "covered", "learned", "learnt", "reached", "up to",
+        "through section", "through ch", "through chapter", "as far as",
+    ]
+    current_kw = [
+        "目前", "现在", "学到", "i'm at", "im at", "currently",
+        "currently at", "so far", "right now", "stuck at", "working on",
+    ]
+    planned_kw = [
+        "想学", "要学", "next", "plan to learn", "want to study",
+        "study now", "review", "复习",
+    ]
+    confusion_kw = [
+        "不懂", "没懂", "看不懂", "不会", "卡住", "confused",
+        "don't understand", "cannot solve", "stuck",
+    ]
+    past_through_chapter_kw = [
+        "学到", "学过", "学完了", "已经学", "finished", "completed",
+        "learned", "learnt", "reached", "up to", "through chapter",
+        "through ch", "mastered", "covered", "have learned", "have learnt",
+        "have done", "as far as", "done with", "already learned", "already learnt",
+    ]
+    future_study_kw = [
+        "want to learn", "want to study", "要学", "想学",
+        "will study", "going to study",
+    ]
+    has_past_through = _contains_any(msg, past_through_chapter_kw)
+    wants_only_future = _contains_any(msg_lower, future_study_kw) and not re.search(
+        r"(?i)(finished|completed|学到|学过|学完了|reached|have\s+learned|have\s+learnt|up\s+to|through\s+ch)",
+        msg,
+    )
+    should_apply_through = has_past_through and not wants_only_future
+
+    explicit_chapters = _extract_explicit_chapter_numbers(msg)
+    if explicit_chapters and should_apply_through:
+        n_through = max(explicit_chapters)
+        _apply_learned_through_chapter_n(bar, n_through, valid)
+
+    subsection_hits = _extract_subsection_tokens(msg, valid)
+    if subsection_hits and should_apply_through:
+        ordered = _ordered_section_tokens_preorder()
+        in_order = [t for t in subsection_hits if t in ordered]
+        if in_order:
+            target_sub = max(in_order, key=lambda t: ordered.index(t))
+            _apply_learned_through_subsection(bar, target_sub, valid, ordered)
+
+    if tokens and _contains_any(msg, learned_kw):
+        learned_set = set(bar.get("learned_sections") or [])
+        for t in tokens:
+            learned_set.add(t)
+        bar["learned_sections"] = sorted(learned_set, key=lambda x: tuple(int(p) for p in x.split(".")))
+
+    if tokens and _contains_any(msg, current_kw):
+        bar["current_section"] = tokens[-1]
+
+    if tokens and _contains_any(msg, planned_kw):
+        planned = set(bar.get("planned_sections") or [])
+        for t in tokens:
+            planned.add(t)
+        bar["planned_sections"] = sorted(planned, key=lambda x: tuple(int(p) for p in x.split(".")))
+
+    if _contains_any(msg_lower, confusion_kw):
+        confusion_counts = bar.get("confusion_counts") or {}
+        targets = tokens[:] if tokens else ([bar.get("current_section")] if bar.get("current_section") else [])
+        for t in targets:
+            if not t:
+                continue
+            confusion_counts[t] = int(confusion_counts.get(t, 0)) + 1
+        bar["confusion_counts"] = confusion_counts
+
     return bar
 
 

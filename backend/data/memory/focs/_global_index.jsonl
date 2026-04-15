@@ -102,3 +102,7 @@
 {"id": "1c1406cf5a764631aab76c74bdbe2f0e", "t": 1775250921, "address": "5_Induction_Proving_FOR_ALL", "stream": "summary", "offset": 6570, "len": 341}
 {"id": "92890a4de184425f8c6eb76a0c07d82f", "t": 1775252320, "address": "7_Recursion", "stream": "events", "offset": 1210, "len": 754}
 {"id": "f83691e567994db79cacf84fdfffd891", "t": 1775252320, "address": "7_Recursion", "stream": "summary", "offset": 662, "len": 329}
+{"id": "0ae004423b3340f8bff7d1be66c3fa56", "t": 1776202060, "address": "5_Induction_Proving_FOR_ALL/5_2_Induction_and_Well-ordering", "stream": "events", "offset": 9771, "len": 703}
+{"id": "43ce69197c9d432f84f7e9875747948e", "t": 1776202060, "address": "5_Induction_Proving_FOR_ALL/5_2_Induction_and_Well-ordering", "stream": "summary", "offset": 652, "len": 329}
+{"id": "072bced00fef4c71bc23ada75d6574e9", "t": 1776202075, "address": "4_Proofs/4_1_Direct_Proof", "stream": "events", "offset": 4330, "len": 515}
+{"id": "9dc4401114034395bcb1f47e55483aad", "t": 1776202075, "address": "4_Proofs/4_1_Direct_Proof", "stream": "summary", "offset": 350, "len": 325}

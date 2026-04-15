@@ -4,6 +4,8 @@ import { API_BASE } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
+import { useAuth } from "./context/AuthContext";
+import ChatHistory from "./ChatHistory";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -17,6 +19,9 @@ const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
 
 export default function LearningModel() {
   const [studentId] = useState<string>(() => getOrCreateStudentId());
+  const { user, token } = useAuth();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
   const { curriculumTree } = useCurriculum();
@@ -210,6 +215,7 @@ export default function LearningModel() {
           reference_page_image_b64?: string;
           reference_page_snippets_b64?: string[];
           reference_section_pages_b64?: string[];
+          session_id?: string;
         }
       | undefined;
     const CHAT_TIMEOUT_MS = 120000;
@@ -217,15 +223,22 @@ export default function LearningModel() {
     let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const resp = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           message: displayMessage,
           history: messages,
           images_b64: imagesB64,
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
           student_id: studentId,
+          session_id: sessionId,
         }),
         signal: controller.signal,
       });
@@ -233,6 +246,11 @@ export default function LearningModel() {
       timeoutId = null;
 
       data = await resp.json();
+      // Track session ID for subsequent messages
+      if (data?.session_id && !sessionId) {
+        setSessionId(data.session_id);
+        setRefreshTrigger((n) => n + 1);
+      }
       if (!resp.ok) {
         const detail = (data as any)?.detail || (data as any)?.error || "Backend request failed.";
         addAIMessage(`Backend error: ${detail}`);
@@ -341,6 +359,7 @@ export default function LearningModel() {
 
   const reset = () => {
     setMessages([{ sender: "ai", text: WELCOME_MSG }]);
+    setSessionId(null);
     setMatchedSection(null);
     setDataMatchedTopic(null);
     setReferencePageImage(null);
@@ -352,8 +371,46 @@ export default function LearningModel() {
     setIsAwaitingReply(false);
   };
 
+  const loadSession = async (sid: string) => {
+    if (!token) return;
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${sid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const msgs = (data.messages || []).map((m: any) => ({
+        sender: m.sender,
+        text: m.text,
+      }));
+      setMessages(msgs.length > 0 ? msgs : [{ sender: "ai", text: WELCOME_MSG }]);
+      setSessionId(sid);
+      setMatchedSection(null);
+      setDataMatchedTopic(null);
+      setReferencePageImage(null);
+      setReferencePageSnippets(null);
+      setReferenceSectionPages(null);
+      setSectionPageIndex(0);
+    } catch (e) {
+      console.error("Failed to load session", e);
+    }
+  };
+
+  const handleNewChat = () => {
+    reset();
+    setRefreshTrigger((n) => n + 1);
+  };
+
   return (
     <div className="learning-page-wrapper">
+      {user && (
+        <ChatHistory
+          activeSessionId={sessionId}
+          onSelectSession={loadSession}
+          onNewChat={handleNewChat}
+          refreshTrigger={refreshTrigger}
+        />
+      )}
     <div className="learning-layout" ref={layoutRef}>
       {/* LEFT: textbook / reference (when content exists; can collapse) */}
       {showLeftColumn && (
