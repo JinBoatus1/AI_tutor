@@ -3,13 +3,14 @@
   min-height: 0;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .learning-layout {
   display: flex;
   gap: 0;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }

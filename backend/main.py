@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api_routes import router as api_router
+import database
 
 app = FastAPI()
 
@@ -22,6 +23,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def startup():
+    try:
+        database.init_db()
+    except Exception as e:
+        print(f"[DB] MongoDB init failed: {e}", flush=True)
+
 
 app.include_router(api_router)
 
