@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
     let unsub: (() => void) | undefined;
     let settled = false;
 
@@ -76,11 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async () => {
-    if (!auth || !googleProvider) {
-      throw new Error(
-        "Auth is not configured. Set VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, and VITE_FIREBASE_PROJECT_ID."
-      );
-    }
+    if (!auth || !googleProvider) return;
     await signInWithPopup(auth, googleProvider);
   };
 
