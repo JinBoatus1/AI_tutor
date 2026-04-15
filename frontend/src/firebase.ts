@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import type { Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -7,10 +8,17 @@ const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
-if (!firebaseConfig.apiKey) {
-  console.warn("[Firebase] VITE_FIREBASE_API_KEY not set — auth will not work");
+export const firebaseReady = !!firebaseConfig.apiKey;
+
+let auth: Auth | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
+
+if (firebaseReady) {
+  const app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+} else {
+  console.warn("[Firebase] VITE_FIREBASE_API_KEY not set — auth disabled");
 }
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+export { auth, googleProvider };
