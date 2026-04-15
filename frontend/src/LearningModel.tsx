@@ -215,6 +215,7 @@ export default function LearningModel() {
           reference_page_image_b64?: string;
           reference_page_snippets_b64?: string[];
           reference_section_pages_b64?: string[];
+          session_id?: string;
         }
       | undefined;
     const CHAT_TIMEOUT_MS = 120000;
