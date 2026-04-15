@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { auth, googleProvider, firebaseReady } from "../firebase";
+import { auth, googleProvider } from "../firebase";
 
 interface AuthUser {
   email: string;
@@ -27,8 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!firebaseReady || !auth) {
-      console.warn("[Auth] Firebase not configured — running without auth");
+    if (!auth) {
+      // Firebase not configured; keep app usable without auth.
+      setUser(null);
+      setToken(null);
       setLoading(false);
       return;
     }
