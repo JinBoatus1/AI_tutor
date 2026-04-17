@@ -5,7 +5,12 @@ import json
 import os
 import re
 import tempfile
-from typing import Any, Dict, List, Optional
+import threading
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Optional
+
+import user_textbook_store as uts
 
 import fitz  # PyMuPDF
 from PIL import Image
@@ -26,6 +31,116 @@ FOCS_PDF_PATH = os.path.join(DATA_DIR, "FOCS.pdf")  # 或 data 下首个 .pdf
 
 _topic_list: List[Dict[str, Any]] = []  # [{name, start, end}, ...]
 _focs_pdf_bytes: Optional[bytes] = None
+_focs_json_disk_cache: Optional[Dict[str, Any]] = None
+
+_tls = threading.local()
+
+
+@dataclass
+class ActiveTextbook:
+    book_id: str
+    raw: Dict[str, Any]
+    pdf_bytes: Optional[bytes]
+    pdf_page_offset: int
+
+
+def _load_focs_json_from_disk() -> Dict[str, Any]:
+    global _focs_json_disk_cache
+    if _focs_json_disk_cache is not None:
+        return _focs_json_disk_cache
+    if os.path.exists(FOCS_JSON_PATH):
+        with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+            _focs_json_disk_cache = json.load(f)
+    else:
+        _focs_json_disk_cache = {}
+    return _focs_json_disk_cache
+
+
+def get_effective_raw() -> Dict[str, Any]:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return ctx.raw
+    return _load_focs_json_from_disk()
+
+
+def effective_pdf_page_offset() -> int:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return int(ctx.pdf_page_offset)
+    return PDF_PAGE_OFFSET
+
+
+def get_effective_pdf_bytes() -> Optional[bytes]:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None and ctx.pdf_bytes is not None:
+        return ctx.pdf_bytes
+    return load_focs_pdf()
+
+
+def effective_memory_book_id() -> str:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return ctx.book_id
+    return "focs"
+
+
+def set_request_book(ctx: ActiveTextbook) -> None:
+    global _topic_list
+    _tls.book = ctx
+    _topic_list = []
+
+
+def clear_request_book() -> None:
+    global _topic_list
+    if hasattr(_tls, "book"):
+        delattr(_tls, "book")
+    _topic_list = []
+
+
+@contextmanager
+def request_book(book_id: Optional[str], user_email: Optional[str]) -> Iterator[ActiveTextbook]:
+    ctx = resolve_textbook_for_request(book_id, user_email)
+    set_request_book(ctx)
+    try:
+        yield ctx
+    finally:
+        clear_request_book()
+
+
+def resolve_textbook_for_request(book_id: Optional[str], user_email: Optional[str]) -> ActiveTextbook:
+    bid = (book_id or "focs").strip() or "focs"
+    if bid == "focs":
+        raw = _load_focs_json_from_disk()
+        return ActiveTextbook(
+            book_id="focs",
+            raw=raw,
+            pdf_bytes=load_focs_pdf(),
+            pdf_page_offset=PDF_PAGE_OFFSET,
+        )
+    if (
+        bid.startswith("user_")
+        and user_email
+        and uts.is_valid_user_book_id(bid)
+        and uts.user_owns_book(user_email, bid)
+    ):
+        raw = uts.load_outline(user_email, bid) or {}
+        meta = uts.load_meta(user_email, bid) or {}
+        off = int(meta.get("pdf_page_offset", 0))
+        pdf = uts.load_pdf_bytes(user_email, bid)
+        return ActiveTextbook(book_id=bid, raw=raw, pdf_bytes=pdf, pdf_page_offset=off)
+    raw = _load_focs_json_from_disk()
+    return ActiveTextbook(
+        book_id="focs",
+        raw=raw,
+        pdf_bytes=load_focs_pdf(),
+        pdf_page_offset=PDF_PAGE_OFFSET,
+    )
+
+
+def load_outline_dict(book_id: Optional[str], user_email: Optional[str]) -> Dict[str, Any]:
+    """不修改 TLS；用于 student_bar 等在请求外解析目录。"""
+    return resolve_textbook_for_request(book_id or "focs", user_email).raw
+
 
 # 全局缓存：当前教材的段落
 TEXTBOOK_PARAGRAPHS: List[Dict[str, Any]] = []
@@ -46,11 +161,12 @@ def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
     在 FOCS.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
     仅匹配顶层章（首词等于章节号）。
     """
-    if not chapter_num or not os.path.exists(FOCS_JSON_PATH):
+    if not chapter_num:
+        return None
+    raw = get_effective_raw()
+    if not raw:
         return None
     num = str(chapter_num).strip()
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
     for k, v in raw.items():
         if k == "_range" or not isinstance(v, dict):
             continue
@@ -102,10 +218,9 @@ def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:
     从 FOCS.json 生成教材章节树（缩进 + 页码）。
     chapter_filter: 若为 "5"，只返回第 5 章及其 sections，不返回全书；None 则返回全书。
     """
-    if not os.path.exists(FOCS_JSON_PATH):
+    raw = get_effective_raw()
+    if not raw:
         return ""
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
 
     def fmt_range(d: Dict[str, Any]) -> str:
         start = d.get("start") or (d.get("_range", {}) or {}).get("start")
@@ -159,10 +274,11 @@ def get_chapter_start_end_name(chapter_filter: str) -> Optional[tuple]:
     根据章节号取该章在 FOCS 中的起始/结束页（教材页码）及章节名。
     返回 (start_book, end_book, name) 或 None。
     """
-    if not chapter_filter or not os.path.exists(FOCS_JSON_PATH):
+    if not chapter_filter:
         return None
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
+    raw = get_effective_raw()
+    if not raw:
+        return None
     num = str(chapter_filter).strip()
     for k, v in raw.items():
         if k == "_range" or not isinstance(v, dict):
@@ -182,10 +298,11 @@ def get_section_start_end_name(section_filter: str) -> Optional[tuple]:
     根据小节号（如 5.1、5.1.1）在 FOCS 整棵树中查找，返回 (start_book, end_book, name)。
     支持 chapter（5）和 subsection（5.1、5.1.1）。
     """
-    if not section_filter or not os.path.exists(FOCS_JSON_PATH):
+    if not section_filter:
         return None
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
+    raw = get_effective_raw()
+    if not raw:
+        return None
     prefix = str(section_filter).strip()
 
     def walk(obj: Dict[str, Any]) -> Optional[tuple]:
@@ -242,14 +359,13 @@ def extract_section_from_message(message: str) -> Optional[str]:
 
 
 def load_focs_topic_list() -> List[Dict[str, Any]]:
-    """从 FOCS.json 解析出所有有页码的 topic。"""
+    """从当前教材目录解析出所有有页码的 topic。"""
     global _topic_list
     if _topic_list:
         return _topic_list
-    if not os.path.exists(FOCS_JSON_PATH):
+    raw = get_effective_raw()
+    if not raw:
         return []
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
 
     def extract_topics(obj: Dict[str, Any]) -> List[Dict[str, Any]]:
         items: List[Dict[str, Any]] = []

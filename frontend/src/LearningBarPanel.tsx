@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "./MyLearningBar.css";
 import { getOrCreateStudentId } from "./utils/studentId";
+import { useAuth } from "./context/AuthContext";
 import {
   getTextbookLinkLabel,
   getTextbookTree,
   readSelectedTextbookId,
-  TEXTBOOK_OPTIONS,
+  readTextbookOptionList,
+  syncTextbookCatalogFromServer,
   writeSelectedTextbookId,
-  type TextbookId,
 } from "./learningTextbooks";
 import {
   loadLocalLearningBar,
@@ -189,6 +190,7 @@ export default function LearningBarPanel({
   studentId: studentIdProp,
   embedHeaderEnd,
 }: LearningBarPanelProps) {
+  const { token } = useAuth();
   const [fallbackStudentId] = useState(() => getOrCreateStudentId());
   const studentId = studentIdProp ?? fallbackStudentId;
   const [learned, setLearned] = useState<string[]>([]);
@@ -197,7 +199,8 @@ export default function LearningBarPanel({
   const [saving, setSaving] = useState(false);
   const [syncHint, setSyncHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selectedTextbookId, setSelectedTextbookId] = useState<TextbookId>(() => readSelectedTextbookId());
+  const [bookOptions, setBookOptions] = useState(() => readTextbookOptionList());
+  const [selectedTextbookId, setSelectedTextbookId] = useState<string>(() => readSelectedTextbookId());
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const bookBtnRef = useRef<HTMLButtonElement>(null);
   const bookPopoverRef = useRef<HTMLDivElement>(null);
@@ -207,24 +210,49 @@ export default function LearningBarPanel({
   const activeTree = useMemo(() => getTextbookTree(selectedTextbookId) as FocsNode, [selectedTextbookId]);
 
   useEffect(() => {
-    const local = loadLocalLearningBar(studentId);
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      await syncTextbookCatalogFromServer(token);
+      if (!cancelled) setBookOptions(readTextbookOptionList());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    const onChange = () => {
+      setSelectedTextbookId(readSelectedTextbookId());
+      setBookOptions(readTextbookOptionList());
+    };
+    window.addEventListener("ai-tutor-textbook-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("ai-tutor-textbook-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const local = loadLocalLearningBar(studentId, selectedTextbookId);
     setLearned(local.learned_sections);
     setHydrated(true);
-  }, [studentId]);
+  }, [studentId, selectedTextbookId]);
 
   useEffect(() => {
     if (!hydrated) return;
     if (learned.length > 0) return;
     let cancelled = false;
     void (async () => {
-      const fromServer = await tryHydrateLearnedFromServer(studentId);
+      const fromServer = await tryHydrateLearnedFromServer(studentId, selectedTextbookId, token);
       if (cancelled || !fromServer?.length) return;
       setLearned(fromServer);
     })();
     return () => {
       cancelled = true;
     };
-  }, [hydrated, learned.length, studentId]);
+  }, [hydrated, learned.length, studentId, selectedTextbookId, token]);
 
   const persistLearned = useCallback(
     async (next: string[]) => {
@@ -232,9 +260,9 @@ export default function LearningBarPanel({
       setError(null);
       setSyncHint(null);
       try {
-        saveLocalLearningBar(studentId, next);
+        saveLocalLearningBar(studentId, next, selectedTextbookId);
         setLearned(next);
-        const ok = await trySyncLearnedToServer(studentId, next);
+        const ok = await trySyncLearnedToServer(studentId, next, selectedTextbookId, token);
         setSyncHint(
           ok
             ? variant === "embed"
@@ -251,7 +279,7 @@ export default function LearningBarPanel({
         setSaving(false);
       }
     },
-    [studentId, variant]
+    [studentId, variant, selectedTextbookId, token]
   );
 
   const onToggleToken = useCallback(
@@ -349,7 +377,7 @@ export default function LearningBarPanel({
           aria-label="Choose textbook"
         >
           <div className="my-learning-bar-book-popover-hint">Choose textbook</div>
-          {TEXTBOOK_OPTIONS.map((opt) => (
+          {bookOptions.map((opt) => (
             <button
               key={opt.id}
               type="button"

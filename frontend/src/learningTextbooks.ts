@@ -1,43 +1,142 @@
 import focsTreeBundled from "./data/focsTree.json";
+import { API_BASE } from "./apiBase";
 
 /** Bundled outline roots (same shape as FOCS tree JSON). */
 export type TextbookTreeRoot = Record<string, unknown>;
 
-export type TextbookId = "focs";
-
 const STORAGE_KEY = "ai_tutor_selected_textbook_id";
+const TREE_PREFIX = "ai_tutor_textbook_tree_";
+const CATALOG_KEY = "ai_tutor_textbook_catalog_v1";
 
-export const TEXTBOOK_OPTIONS: { id: TextbookId; linkLabel: string }[] = [
+export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = [
   { id: "focs", linkLabel: "FCOS" },
 ];
 
-export function readSelectedTextbookId(): TextbookId {
+function safeParseCatalog(): { id: string; linkLabel: string }[] {
+  try {
+    const raw = localStorage.getItem(CATALOG_KEY);
+    if (!raw) return [];
+    const j = JSON.parse(raw) as { items?: unknown };
+    if (!Array.isArray(j?.items)) return [];
+    return j.items
+      .filter((x): x is { id: string; linkLabel: string } => {
+        const o = x as { id?: unknown; linkLabel?: unknown };
+        return typeof o?.id === "string" && typeof o?.linkLabel === "string";
+      })
+      .filter((x) => x.id !== "focs");
+  } catch {
+    return [];
+  }
+}
+
+/** Built-in + uploaded (catalog) options for pickers. */
+export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
+  const custom = safeParseCatalog();
+  const seen = new Set<string>();
+  const out: { id: string; linkLabel: string }[] = [];
+  for (const o of [...BUILTIN_TEXTBOOK_OPTIONS, ...custom]) {
+    if (seen.has(o.id)) continue;
+    seen.add(o.id);
+    out.push(o);
+  }
+  return out;
+}
+
+export function writeCatalogAndTree(id: string, linkLabel: string, tree: TextbookTreeRoot): void {
+  const cur = safeParseCatalog().filter((x) => x.id !== id);
+  cur.push({ id, linkLabel: linkLabel || id });
+  try {
+    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
+    localStorage.setItem(TREE_PREFIX + id, JSON.stringify(tree));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readSelectedTextbookId(): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === "focs") return "focs";
+    if (raw && raw.length > 0) return raw;
   } catch {
     /* ignore */
   }
   return "focs";
 }
 
-export function writeSelectedTextbookId(id: TextbookId): void {
+export function writeSelectedTextbookId(id: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, id);
+    window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id } }));
   } catch {
     /* ignore */
   }
 }
 
-export function getTextbookTree(id: TextbookId): TextbookTreeRoot {
-  switch (id) {
-    case "focs":
-      return focsTreeBundled as TextbookTreeRoot;
-    default:
-      return focsTreeBundled as TextbookTreeRoot;
+export function getTextbookTree(id: string): TextbookTreeRoot {
+  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+  try {
+    const raw = localStorage.getItem(TREE_PREFIX + id);
+    if (raw) return JSON.parse(raw) as TextbookTreeRoot;
+  } catch {
+    /* ignore */
   }
+  return {};
 }
 
-export function getTextbookLinkLabel(id: TextbookId): string {
-  return TEXTBOOK_OPTIONS.find((t) => t.id === id)?.linkLabel ?? "FCOS";
+export function getTextbookLinkLabel(id: string): string {
+  return readTextbookOptionList().find((t) => t.id === id)?.linkLabel ?? id;
+}
+
+/** 将 FOCS 形目录转为 CurriculumContext 使用的 topics/chapters 结构（供 Learning Mode 侧栏匹配）。 */
+export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
+  topics: { topic: string; chapters: { chapter: string; key_points: string[] }[] }[];
+} {
+  const chapters: { chapter: string; key_points: string[] }[] = [];
+
+  const walk = (node: TextbookTreeRoot) => {
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "_range" || typeof v !== "object" || v === null || Array.isArray(v)) continue;
+      const child = v as TextbookTreeRoot;
+      const rng = child._range as { start?: number; end?: number } | undefined;
+      const s = (child.start as number | undefined) ?? rng?.start;
+      const e = (child.end as number | undefined) ?? rng?.end;
+      if (s != null && e != null) {
+        chapters.push({ chapter: k, key_points: [] });
+      }
+      walk(child);
+    }
+  };
+  walk(tree);
+  return { topics: [{ topic: "Textbook", chapters }] };
+}
+
+/** 登录后从服务器拉取用户教材列表与目录 JSON，写入 localStorage。 */
+export async function syncTextbookCatalogFromServer(token: string): Promise<void> {
+  try {
+    const r = await fetch(`${API_BASE}/api/user_textbooks`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return;
+    const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
+    const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter((x) => x?.id && x.id !== "focs");
+    localStorage.setItem(
+      CATALOG_KEY,
+      JSON.stringify({
+        items: items.map((x) => ({ id: x.id, linkLabel: x.label || x.id })),
+      })
+    );
+    for (const it of items) {
+      const tr = await fetch(`${API_BASE}/api/user_textbooks/${encodeURIComponent(it.id)}/tree`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (tr.ok) {
+        const tree = await tr.json();
+        if (tree && typeof tree === "object") {
+          localStorage.setItem(TREE_PREFIX + it.id, JSON.stringify(tree));
+        }
+      }
+    }
+  } catch {
+    /* offline */
+  }
 }

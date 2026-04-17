@@ -2,6 +2,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
 import { API_BASE } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
+import {
+  focsOutlineToCurriculum,
+  getTextbookTree,
+  readSelectedTextbookId,
+} from "./learningTextbooks";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
@@ -50,7 +55,8 @@ export default function LearningModel() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
-  const { curriculumTree } = useCurriculum();
+  const { curriculumTree, setCurriculumTree } = useCurriculum();
+  const [textbookId, setTextbookId] = useState(() => readSelectedTextbookId());
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
   const [dataMatchedTopic, setDataMatchedTopic] = useState<{
@@ -71,6 +77,21 @@ export default function LearningModel() {
   const [rightPanelWidth, setRightPanelWidth] = useState(67); // ~2/3 textbook, ~1/3 chat
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const tree = getTextbookTree(textbookId);
+    setCurriculumTree(focsOutlineToCurriculum(tree));
+  }, [textbookId, setCurriculumTree]);
+
+  useEffect(() => {
+    const sync = () => setTextbookId(readSelectedTextbookId());
+    window.addEventListener("ai-tutor-textbook-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("ai-tutor-textbook-changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
   const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
@@ -322,6 +343,7 @@ export default function LearningModel() {
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
           student_id: studentId,
           session_id: sessionId,
+          textbook_id: textbookId,
         }),
         signal: controller.signal,
       });

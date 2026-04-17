@@ -1,6 +1,16 @@
+import { useCallback, useEffect, useState } from "react";
+import { API_BASE } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
+import {
+  readSelectedTextbookId,
+  readTextbookOptionList,
+  syncTextbookCatalogFromServer,
+  type TextbookTreeRoot,
+  writeCatalogAndTree,
+  writeSelectedTextbookId,
+} from "./learningTextbooks";
 import "./UserProfile.css";
 
 function GoogleIcon({ size = 18 }: { size?: number }) {
@@ -27,8 +37,75 @@ function GoogleIcon({ size = 18 }: { size?: number }) {
 }
 
 export default function UserProfile() {
-  const { user, loading, login, logout } = useAuth();
+  const { user, loading, login, logout, token } = useAuth();
   const { pageBackground, setPageBackground } = useProfileSettings();
+  const [textbookOptions, setTextbookOptions] = useState(() => readTextbookOptionList());
+  const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
+  const [textbookUploading, setTextbookUploading] = useState(false);
+  const [textbookError, setTextbookError] = useState<string | null>(null);
+
+  const refreshTextbookOptions = useCallback(() => {
+    setTextbookOptions(readTextbookOptionList());
+    setSelectedTextbook(readSelectedTextbookId());
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    void (async () => {
+      await syncTextbookCatalogFromServer(token);
+      refreshTextbookOptions();
+    })();
+  }, [token, refreshTextbookOptions]);
+
+  useEffect(() => {
+    const onChange = () => refreshTextbookOptions();
+    window.addEventListener("ai-tutor-textbook-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("ai-tutor-textbook-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, [refreshTextbookOptions]);
+
+  const onTextbookFile = async (file: File | null) => {
+    if (!file) return;
+    if (!token) {
+      setTextbookError("请先登录后再上传 PDF 教材。");
+      return;
+    }
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setTextbookError("请上传 PDF 文件。");
+      return;
+    }
+    setTextbookUploading(true);
+    setTextbookError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("label", file.name.replace(/\.pdf$/i, "") || "我的教材");
+      const resp = await fetch(`${API_BASE}/api/user_textbooks/from_pdf`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = (await resp.json()) as { detail?: string; id?: string; label?: string; tree?: TextbookTreeRoot | null };
+      if (!resp.ok) {
+        setTextbookError(typeof data?.detail === "string" ? data.detail : "上传或解析失败。");
+        return;
+      }
+      if (!data?.id || !data?.tree) {
+        setTextbookError("服务器返回数据不完整。");
+        return;
+      }
+      writeCatalogAndTree(data.id, data.label || data.id, data.tree);
+      writeSelectedTextbookId(data.id);
+      refreshTextbookOptions();
+    } catch {
+      setTextbookError("无法连接服务器，请稍后再试。");
+    } finally {
+      setTextbookUploading(false);
+    }
+  };
 
   return (
     <div className="profile-page">
@@ -70,6 +147,67 @@ export default function UserProfile() {
               Sign in with Google
             </button>
           </div>
+        )}
+      </section>
+
+      <section className="profile-card" aria-labelledby="profile-textbook-heading">
+        <h2 id="profile-textbook-heading" className="profile-card-title">
+          教材与目录
+        </h2>
+        <p className="profile-setting-desc">
+          选择当前使用的教材后，学习进度条与学习中心对话中的目录、PDF 引用会全部切换为该教材。上传 PDF
+          后由服务器生成与 FCOS 相同结构的目录 JSON（嵌套对象 + 页码）。
+        </p>
+        {!user ? (
+          <p className="profile-muted">登录后可上传自己的 PDF 并保存到账号。</p>
+        ) : (
+          <>
+            <div className="profile-account-row" style={{ flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.75rem" }}>
+              <label htmlFor="profile-textbook-select" className="profile-muted">
+                当前教材
+              </label>
+              <select
+                id="profile-textbook-select"
+                className="profile-signout-btn"
+                style={{ minWidth: "12rem", cursor: "pointer" }}
+                value={selectedTextbook}
+                disabled={textbookUploading}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedTextbook(id);
+                  writeSelectedTextbookId(id);
+                }}
+              >
+                {textbookOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.linkLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="profile-account-row" style={{ flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+              <label className="profile-muted" htmlFor="profile-textbook-file">
+                上传新教材（PDF）
+              </label>
+              <input
+                id="profile-textbook-file"
+                type="file"
+                accept="application/pdf,.pdf"
+                disabled={textbookUploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  void onTextbookFile(f ?? null);
+                }}
+              />
+              {textbookUploading ? <span className="profile-muted">正在解析目录…</span> : null}
+            </div>
+            {textbookError ? (
+              <p className="profile-muted" style={{ color: "#c62828", marginTop: "0.5rem" }}>
+                {textbookError}
+              </p>
+            ) : null}
+          </>
         )}
       </section>
 
