@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/venv/Scripts/python.exe:*)",
+      "Bash(ls -d \"/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/\"*env*)",
+      "Bash(ls -d \"/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/.\"*env*)",
+      "Bash(\"/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/.venv/Scripts/pip.exe\" install firebase-admin pymongo)",
+      "Bash('/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/.venv/Scripts/python.exe' -c ':*)",
+      "Bash(npx vite:*)",
+      "Bash(ls apiBase*)"
+    ]
+  }
+}

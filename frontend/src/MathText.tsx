@@ -5,15 +5,15 @@ import "katex/dist/katex.min.css";
 type Segment = { type: "text" | "inline" | "block"; content: string };
 
 /**
- * 将文本按 LaTeX 分段：
- * 行内：\(...\) 或 $...$（单个 $，且非 $$）
- * 块级：\[...\] 或 $$...$$
+ * Split text into LaTeX segments.
+ * Inline: \\(...\\) or $...$ (single $, not $$)
+ * Block: \\[...\\] or $$...$$
  */
 function parseMathSegments(text: string): Segment[] {
   const segments: Segment[] = [];
   let remaining = text;
 
-  // 先匹配 $$...$$，再 \(...\)、\[...\]，最后 $...$（避免 $$ 被拆成两个 $）
+  // Order: $$...$$, then \\(...\\) / \\[...\\], then $...$ (avoid splitting $$ as two $)
   const regex = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$(?!\$)([^$]*?)\$(?!\$))/g;
   let lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -44,7 +44,7 @@ function parseMathSegments(text: string): Segment[] {
   return segments;
 }
 
-/** KaTeX 渲染出错时显示原文，避免整条消息挂掉 */
+/** On KaTeX error, show raw TeX so the whole message does not crash. */
 class MathErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback: string; inline?: boolean },
   { hasError: boolean }

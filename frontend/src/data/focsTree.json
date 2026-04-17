@@ -1,0 +1,908 @@
+{
+  "0 Background and Pep Talk": {
+    "_range": {
+      "start": 3,
+      "end": 6
+    }
+  },
+  "1 A Taste of Discrete Mathematics": {
+    "_range": {
+      "start": 7,
+      "end": 14
+    },
+    "1.1 Modeling Epidemics": {
+      "start": 7,
+      "end": 7
+    },
+    "1.2 Speed Dating": {
+      "start": 8,
+      "end": 8
+    },
+    "1.3 Friendship Networks and Ads": {
+      "start": 8,
+      "end": 8
+    },
+    "1.4 Modeling Computers": {
+      "start": 9,
+      "end": 9
+    },
+    "1.5 Proof": {
+      "start": 9,
+      "end": 10
+    },
+    "1.6 Problems": {
+      "start": 11,
+      "end": 14
+    }
+  },
+  "2 Discrete Objects": {
+    "_range": {
+      "start": 15,
+      "end": 24
+    },
+    "2.1 Sets": {
+      "start": 15,
+      "end": 16
+    },
+    "2.2 Sequences": {
+      "start": 17,
+      "end": 17
+    },
+    "2.3 Graphs": {
+      "start": 17,
+      "end": 18
+    },
+    "2.4 Easing into Proofs": {
+      "start": 19,
+      "end": 19
+    },
+    "2.4.1 An Axiom: The Well-Ordering Principle": {
+      "start": 20,
+      "end": 22
+    },
+    "2.5 Problems": {
+      "start": 23,
+      "end": 24
+    }
+  },
+  "3 Making Precise Statements": {
+    "_range": {
+      "start": 25,
+      "end": 40
+    },
+    "3.1 Compound Propositions": {
+      "start": 26,
+      "end": 27
+    },
+    "3.2 Truth-Tables": {
+      "start": 28,
+      "end": 29
+    },
+    "3.2.1 Proving an Implication": {
+      "start": 30,
+      "end": 30
+    },
+    "3.3 Quantifiers: Statements About Many Things": {
+      "start": 30,
+      "end": 30
+    },
+    "3.3.1 Predicates": {
+      "start": 31,
+      "end": 32
+    },
+    "3.3.2 Negation": {
+      "start": 33,
+      "end": 33
+    },
+    "3.3.3 Mixing Quantifiers": {
+      "start": 33,
+      "end": 33
+    },
+    "3.3.4 Proofs with Quantifiers": {
+      "start": 34,
+      "end": 34
+    },
+    "3.4 Deduction Versus Induction": {
+      "start": 34,
+      "end": 34
+    },
+    "3.5 Problems": {
+      "start": 35,
+      "end": 40
+    }
+  },
+  "4 Proofs": {
+    "_range": {
+      "start": 41,
+      "end": 54
+    },
+    "4.1 Direct Proof": {
+      "start": 41,
+      "end": 43
+    },
+    "4.1.1 Disproving Implication": {
+      "start": 44,
+      "end": 44
+    },
+    "4.2 Proof by Contraposition": {
+      "start": 45,
+      "end": 45
+    },
+    "4.3 Equivalence: If and Only If": {
+      "start": 45,
+      "end": 45
+    },
+    "4.4 Proof by Contradiction (Reductio ad Absurdum)": {
+      "start": 46,
+      "end": 47
+    },
+    "4.5 Proofs about Sets": {
+      "start": 48,
+      "end": 49
+    },
+    "4.6 Problems": {
+      "start": 50,
+      "end": 54
+    }
+  },
+  "5 Induction: Proving \"FOR ALL ...\" ": {
+    "_range": {
+      "start": 55,
+      "end": 70
+    },
+    "5.1 Ordinary Induction": {
+      "start": 57,
+      "end": 57
+    },
+    "5.1.1 Sum of Powers of Integers": {
+      "start": 58,
+      "end": 60
+    },
+    "5.1.2 Induction Gone Wrong": {
+      "start": 61,
+      "end": 62
+    },
+    "5.2 Induction and Well-ordering": {
+      "start": 63,
+      "end": 63
+    },
+    "5.3 Problems": {
+      "start": 64,
+      "end": 70
+    }
+  },
+  "6 Strong Induction": {
+    "_range": {
+      "start": 71,
+      "end": 84
+    },
+    "6.1 Strengthening the Induction Hypothesis": {
+      "start": 71,
+      "end": 73
+    },
+    "6.2 Leaping Induction": {
+      "start": 74,
+      "end": 74
+    },
+    "6.3 Strong Induction": {
+      "start": 75,
+      "end": 77
+    },
+    "6.4 Many Flavors of Induction": {
+      "start": 78,
+      "end": 79
+    },
+    "6.5 Problems": {
+      "start": 80,
+      "end": 84
+    }
+  },
+  "7 Recursion": {
+    "_range": {
+      "start": 85,
+      "end": 100
+    },
+    "7.1 Recursive Functions": {
+      "start": 86,
+      "end": 88
+    },
+    "7.1.1 Recurrences": {
+      "start": 89,
+      "end": 89
+    },
+    "7.1.2 Recursive Programs": {
+      "start": 90,
+      "end": 90
+    },
+    "7.2 Recursive Sets": {
+      "start": 91,
+      "end": 91
+    },
+    "7.3 Recursive Structures - Trees": {
+      "start": 92,
+      "end": 93
+    },
+    "7.4 Problems": {
+      "start": 94,
+      "end": 100
+    }
+  },
+  "8 Proofs with Recursive Objects": {
+    "_range": {
+      "start": 101,
+      "end": 112
+    },
+    "8.1 Structural Induction": {
+      "start": 101,
+      "end": 102
+    },
+    "8.2 Structural Induction on N": {
+      "start": 103,
+      "end": 103
+    },
+    "8.3 Palindromes": {
+      "start": 104,
+      "end": 104
+    },
+    "8.4 Well-Formed Arithmetic Expressions": {
+      "start": 104,
+      "end": 104
+    },
+    "8.5 Properties of Rooted Binary Trees": {
+      "start": 105,
+      "end": 106
+    },
+    "8.6 Problems": {
+      "start": 107,
+      "end": 112
+    }
+  },
+  "9 Sums and Asymptotics": {
+    "_range": {
+      "start": 113,
+      "end": 128
+    },
+    "9.1 Computing Sums": {
+      "start": 114,
+      "end": 116
+    },
+    "9.2 Asymptotics: Big-Theta, Big-Oh and Big-Omega": {
+      "start": 117,
+      "end": 118
+    },
+    "9.3 Approximation via Integration": {
+      "start": 119,
+      "end": 121
+    },
+    "9.4 Problems": {
+      "start": 122,
+      "end": 128
+    }
+  },
+  "10 Number Theory": {
+    "_range": {
+      "start": 129,
+      "end": 144
+    },
+    "10.1 Greatest Common Divisor": {
+      "start": 130,
+      "end": 131
+    },
+    "10.2 Fundamental Theorem of Arithmetic": {
+      "start": 132,
+      "end": 132
+    },
+    "10.3 Modular Arithmetic and Cryptography": {
+      "start": 133,
+      "end": 134
+    },
+    "10.3.1 Modular Multiplicative Inverse": {
+      "start": 135,
+      "end": 135
+    },
+    "10.3.2 RSA Public Key Cryptography": {
+      "start": 136,
+      "end": 138
+    },
+    "10.4 Problems": {
+      "start": 139,
+      "end": 144
+    }
+  },
+  "11 Graphs": {
+    "_range": {
+      "start": 145,
+      "end": 160
+    },
+    "11.1 Degree Sequence": {
+      "start": 146,
+      "end": 147
+    },
+    "11.1.1 Handshaking Theorem": {
+      "start": 148,
+      "end": 148
+    },
+    "11.2 Trees": {
+      "start": 149,
+      "end": 149
+    },
+    "11.3 Planar Graphs": {
+      "start": 149,
+      "end": 149
+    },
+    "11.4 Other Types of Graphs": {
+      "start": 150,
+      "end": 151
+    },
+    "11.4.1 Directed Graphs (Digraphs)": {
+      "start": 152,
+      "end": 152
+    },
+    "11.5 Problem Solving with Graphs": {
+      "start": 153,
+      "end": 153
+    },
+    "11.6 Problems": {
+      "start": 154,
+      "end": 160
+    }
+  },
+  "12 Matching and Coloring": {
+    "_range": {
+      "start": 161,
+      "end": 178
+    },
+    "12.1 Bipartite Graph Matchings": {
+      "start": 162,
+      "end": 163
+    },
+    "12.1.1 Stable Marriage: Mathematics of Dating": {
+      "start": 164,
+      "end": 165
+    },
+    "12.2 Coloring": {
+      "start": 166,
+      "end": 167
+    },
+    "12.3 Whirlwind Tour of Graph Problems": {
+      "start": 168,
+      "end": 169
+    },
+    "12.4 Problems": {
+      "start": 170,
+      "end": 178
+    }
+  },
+  "13 Counting": {
+    "_range": {
+      "start": 179,
+      "end": 196
+    },
+    "13.1 Counting Sequences": {
+      "start": 179,
+      "end": 181
+    },
+    "13.2 Build-up Counting": {
+      "start": 182,
+      "end": 183
+    },
+    "13.3 Counting One Set By Counting Another: Bijection": {
+      "start": 184,
+      "end": 184
+    },
+    "13.3.1 Bijection": {
+      "start": 184,
+      "end": 184
+    },
+    "13.3.2 Bijection and Counting": {
+      "start": 185,
+      "end": 185
+    },
+    "13.4 Permutations and Combinations": {
+      "start": 186,
+      "end": 187
+    },
+    "13.5 Problems": {
+      "start": 188,
+      "end": 196
+    }
+  },
+  "14 Advanced Counting": {
+    "_range": {
+      "start": 197,
+      "end": 210
+    },
+    "14.1 Inclusion-Exclusion": {
+      "start": 199,
+      "end": 199
+    },
+    "14.1.1 Union of More than Two Sets": {
+      "start": 200,
+      "end": 201
+    },
+    "14.2 Pigeonhole Principle": {
+      "start": 202,
+      "end": 205
+    },
+    "14.3 Problems": {
+      "start": 206,
+      "end": 210
+    }
+  },
+  "15 Probability": {
+    "_range": {
+      "start": 211,
+      "end": 224
+    },
+    "15.1 Computing Probabilities": {
+      "start": 211,
+      "end": 212
+    },
+    "15.1.1 The Event of Interest": {
+      "start": 213,
+      "end": 215
+    },
+    "15.2 Probability and Sets": {
+      "start": 216,
+      "end": 217
+    },
+    "15.3 Uniform Probability Spaces": {
+      "start": 218,
+      "end": 218
+    },
+    "15.4 Infinite Probability Spaces": {
+      "start": 219,
+      "end": 220
+    },
+    "15.5 Problems": {
+      "start": 221,
+      "end": 224
+    }
+  },
+  "16 Conditional Probability": {
+    "_range": {
+      "start": 225,
+      "end": 242
+    },
+    "16.1 Definition": {
+      "start": 225,
+      "end": 225
+    },
+    "16.2 Examples": {
+      "start": 226,
+      "end": 228
+    },
+    "16.3 Conditional Probability Traps": {
+      "start": 229,
+      "end": 229
+    },
+    "16.3.1 Sampling Bias": {
+      "start": 230,
+      "end": 230
+    },
+    "16.3.2 Transposed Conditional": {
+      "start": 230,
+      "end": 230
+    },
+    "16.4 Law of Total Probability": {
+      "start": 231,
+      "end": 233
+    },
+    "16.5 Problems": {
+      "start": 234,
+      "end": 242
+    }
+  },
+  "17 Independent Events": {
+    "_range": {
+      "start": 243,
+      "end": 258
+    },
+    "17.1 Coincidence: The Birthday Paradox": {
+      "start": 246,
+      "end": 247
+    },
+    "17.1.1 Hashing": {
+      "start": 248,
+      "end": 249
+    },
+    "17.2 Random Walk and Gambler’s Ruin": {
+      "start": 250,
+      "end": 252
+    },
+    "17.3 Problems": {
+      "start": 253,
+      "end": 258
+    }
+  },
+  "18 Random Variables": {
+    "_range": {
+      "start": 259,
+      "end": 276
+    },
+    "18.1 Probability Distribution Function (PDF)": {
+      "start": 260,
+      "end": 261
+    },
+    "18.1.1 Joint Probability Distribution": {
+      "start": 262,
+      "end": 263
+    },
+    "18.1.2 Cumulative Distribution Function (CDF)": {
+      "start": 264,
+      "end": 264
+    },
+    "18.2 Bernoulli/Binary": {
+      "start": 265,
+      "end": 265
+    },
+    "18.3 Uniform": {
+      "start": 265,
+      "end": 266
+    },
+    "18.4 Binomial": {
+      "start": 267,
+      "end": 267
+    },
+    "18.5 Waiting Time to Success": {
+      "start": 268,
+      "end": 268
+    },
+    "18.6 Problems": {
+      "start": 269,
+      "end": 276
+    }
+  },
+  "19 Expected Value": {
+    "_range": {
+      "start": 277,
+      "end": 292
+    },
+    "19.1 Expected Value of Common Random Variables": {
+      "start": 279,
+      "end": 279
+    },
+    "19.1.1 Binomial Distribution": {
+      "start": 280,
+      "end": 280
+    },
+    "19.1.2 Waiting Time to Success": {
+      "start": 280,
+      "end": 280
+    },
+    "19.2 Conditional Expectation": {
+      "start": 281,
+      "end": 283
+    },
+    "19.2.1 Law of Total Expectation": {
+      "start": 284,
+      "end": 286
+    },
+    "19.3 Problems": {
+      "start": 287,
+      "end": 292
+    }
+  },
+  "20 Expected Value: Sums and Other Tools": {
+    "_range": {
+      "start": 293,
+      "end": 308
+    },
+    "20.1 Linearity": {
+      "start": 293,
+      "end": 294
+    },
+    "20.2 Iterated Expectation": {
+      "start": 295,
+      "end": 296
+    },
+    "20.3 Build-up Expectation": {
+      "start": 297,
+      "end": 297
+    },
+    "20.4 Expected Value of a Product": {
+      "start": 297,
+      "end": 298
+    },
+    "20.5 Sums of Indicators": {
+      "start": 299,
+      "end": 301
+    },
+    "20.6 Problems": {
+      "start": 302,
+      "end": 308
+    }
+  },
+  "21 Deviations from the Mean": {
+    "_range": {
+      "start": 309,
+      "end": 326
+    },
+    "21.1 Variance": {
+      "start": 310,
+      "end": 310
+    },
+    "21.1.1 Computing Variance": {
+      "start": 311,
+      "end": 311
+    },
+    "21.1.2 Variance is Non-Negative": {
+      "start": 312,
+      "end": 312
+    },
+    "21.2 Variance of a Sum": {
+      "start": 313,
+      "end": 314
+    },
+    "21.3 Law of Large Numbers": {
+      "start": 315,
+      "end": 316
+    },
+    "21.3.1 Weak Law of Large Numbers": {
+      "start": 317,
+      "end": 317
+    },
+    "21.3.2 Strong Law of Large Numbers": {
+      "start": 317,
+      "end": 318
+    },
+    "21.4 Problems": {
+      "start": 319,
+      "end": 326
+    }
+  },
+  "22 Infinity": {
+    "_range": {
+      "start": 327,
+      "end": 338
+    },
+    "22.1 Countable": {
+      "start": 327,
+      "end": 328
+    },
+    "22.1.1 Every Countable Set Can Be Listed": {
+      "start": 329,
+      "end": 330
+    },
+    "22.1.2 Rationals are Countable": {
+      "start": 331,
+      "end": 331
+    },
+    "22.2 Reals are Uncountable": {
+      "start": 332,
+      "end": 333
+    },
+    "22.3 Infinity and Computing": {
+      "start": 334,
+      "end": 334
+    },
+    "22.4 Problems": {
+      "start": 335,
+      "end": 338
+    }
+  },
+  "23 Languages: What is Computing?": {
+    "_range": {
+      "start": 339,
+      "end": 348
+    },
+    "23.1 Decision Problems": {
+      "start": 339,
+      "end": 340
+    },
+    "23.2 Languages": {
+      "start": 341,
+      "end": 341
+    },
+    "23.2.1 Describing a Language": {
+      "start": 342,
+      "end": 342
+    },
+    "23.3 Complexity of a Computing Problem": {
+      "start": 343,
+      "end": 345
+    },
+    "23.4 Problems": {
+      "start": 346,
+      "end": 348
+    }
+  },
+  "24 Deterministic Finite Automata": {
+    "_range": {
+      "start": 349,
+      "end": 364
+    },
+    "24.1 Regular Languages": {
+      "start": 351,
+      "end": 354
+    },
+    "24.2 Provably Non-Regular": {
+      "start": 355,
+      "end": 355
+    },
+    "24.3 Adding External Memory": {
+      "start": 356,
+      "end": 357
+    },
+    "24.4 Problems": {
+      "start": 358,
+      "end": 364
+    }
+  },
+  "25 Context Free Grammars": {
+    "_range": {
+      "start": 365,
+      "end": 376
+    },
+    "25.1 Parse Trees": {
+      "start": 369,
+      "end": 370
+    },
+    "25.2 Pushdown Automata (PDA)": {
+      "start": 371,
+      "end": 371
+    },
+    "25.3 Provably Not Context Free": {
+      "start": 372,
+      "end": 373
+    },
+    "25.4 Problems": {
+      "start": 374,
+      "end": 376
+    }
+  },
+  "26 Turing Machines": {
+    "_range": {
+      "start": 377,
+      "end": 386
+    },
+    "26.1 Transducer Turing Machines": {
+      "start": 381,
+      "end": 382
+    },
+    "26.2 Infinite Loops": {
+      "start": 383,
+      "end": 383
+    },
+    "26.3 Encodings of Turing Machines": {
+      "start": 384,
+      "end": 385
+    },
+    "26.4 Problems": {
+      "start": 386,
+      "end": 386
+    }
+  },
+  "27 Unsolvable Problems": {
+    "_range": {
+      "start": 387,
+      "end": 402
+    },
+    "27.1 Sketching Turing Machines": {
+      "start": 387,
+      "end": 387
+    },
+    "27.2 Programmable Turing Machines": {
+      "start": 388,
+      "end": 389
+    },
+    "27.3 L_TM is Undecidable: There’s No Mega-Compiler": {
+      "start": 390,
+      "end": 390
+    },
+    "27.4 Other Unsolvable Problems: Reduction": {
+      "start": 391,
+      "end": 392
+    },
+    "27.4.1 Post’s Correspondence Problem (PCP)": {
+      "start": 393,
+      "end": 393
+    },
+    "27.4.2 Program Verification: “Hello World!”": {
+      "start": 394,
+      "end": 394
+    },
+    "27.4.3 Non-Recognizable Languages": {
+      "start": 395,
+      "end": 395
+    },
+    "27.5 Problems": {
+      "start": 396,
+      "end": 402
+    }
+  },
+  "28 Efficiency: The Class P": {
+    "_range": {
+      "start": 403,
+      "end": 412
+    },
+    "28.1 Time Complexity": {
+      "start": 404,
+      "end": 404
+    },
+    "28.2 Efficiently Solvable Problems: The Class P": {
+      "start": 405,
+      "end": 408
+    },
+    "28.3 A Decidable Non-Polynomial Problem": {
+      "start": 409,
+      "end": 410
+    },
+    "28.4 Boundary Between Efficient and Inefficient": {
+      "start": 411,
+      "end": 411
+    },
+    "28.5 Problems": {
+      "start": 412,
+      "end": 412
+    }
+  },
+  "29 Hard Problems: NP": {
+    "_range": {
+      "start": 413,
+      "end": 430
+    },
+    "29.1 Verifiable versus Solvable": {
+      "start": 413,
+      "end": 413
+    },
+    "29.1.1 NP: Polynomially Verifiable": {
+      "start": 414,
+      "end": 415
+    },
+    "29.1.2 NP and Nondeterminism": {
+      "start": 416,
+      "end": 417
+    },
+    "29.2 A Hardest Problem in NP": {
+      "start": 418,
+      "end": 418
+    },
+    "29.2.1 Circuits and Satisfiability": {
+      "start": 418,
+      "end": 418
+    },
+    "29.2.2 CIRCUIT-SAT is Harder than Every Problem in NP": {
+      "start": 418,
+      "end": 420
+    },
+    "29.3 Other Hardest Problems: NP-completeness": {
+      "start": 421,
+      "end": 424
+    },
+    "29.4 Problems": {
+      "start": 425,
+      "end": 430
+    }
+  },
+  "Epilogue": {
+    "_range": {
+      "start": 431,
+      "end": 432
+    }
+  },
+  "30 Solutions to Quizzes & Exercises": {
+    "_range": {
+      "start": "SOL-1",
+      "end": "SOL-95"
+    }
+  },
+  "Further Reading": {
+    "_range": {
+      "start": 433,
+      "end": 436
+    }
+  },
+  "Glossary of Notation": {
+    "_range": {
+      "start": 437,
+      "end": 440
+    }
+  },
+  "Index": {
+    "_range": {
+      "start": 441,
+      "end": null
+    }
+  }
+}

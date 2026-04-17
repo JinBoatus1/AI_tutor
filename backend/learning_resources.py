@@ -5,11 +5,20 @@ import json
 import os
 import re
 import tempfile
-from typing import Any, Dict, List, Optional
+import threading
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Optional
+
+import user_textbook_store as uts
 
 import fitz  # PyMuPDF
 from PIL import Image
-import pytesseract
+
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
 
 from deps import create_chat_completion, clamp_int_0_100
 
@@ -22,33 +31,341 @@ FOCS_PDF_PATH = os.path.join(DATA_DIR, "FOCS.pdf")  # 或 data 下首个 .pdf
 
 _topic_list: List[Dict[str, Any]] = []  # [{name, start, end}, ...]
 _focs_pdf_bytes: Optional[bytes] = None
+_focs_json_disk_cache: Optional[Dict[str, Any]] = None
+
+_tls = threading.local()
+
+
+@dataclass
+class ActiveTextbook:
+    book_id: str
+    raw: Dict[str, Any]
+    pdf_bytes: Optional[bytes]
+    pdf_page_offset: int
+
+
+def _load_focs_json_from_disk() -> Dict[str, Any]:
+    global _focs_json_disk_cache
+    if _focs_json_disk_cache is not None:
+        return _focs_json_disk_cache
+    if os.path.exists(FOCS_JSON_PATH):
+        with open(FOCS_JSON_PATH, encoding="utf-8") as f:
+            _focs_json_disk_cache = json.load(f)
+    else:
+        _focs_json_disk_cache = {}
+    return _focs_json_disk_cache
+
+
+def get_effective_raw() -> Dict[str, Any]:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return ctx.raw
+    return _load_focs_json_from_disk()
+
+
+def effective_pdf_page_offset() -> int:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return int(ctx.pdf_page_offset)
+    return PDF_PAGE_OFFSET
+
+
+def get_effective_pdf_bytes() -> Optional[bytes]:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None and ctx.pdf_bytes is not None:
+        return ctx.pdf_bytes
+    return load_focs_pdf()
+
+
+def effective_memory_book_id() -> str:
+    ctx = getattr(_tls, "book", None)
+    if ctx is not None:
+        return ctx.book_id
+    return "focs"
+
+
+def set_request_book(ctx: ActiveTextbook) -> None:
+    global _topic_list
+    _tls.book = ctx
+    _topic_list = []
+
+
+def clear_request_book() -> None:
+    global _topic_list
+    if hasattr(_tls, "book"):
+        delattr(_tls, "book")
+    _topic_list = []
+
+
+@contextmanager
+def request_book(book_id: Optional[str], user_email: Optional[str]) -> Iterator[ActiveTextbook]:
+    ctx = resolve_textbook_for_request(book_id, user_email)
+    set_request_book(ctx)
+    try:
+        yield ctx
+    finally:
+        clear_request_book()
+
+
+def resolve_textbook_for_request(book_id: Optional[str], user_email: Optional[str]) -> ActiveTextbook:
+    bid = (book_id or "focs").strip() or "focs"
+    if bid == "focs":
+        raw = _load_focs_json_from_disk()
+        return ActiveTextbook(
+            book_id="focs",
+            raw=raw,
+            pdf_bytes=load_focs_pdf(),
+            pdf_page_offset=PDF_PAGE_OFFSET,
+        )
+    if (
+        bid.startswith("user_")
+        and user_email
+        and uts.is_valid_user_book_id(bid)
+        and uts.user_owns_book(user_email, bid)
+    ):
+        raw = uts.load_outline(user_email, bid) or {}
+        meta = uts.load_meta(user_email, bid) or {}
+        off = int(meta.get("pdf_page_offset", 0))
+        pdf = uts.load_pdf_bytes(user_email, bid)
+        return ActiveTextbook(book_id=bid, raw=raw, pdf_bytes=pdf, pdf_page_offset=off)
+    raw = _load_focs_json_from_disk()
+    return ActiveTextbook(
+        book_id="focs",
+        raw=raw,
+        pdf_bytes=load_focs_pdf(),
+        pdf_page_offset=PDF_PAGE_OFFSET,
+    )
+
+
+def load_outline_dict(book_id: Optional[str], user_email: Optional[str]) -> Dict[str, Any]:
+    """不修改 TLS；用于 student_bar 等在请求外解析目录。"""
+    return resolve_textbook_for_request(book_id or "focs", user_email).raw
+
 
 # 全局缓存：当前教材的段落
 TEXTBOOK_PARAGRAPHS: List[Dict[str, Any]] = []
 
 
-def topic_name_to_memory_address(topic_name: str) -> str:
-    """
-    将 FOCS.json 的 topic 名称转为 memory 可用的地址（单段，符合 [A-Za-z0-9_\\-]+）。
-    例如 "3.2.1 Proving an Implication" -> "3_2_1_Proving_an_Implication"
-    """
-    if not topic_name or not isinstance(topic_name, str):
+def _sanitize_memory_segment(s: str) -> str:
+    """单段路径：仅 [A-Za-z0-9_-]，供 memory address 使用。"""
+    if not s or not isinstance(s, str):
         return "unknown"
-    s = topic_name.strip()
+    s = s.strip()
     s = re.sub(r"[^A-Za-z0-9_\-]", "_", s)
     s = re.sub(r"_+", "_", s).strip("_")
     return s or "unknown"
 
 
+def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
+    """
+    在 FOCS.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
+    仅匹配顶层章（首词等于章节号）。
+    """
+    if not chapter_num:
+        return None
+    raw = get_effective_raw()
+    if not raw:
+        return None
+    num = str(chapter_num).strip()
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first = k.split()[0] if k.split() else ""
+        if first == num:
+            return k
+    return None
+
+
+def topic_name_to_memory_address(topic_name: str) -> str:
+    """
+    将 FOCS.json 的 topic 名称转为 memory 地址（允许用 / 分层）。
+
+    - 小节（首词形如 5.1、5.1.1）：存到「章」目录下，例如
+      5_Induction_.../5_1_Ordinary_Induction，这样同一章下 5.1、5.2 共用父目录。
+    - 章级（首词为纯数字，如整章 topic）：单层目录，例如 5_Induction_...。
+    - 其它：整段 sanitize 成单段（兼容旧行为）。
+    """
+    if not topic_name or not isinstance(topic_name, str):
+        return "unknown"
+    s = topic_name.strip()
+    parts = s.split()
+    if not parts:
+        return "unknown"
+    token = parts[0]
+
+    # 小节：5.1 / 5.1.1 → 父目录为 FOCS 顶层章标题，子目录为本节
+    if re.match(r"^\d+\.\d+(?:\.\d+)*$", token):
+        chapter_num = token.split(".")[0]
+        ch_key = get_chapter_heading_key(chapter_num)
+        if ch_key:
+            parent = _sanitize_memory_segment(ch_key)
+            child = _sanitize_memory_segment(s)
+            return f"{parent}/{child}"
+        return _sanitize_memory_segment(s)
+
+    # 章级：首词仅为章节号 → 单层（对应整章记忆）
+    if re.match(r"^\d+$", token):
+        ch_key = get_chapter_heading_key(token)
+        if ch_key:
+            return _sanitize_memory_segment(ch_key)
+        return _sanitize_memory_segment(s)
+
+    return _sanitize_memory_segment(s)
+
+
+def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:
+    """
+    从 FOCS.json 生成教材章节树（缩进 + 页码）。
+    chapter_filter: 若为 "5"，只返回第 5 章及其 sections，不返回全书；None 则返回全书。
+    """
+    raw = get_effective_raw()
+    if not raw:
+        return ""
+
+    def fmt_range(d: Dict[str, Any]) -> str:
+        start = d.get("start") or (d.get("_range", {}) or {}).get("start")
+        end = d.get("end") or (d.get("_range", {}) or {}).get("end")
+        if start is not None and end is not None:
+            if start == end:
+                return f" (p. {start})"
+            return f" (pp. {start}-{end})"
+        return ""
+
+    def walk(obj: Dict[str, Any], indent: int) -> List[str]:
+        lines: List[str] = []
+        prefix = "  " * indent
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            rng = fmt_range(v)
+            lines.append(f"{prefix}{k}{rng}")
+            sub = walk(v, indent + 1)
+            lines.extend(sub)
+        return lines
+
+    if chapter_filter is not None and str(chapter_filter).strip():
+        num = str(chapter_filter).strip()
+        for k, v in raw.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == num or k.startswith(num + " "):
+                lines = [k + fmt_range(v)] + walk(v, 1)
+                return "\n".join(lines)
+        return ""
+
+    lines = walk(raw, 0)
+    return "\n".join(lines) if lines else ""
+
+
+def _get_range_from_node(v: Dict[str, Any]) -> Optional[tuple]:
+    start = v.get("start") or (v.get("_range") or {}).get("start")
+    end = v.get("end") or (v.get("_range") or {}).get("end")
+    if start is not None and end is not None:
+        try:
+            return (int(start), int(end))
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def get_chapter_start_end_name(chapter_filter: str) -> Optional[tuple]:
+    """
+    根据章节号取该章在 FOCS 中的起始/结束页（教材页码）及章节名。
+    返回 (start_book, end_book, name) 或 None。
+    """
+    if not chapter_filter:
+        return None
+    raw = get_effective_raw()
+    if not raw:
+        return None
+    num = str(chapter_filter).strip()
+    for k, v in raw.items():
+        if k == "_range" or not isinstance(v, dict):
+            continue
+        first_word = k.split()[0] if k.split() else ""
+        if first_word != num and not k.startswith(num + " "):
+            continue
+        r = _get_range_from_node(v)
+        if r:
+            return (r[0], r[1], k)
+        break
+    return None
+
+
+def get_section_start_end_name(section_filter: str) -> Optional[tuple]:
+    """
+    根据小节号（如 5.1、5.1.1）在 FOCS 整棵树中查找，返回 (start_book, end_book, name)。
+    支持 chapter（5）和 subsection（5.1、5.1.1）。
+    """
+    if not section_filter:
+        return None
+    raw = get_effective_raw()
+    if not raw:
+        return None
+    prefix = str(section_filter).strip()
+
+    def walk(obj: Dict[str, Any]) -> Optional[tuple]:
+        for k, v in obj.items():
+            if k == "_range" or not isinstance(v, dict):
+                continue
+            first_word = k.split()[0] if k.split() else ""
+            if first_word == prefix:
+                r = _get_range_from_node(v)
+                if r:
+                    return (r[0], r[1], k)
+            found = walk(v)
+            if found:
+                return found
+        return None
+
+    return walk(raw)
+
+
+def extract_chapter_from_message(message: str) -> Optional[str]:
+    """从用户消息中解析出章节号，例如 'chapter 5' / '第5章' / '5' -> '5'。"""
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:chapter|ch\.?)\s*(\d+)", s, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    m = re.search(r"第\s*(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    if re.match(r"^\d+\s*$", s):
+        return s.strip()
+    m = re.search(r"\b(\d+)\s*章", s)
+    if m:
+        return m.group(1)
+    return None
+
+
+def extract_section_from_message(message: str) -> Optional[str]:
+    """
+    从用户消息中解析出章节或小节号，如 '5.1' / 'section 5.1' / '5.1.1' -> '5.1' 或 '5.1.1'；
+    'chapter 5' / '5' -> '5'。优先匹配 subsection（含小数点），否则用 chapter。
+    """
+    if not message or not isinstance(message, str):
+        return None
+    s = message.strip()
+    m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"\b(\d+\.\d+(?:\.\d+)*)\b", s)
+    if m:
+        return m.group(1)
+    return extract_chapter_from_message(message)
+
+
 def load_focs_topic_list() -> List[Dict[str, Any]]:
-    """从 FOCS.json 解析出所有有页码的 topic。"""
+    """从当前教材目录解析出所有有页码的 topic。"""
     global _topic_list
     if _topic_list:
         return _topic_list
-    if not os.path.exists(FOCS_JSON_PATH):
+    raw = get_effective_raw()
+    if not raw:
         return []
-    with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
 
     def extract_topics(obj: Dict[str, Any]) -> List[Dict[str, Any]]:
         items: List[Dict[str, Any]] = []
@@ -134,6 +451,44 @@ def render_pdf_page_to_base64(pdf_bytes: bytes, page_num_1based: int, dpi: int =
         return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
         return None
+
+
+def render_pdf_page_range_to_base64(
+    pdf_bytes: bytes, start_page_1based: int, end_page_1based: int, dpi: int = 120
+) -> List[str]:
+    """将 PDF 指定页码范围（1-based，含首尾）逐页渲染为 PNG，返回 base64 字符串列表。"""
+    out: List[str] = []
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        start = max(1, min(start_page_1based, len(doc)))
+        end = max(start, min(end_page_1based, len(doc)))
+        for i in range(start - 1, end):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=dpi)
+            img_bytes = pix.tobytes("png")
+            out.append(base64.b64encode(img_bytes).decode("utf-8"))
+        doc.close()
+    except Exception:
+        pass
+    return out
+
+
+def render_user_pdf_first_pages_to_base64(
+    pdf_bytes: bytes, *, max_pages: int = 8, dpi: int = 120
+) -> List[str]:
+    """用户上传的 PDF：将前 max_pages 页渲染为 PNG base64，供多模态对话使用。"""
+    out: List[str] = []
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        n = min(len(doc), max(1, int(max_pages)))
+        for i in range(n):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=dpi)
+            img_bytes = pix.tobytes("png")
+            out.append(base64.b64encode(img_bytes).decode("utf-8"))
+    finally:
+        doc.close()
+    return out
 
 
 def _fallback_indices_formula_only(
@@ -325,8 +680,8 @@ def extract_pdf_text_safe(file_bytes: bytes, max_chars: int = 500000) -> str:
         except Exception:
             page_text = ""
 
-        # fallback OCR
-        if len(page_text.strip()) < 20:
+        # fallback OCR (only if pytesseract is installed)
+        if len(page_text.strip()) < 20 and pytesseract is not None:
             pix = page.get_pixmap(dpi=120)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             page_text = pytesseract.image_to_string(img)

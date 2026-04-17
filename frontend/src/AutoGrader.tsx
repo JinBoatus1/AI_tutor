@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { apiCandidates } from "./api";
+import { useState, useRef } from "react";
+import { apiUrl } from "./apiBase";
 
 export default function AutoGrader() {
   const [prompt, setPrompt] = useState("");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [result, setResult] = useState("");
 
@@ -15,31 +16,15 @@ export default function AutoGrader() {
     formData.append("text", text);
 
     files.forEach((f) => {
-      formData.append("files", f);   // ← 注意这里用 "files"
+      formData.append("files", f); // field name must be "files" for the API
     });
 
-    let resp: Response | null = null;
-    let data: any = null;
-    let lastError = "Backend returned a non-JSON response.";
-    for (const endpoint of apiCandidates("/api/grade")) {
-      const candidate = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
-      const contentType = candidate.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        resp = candidate;
-        data = await candidate.json();
-        break;
-      }
-      lastError = (await candidate.text()).slice(0, 200) || lastError;
-    }
+    const resp = await fetch(apiUrl("/api/grade"), {
+      method: "POST",
+      body: formData,
+    });
 
-    if (!resp) {
-      setResult(`Backend error: ${lastError}`);
-      return;
-    }
-
+    const data = await resp.json();
     if (!resp.ok) {
       const detail = data?.detail || data?.error || "Backend request failed.";
       setResult(`Backend error: ${detail}`);
@@ -69,13 +54,29 @@ export default function AutoGrader() {
           onChange={(e) => setText(e.target.value)}
         />
 
-        <input
-          className="file-upload"
-          type="file"
-          accept="image/*"
-          multiple      // ← 关键
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
-        />
+        <div className="autograder-file-row">
+          <input
+            ref={fileInputRef}
+            className="autograder-file-input-hidden"
+            type="file"
+            accept="image/*"
+            multiple
+            aria-label="Attach answer images"
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+          <button
+            type="button"
+            className="autograder-file-choose-btn"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Choose images
+          </button>
+          <span className="autograder-file-status">
+            {files.length === 0
+              ? "No files selected"
+              : `${files.length} file(s): ${files.map((f) => f.name).join(", ")}`}
+          </span>
+        </div>
 
         <div className="preview-container">
           {files.map((f, idx) => (

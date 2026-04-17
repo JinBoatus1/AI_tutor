@@ -5,20 +5,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "sync-focs": "node ./scripts/sync-focs-tree.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "axios": "^1.12.2",
+    "firebase": "^12.12.0",
     "katex": "^0.16.25",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-katex": "^3.1.0",
-    "react-router-dom": "^7.9.5"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.9.5",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
+    "@types/node": "^22.10.0",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/react-router-dom": "^5.3.3",

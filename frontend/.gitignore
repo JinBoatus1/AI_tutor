@@ -23,7 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
+# Env files (.env.production may be committed for public VITE_API_URL only; secrets in .env.local)
 .env
 .env.local
-.env.production
