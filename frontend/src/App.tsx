@@ -61,8 +61,7 @@ function App() {
             </div>
           </div>
         )}
-        <nav className="navbar">
-          <h2 className="navbar-brand">Equal Education for Everyone</h2>
+        <nav className="navbar" aria-label="Main navigation">
           <div className="nav-buttons">
             <Link to="/" className="btn-nav">Home</Link>
             <Link to="/autograder" className="btn-nav">Auto Grader</Link>

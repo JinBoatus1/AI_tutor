@@ -78,8 +78,8 @@ export default function Home() {
           <span className="home-secondary-sep" aria-hidden>
             ·
           </span>
-          <Link to="/learning-bar" className="home-secondary-link">
-            My Learning bar
+          <Link to="/profile" className="home-secondary-link">
+            My profile
           </Link>
         </nav>
       </section>

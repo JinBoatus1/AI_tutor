@@ -1,4 +1,4 @@
-export type PageBackgroundId = "default" | "mint" | "dark" | "warm";
+export type PageBackgroundId = "default" | "mint" | "dark" | "warm" | "white" | "black";
 
 const STORAGE_KEY = "ai_tutor_profile_settings";
 
@@ -11,6 +11,8 @@ export const PAGE_BACKGROUND_OPTIONS: {
   { id: "mint", label: "Mint", color: "#e0f2f0" },
   { id: "dark", label: "Dark", color: "#1e293b" },
   { id: "warm", label: "Warm", color: "#f5f0e8" },
+  { id: "white", label: "White", color: "#ffffff" },
+  { id: "black", label: "Black", color: "#0a0a0a" },
 ];
 
 const BG_CSS: Record<PageBackgroundId, string> = {
@@ -18,6 +20,8 @@ const BG_CSS: Record<PageBackgroundId, string> = {
   mint: "#e0f2f0",
   dark: "#1e293b",
   warm: "#f5f0e8",
+  white: "#ffffff",
+  black: "#0a0a0a",
 };
 
 export function applyPageBackground(id: PageBackgroundId): void {

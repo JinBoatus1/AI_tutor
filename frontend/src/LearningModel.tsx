@@ -13,7 +13,7 @@ const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 3 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far? If it helps, mark your place in the **Learning progress** tree on the left (click numbered sections), or just describe it here.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
 /** Must match backend MAX_USER_PDF_BYTES (~14MB). */
 const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
