@@ -47,6 +47,7 @@ export default function UserProfile() {
   const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
   const [textbookUploading, setTextbookUploading] = useState(false);
   const [textbookDeleting, setTextbookDeleting] = useState(false);
+  const [catalogSyncing, setCatalogSyncing] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
   const [pickedPdfName, setPickedPdfName] = useState<string | null>(null);
   const textbookFileRef = useRef<HTMLInputElement>(null);
@@ -174,6 +175,25 @@ export default function UserProfile() {
     }
   };
 
+  /** Re-fetch the textbook list from the server and refresh this browser (fixes “ghost” books after a race or 404 delete). */
+  const onResyncCatalogFromServer = async () => {
+    if (!token) return;
+    setCatalogSyncing(true);
+    setTextbookError(null);
+    try {
+      invalidateTextbookCatalogSync();
+      await syncTextbookCatalogFromServer(token);
+      refreshTextbookOptions();
+      window.dispatchEvent(
+        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+      );
+    } catch {
+      setTextbookError("Could not reach the server. Try again later.");
+    } finally {
+      setCatalogSyncing(false);
+    }
+  };
+
   return (
     <div className="profile-page">
       <header className="profile-page-header">
@@ -240,7 +260,7 @@ export default function UserProfile() {
                 className="profile-signout-btn"
                 style={{ minWidth: "12rem", cursor: "pointer" }}
                 value={selectedTextbook}
-                disabled={textbookUploading || textbookDeleting}
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
                 onChange={(e) => {
                   const id = e.target.value;
                   setSelectedTextbook(id);
@@ -259,7 +279,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   className="profile-textbook-delete-btn"
-                  disabled={textbookUploading || textbookDeleting}
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
                   onClick={() => void onDeleteSelectedUpload()}
                 >
                   {textbookDeleting ? "Deleting…" : "Delete this uploaded textbook"}
@@ -269,6 +289,20 @@ export default function UserProfile() {
                 </span>
               </div>
             ) : null}
+            <div className="profile-textbook-sync-row">
+              <button
+                type="button"
+                className="profile-textbook-sync-btn"
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
+                onClick={() => void onResyncCatalogFromServer()}
+              >
+                {catalogSyncing ? "Syncing…" : "Sync textbook list with server"}
+              </button>
+              <span className="profile-muted profile-textbook-sync-hint">
+                Use this if a book still appears after it was removed on the server (for example delete ran while
+                something else was in progress). Learning Mode will match the same list.
+              </span>
+            </div>
             <div className="profile-account-row profile-file-upload-row">
               <span className="profile-muted" id="profile-textbook-file-label">
                 Upload new textbook (PDF)
@@ -282,7 +316,7 @@ export default function UserProfile() {
                   className="profile-file-input-hidden"
                   tabIndex={-1}
                   aria-labelledby="profile-textbook-file-label"
-                  disabled={textbookUploading || textbookDeleting}
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
@@ -293,7 +327,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   className="profile-file-choose-btn"
-                  disabled={textbookUploading || textbookDeleting}
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
                   onClick={() => textbookFileRef.current?.click()}
                 >
                   Choose file

@@ -298,3 +298,39 @@
   line-height: 1.45;
   max-width: 100%;
 }
+
+.profile-textbook-sync-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.profile-textbook-sync-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.profile-textbook-sync-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.profile-textbook-sync-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.profile-textbook-sync-hint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  max-width: 100%;
+}
