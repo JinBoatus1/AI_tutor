@@ -18,7 +18,7 @@ const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**, click the numbered sections you already know.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**, click the topics you already know (any row in the tree toggles learned / not learned).\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;

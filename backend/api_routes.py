@@ -770,10 +770,7 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
     email = verify_token(authorization)
     if email:
         bar = sbs.load_bar_mongo(email, tid)
-        bar["learned_sections"] = sorted(
-            set(body.learned_sections),
-            key=lambda x: tuple(int(p) for p in str(x).split(".")),
-        )
+        bar["learned_sections"] = sbs.sort_learned_section_list(list(set(body.learned_sections)))
         bar["textbook_id"] = tid
         sbs.save_bar_mongo(email, bar, tid)
         return bar
@@ -781,10 +778,7 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
         tid = "focs"
     sid = body.student_id or "default_student"
     bar = sbs.load_bar(sid, tid)
-    bar["learned_sections"] = sorted(
-        set(body.learned_sections),
-        key=lambda x: tuple(int(p) for p in str(x).split(".")),
-    )
+    bar["learned_sections"] = sbs.sort_learned_section_list(list(set(body.learned_sections)))
     bar["textbook_id"] = tid
     sbs.save_bar(sid, bar, tid)
     return bar
