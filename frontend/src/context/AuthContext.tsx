@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         settled = true;
         clearTimeout(timeout);
         if (firebaseUser) {
-          const idToken = await firebaseUser.getIdToken();
+          const idToken = await firebaseUser.getIdToken(true);
           setUser({
             email: firebaseUser.email || "",
             displayName: firebaseUser.displayName,
@@ -78,7 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async () => {
     if (!auth || !googleProvider) return;
-    await signInWithPopup(auth, googleProvider);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e: any) {
+      if (e?.code !== "auth/popup-closed-by-user") {
+        console.error("[Auth] Sign-in failed:", e);
+        alert(`Sign-in failed: ${e?.message || e}`);
+      }
+    }
   };
 
   const logout = async () => {

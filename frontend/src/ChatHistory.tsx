@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "./context/AuthContext";
+import { API_BASE } from "./apiBase";
 import "./ChatHistory.css";
 
 const CONVERSATIONS_SIDEBAR_COLLAPSED_KEY = "ai_tutor_conversations_sidebar_collapsed";
@@ -17,8 +18,6 @@ interface ChatHistoryProps {
   onNewChat: () => void;
   refreshTrigger: number;
 }
-
-const API = import.meta.env.VITE_API_URL;
 
 function groupByDate(sessions: Session[]): { label: string; items: Session[] }[] {
   const now = new Date();
@@ -95,7 +94,7 @@ export default function ChatHistory({
   const fetchSessions = useCallback(async () => {
     if (!token) return;
     try {
-      const resp = await fetch(`${API}/api/sessions`, {
+      const resp = await fetch(`${API_BASE}/api/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (resp.ok) {
@@ -115,7 +114,7 @@ export default function ChatHistory({
     e.stopPropagation();
     if (!token) return;
     try {
-      await fetch(`${API}/api/sessions/${sessionId}`, {
+      await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
