@@ -123,20 +123,6 @@
   background: #f0f5ff;
 }
 
-.signin-provider--microsoft:hover:not(:disabled) {
-  border-color: #00A4EF;
-  background: #f0f9ff;
-}
-
-.signin-provider--apple {
-  color: #000;
-}
-
-.signin-provider--apple:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #333;
-}
-
 .signin-provider--email:hover:not(:disabled) {
   border-color: #0d9488;
   background: #f0fdfa;

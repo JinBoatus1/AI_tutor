@@ -11,7 +11,7 @@ import {
   signOut,
 } from "firebase/auth";
 import type { User, ConfirmationResult } from "firebase/auth";
-import { auth, googleProvider, microsoftProvider, appleProvider } from "../firebase";
+import { auth, googleProvider } from "../firebase";
 
 interface AuthUser {
   email: string;
@@ -21,7 +21,7 @@ interface AuthUser {
   isAnonymous: boolean;
 }
 
-export type AuthMethod = "google" | "microsoft" | "apple" | "phone" | "email" | "anonymous";
+export type AuthMethod = "google" | "phone" | "email" | "anonymous";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -101,11 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (method === "anonymous") {
         await signInAnonymously(auth);
       } else {
-        const provider =
-          method === "google" ? googleProvider :
-          method === "microsoft" ? microsoftProvider :
-          method === "apple" ? appleProvider :
-          null;
+        const provider = method === "google" ? googleProvider : null;
         if (!provider) return;
         await signInWithPopup(auth, provider);
       }
