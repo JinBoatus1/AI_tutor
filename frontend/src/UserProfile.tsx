@@ -70,11 +70,11 @@ export default function UserProfile() {
   const onTextbookFile = async (file: File | null) => {
     if (!file) return;
     if (!token) {
-      setTextbookError("请先登录后再上传 PDF 教材。");
+      setTextbookError("Sign in to upload a PDF textbook.");
       return;
     }
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setTextbookError("请上传 PDF 文件。");
+      setTextbookError("Please choose a PDF file.");
       return;
     }
     setTextbookUploading(true);
@@ -82,7 +82,7 @@ export default function UserProfile() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("label", file.name.replace(/\.pdf$/i, "") || "我的教材");
+      fd.append("label", file.name.replace(/\.pdf$/i, "") || "My textbook");
       const resp = await fetch(`${API_BASE}/api/user_textbooks/from_pdf`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -90,18 +90,18 @@ export default function UserProfile() {
       });
       const data = (await resp.json()) as { detail?: string; id?: string; label?: string; tree?: TextbookTreeRoot | null };
       if (!resp.ok) {
-        setTextbookError(typeof data?.detail === "string" ? data.detail : "上传或解析失败。");
+        setTextbookError(typeof data?.detail === "string" ? data.detail : "Upload or outline parsing failed.");
         return;
       }
       if (!data?.id || !data?.tree) {
-        setTextbookError("服务器返回数据不完整。");
+        setTextbookError("The server response was incomplete.");
         return;
       }
       writeCatalogAndTree(data.id, data.label || data.id, data.tree);
       writeSelectedTextbookId(data.id);
       refreshTextbookOptions();
     } catch {
-      setTextbookError("无法连接服务器，请稍后再试。");
+      setTextbookError("Could not reach the server. Try again later.");
     } finally {
       setTextbookUploading(false);
     }
@@ -152,19 +152,20 @@ export default function UserProfile() {
 
       <section className="profile-card" aria-labelledby="profile-textbook-heading">
         <h2 id="profile-textbook-heading" className="profile-card-title">
-          教材与目录
+          Textbooks and outlines
         </h2>
         <p className="profile-setting-desc">
-          选择当前使用的教材后，学习进度条与学习中心对话中的目录、PDF 引用会全部切换为该教材。上传 PDF
-          后由服务器生成与 FCOS 相同结构的目录 JSON（嵌套对象 + 页码）。
+          When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch
+          to that book. After you upload a PDF, the server builds an outline JSON in the same shape as FCOS (nested
+          objects and page numbers).
         </p>
         {!user ? (
-          <p className="profile-muted">登录后可上传自己的 PDF 并保存到账号。</p>
+          <p className="profile-muted">Sign in to upload your own PDF and save it to your account.</p>
         ) : (
           <>
             <div className="profile-account-row" style={{ flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.75rem" }}>
               <label htmlFor="profile-textbook-select" className="profile-muted">
-                当前教材
+                Current textbook
               </label>
               <select
                 id="profile-textbook-select"
@@ -187,7 +188,7 @@ export default function UserProfile() {
             </div>
             <div className="profile-account-row" style={{ flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
               <label className="profile-muted" htmlFor="profile-textbook-file">
-                上传新教材（PDF）
+                Upload new textbook (PDF)
               </label>
               <input
                 id="profile-textbook-file"
@@ -200,7 +201,7 @@ export default function UserProfile() {
                   void onTextbookFile(f ?? null);
                 }}
               />
-              {textbookUploading ? <span className="profile-muted">正在解析目录…</span> : null}
+              {textbookUploading ? <span className="profile-muted">Building outline…</span> : null}
             </div>
             {textbookError ? (
               <p className="profile-muted" style={{ color: "#c62828", marginTop: "0.5rem" }}>
