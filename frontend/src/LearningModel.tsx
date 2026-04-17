@@ -6,6 +6,7 @@ import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
 import ChatHistory from "./ChatHistory";
+import LearningBarPanel from "./LearningBarPanel";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -403,6 +404,7 @@ export default function LearningModel() {
 
   return (
     <div className="learning-page-wrapper">
+      <LearningBarPanel variant="embed" studentId={studentId} />
       {user && (
         <ChatHistory
           activeSessionId={sessionId}
