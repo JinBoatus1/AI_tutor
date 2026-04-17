@@ -52,6 +52,19 @@ class GradeTaskItem(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class QuestionAnswerPdfPair(BaseModel):
+    question_label: str
+    question_pdf: bytes
+    answer_pdf: bytes
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaperQuestionAnswerPairs(BaseModel):
+    paper_id: str
+    pairs: list[QuestionAnswerPdfPair] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class AutoGradeJobSubmitRequest(BaseModel):
     prompt: str
     items: list[GradeTaskItem] = Field(default_factory=list)

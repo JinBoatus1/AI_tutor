@@ -1,4 +1,4 @@
-from .grader import AggregatorBase, AutoGraderBase, EvaluatorBase, SchedulerBase, WorkerPoolBase
+from .grader import AggregatorBase, AutoGraderBase, AutoGraderEntry, EvaluatorBase, SchedulerBase, WorkerPoolBase
 from .inmemory import InMemoryAutoGrader
 from .models import (
     AutoGradeJobResultsResponse,
@@ -12,6 +12,8 @@ from .models import (
     DocumentBundle,
     EvaluationResult,
     GradeTaskItem,
+    PaperQuestionAnswerPairs,
+    QuestionAnswerPdfPair,
     SourceItem,
     SourceType,
 )
@@ -24,6 +26,8 @@ __all__ = [
     "SourceItem",
     "DocumentBundle",
     "GradeTaskItem",
+    "QuestionAnswerPdfPair",
+    "PaperQuestionAnswerPairs",
     "AutoGradeJobSubmitRequest",
     "AutoGradeJobSubmitResponse",
     "AutoGradeJobStatusResponse",
@@ -36,6 +40,7 @@ __all__ = [
     "EvaluatorBase",
     "AggregatorBase",
     "WorkerPoolBase",
+    "AutoGraderEntry",
     "InMemoryAutoGrader",
     "register_autograder",
     "get_autograder",

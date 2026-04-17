@@ -1,5 +1,5 @@
 """
-Test T1.jpg splitting using the single-call LLM pipeline.
+Test real pairing flow: split question paper and answer paper, then build PDF pairs.
 """
 
 from pathlib import Path
@@ -14,7 +14,7 @@ BACKEND_DIR = CURRENT_DIR.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from AutoGrader.question_splitter import QuestionDetector, QuestionSplitter
+from AutoGrader.question_splitter import DocumentSplitter, QuestionSplitter
 
 test_dir = Path("h:/work_space/AI_tutor/backend/AutoGrader/test_pdfs")
 
@@ -31,70 +31,55 @@ def normalize_label(label: str) -> str:
 
 async def main() -> None:
     print("=" * 70)
-    print("Testing T1.jpg Question Splitting with Single LLM Call")
+    print("Testing Q/Answer PDF Pairing with Single LLM Call for Both Documents")
     print("=" * 70)
 
-    jpg_path = test_dir / "T1.jpg"
-    if not jpg_path.exists():
-        print(f"ERROR: {jpg_path} not found")
+    question_img_path = test_dir / "Q5Q6.jpg"
+    answer_img_path = test_dir / "Answer.jpg"
+    if not question_img_path.exists() or not answer_img_path.exists():
+        print(f"ERROR: missing inputs: {question_img_path} or {answer_img_path}")
         return
 
-    print(f"\n[1] Loading {jpg_path.name}...")
-    raw_img = load_image(jpg_path)
-    candidates = {
-        "r0": raw_img,
-        "r90": raw_img.rotate(90, expand=True),
-        "r180": raw_img.rotate(180, expand=True),
-        "r270": raw_img.rotate(270, expand=True),
-    }
-    print(f"    Candidate sizes: r0={candidates['r0'].size}, r90={candidates['r90'].size}, r180={candidates['r180'].size}, r270={candidates['r270'].size}")
+    print(f"\n[1] Loading question image: {question_img_path.name}")
+    question_img = load_image(question_img_path)
+    question_pdf_bytes = QuestionSplitter.image_to_pdf_bytes(question_img)
+    print(f"    question pdf size: {len(question_pdf_bytes):,} bytes")
 
-    print("\n[2] Analyzing orientation + questions in one LLM call...")
-    analysis = await QuestionDetector.detect_layout_and_questions_with_llm(candidates)
-    if not analysis:
-        print("    [FAILED] No analysis result returned by LLM")
+    print(f"\n[2] Loading answer image: {answer_img_path.name}")
+    answer_img = load_image(answer_img_path)
+    answer_pdf_bytes = QuestionSplitter.image_to_pdf_bytes(answer_img)
+    print(f"    answer pdf size: {len(answer_pdf_bytes):,} bytes")
+
+    print("\n[3] Building question-answer pairs...")
+    pairs = await DocumentSplitter.build_question_answer_pairs(
+        question_pdf_bytes,
+        answer_pdf_bytes,
+        detection_method="llm",
+    )
+    print(f"    paired count: {len(pairs)}")
+    if not pairs:
+        print("    [FAILED] no matched question-answer pairs")
         return
 
-    best_orientation = str(analysis.get("best_orientation", "r0")).lower()
-    selected_img = candidates.get(best_orientation, raw_img)
-    print(f"    Orientation chosen: {best_orientation}")
-
-    questions = analysis.get("questions", [])
-    print(f"\n[3] Parsing results...")
-    print(f"    Found {len(questions)} questions:")
-    for q in questions:
-        label = q.get("label", "?")
-        top = q.get("top_percent")
-        bottom = q.get("bottom_percent")
-        if top is not None and bottom is not None:
-            print(f"      Question {label}: top={float(top):.1f}%, bottom={float(bottom):.1f}%")
-        else:
-            print(f"      Question {label}: missing bounds")
-
-    print(f"\n[4] Splitting image into PDFs...")
-    if not questions:
-        print("    [FAILED] No questions detected by LLM")
-        return
-
-    pdfs = QuestionSplitter.split_image_by_questions(selected_img, questions)
-    print(f"    Generated {len(pdfs)} question PDFs")
-
-    output_dir = test_dir / "split_output"
+    print("\n[4] Saving paired pdf files...")
+    output_dir = test_dir / "split_output_pairs"
     output_dir.mkdir(exist_ok=True)
 
-    for index, q_pdf in enumerate(pdfs):
-        raw_label = questions[index].get("label", str(index + 1))
-        q_label = normalize_label(raw_label)
-        out_file = output_dir / f"question_{q_label}.pdf"
-        with open(out_file, "wb") as f:
-            f.write(q_pdf)
-        print(f"      Saved: {out_file.name} ({len(q_pdf):,} bytes) from label '{raw_label}'")
+    for index, pair in enumerate(pairs, start=1):
+        q_label = normalize_label(pair.question_label)
+        question_out = output_dir / f"pair_{index:02d}_q_{q_label}.pdf"
+        answer_out = output_dir / f"pair_{index:02d}_a_{q_label}.pdf"
+        with open(question_out, "wb") as f:
+            f.write(pair.question_pdf)
+        with open(answer_out, "wb") as f:
+            f.write(pair.answer_pdf)
+        print(
+            f"      pair#{index} label={pair.question_label} -> "
+            f"{question_out.name}, {answer_out.name}"
+        )
 
     print(f"\n[SUCCESS] Output saved to: {output_dir}")
-    print(f"\nYou can now manually check the split PDFs to verify:")
-    for q in questions:
-        q_label = normalize_label(q.get("label", "q"))
-        print(f"  - Question {q_label}: {output_dir}/question_{q_label}.pdf")
+    print("\nYou can now manually verify each pair_*_q_*.pdf and pair_*_a_*.pdf")
 
     print("\n" + "=" * 70)
 

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 
 from .grader import AutoGraderBase
@@ -11,7 +12,10 @@ from .models import (
     AutoGradeResult,
     AutoGradeStatusCode,
     GradeTaskItem,
+    PaperQuestionAnswerPairs,
+    SourceType,
 )
+from .question_splitter import DocumentSplitter, QuestionSplitter
 
 
 class InMemoryAutoGrader(AutoGraderBase):
@@ -31,6 +35,7 @@ class InMemoryAutoGrader(AutoGraderBase):
                 "total": accepted_count,
                 "completed": 0,
                 "results": [],
+                "paper_pairs": {},
             }
 
         # Fire-and-forget background processing for MVP.
@@ -83,6 +88,20 @@ class InMemoryAutoGrader(AutoGraderBase):
             message="",
         )
 
+    async def get_paper_question_answer_pairs(self, job_id: str, paper_id: str) -> PaperQuestionAnswerPairs:
+        async with self._lock:
+            job = self._jobs.get(job_id)
+
+        if job is None:
+            return PaperQuestionAnswerPairs(
+                paper_id=paper_id,
+                pairs=[],
+                metadata={"status": "job_not_found"},
+            )
+
+        paper_pairs = job.get("paper_pairs", {}).get(paper_id, [])
+        return PaperQuestionAnswerPairs(paper_id=paper_id, pairs=list(paper_pairs))
+
     async def _run_job(self, job_id: str, items: list[GradeTaskItem]) -> None:
         async with self._lock:
             job = self._jobs.get(job_id)
@@ -92,6 +111,18 @@ class InMemoryAutoGrader(AutoGraderBase):
 
         results: list[AutoGradePaperResult] = []
         for item in items:
+            try:
+                pairs = await self._build_pairs_for_item(item)
+                async with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job is not None:
+                        job.setdefault("paper_pairs", {})[item.paper_id] = pairs
+            except Exception:
+                async with self._lock:
+                    job = self._jobs.get(job_id)
+                    if job is not None:
+                        job.setdefault("paper_pairs", {})[item.paper_id] = []
+
             result = self._grade_one(item)
             results.append(AutoGradePaperResult(paper_id=item.paper_id, result=result))
 
@@ -126,3 +157,35 @@ class InMemoryAutoGrader(AutoGraderBase):
             status_code=AutoGradeStatusCode.DONE,
             message="MVP fixed-score grading",
         )
+
+    async def _build_pairs_for_item(self, task: GradeTaskItem):
+        student_pdf = self._bundle_to_pdf_bytes(task.student_bundle)
+        answer_pdf = self._bundle_to_pdf_bytes(task.answer_bundle)
+        if student_pdf is None or answer_pdf is None:
+            return []
+        return await DocumentSplitter.build_question_answer_pairs(student_pdf, answer_pdf, detection_method="llm")
+
+    def _bundle_to_pdf_bytes(self, bundle) -> bytes | None:
+        if not bundle.sources:
+            return None
+
+        pdf_sources = [s for s in bundle.sources if s.source_type == SourceType.PDF]
+        if pdf_sources:
+            path = pdf_sources[0].uri
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    return f.read()
+            return None
+
+        image_sources = [s for s in bundle.sources if s.source_type == SourceType.IMAGE]
+        if not image_sources:
+            return None
+
+        images: list[bytes] = []
+        for source in image_sources:
+            if os.path.exists(source.uri):
+                with open(source.uri, "rb") as f:
+                    images.append(f.read())
+        if not images:
+            return None
+        return QuestionSplitter.combine_images_to_pdf(images)

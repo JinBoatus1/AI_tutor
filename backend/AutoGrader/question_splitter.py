@@ -15,6 +15,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 
 from deps import create_chat_completion
+from .models import QuestionAnswerPdfPair
 
 
 class QuestionDetector:
@@ -25,6 +26,15 @@ class QuestionDetector:
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=quality)
         return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    @staticmethod
+    def normalize_question_label(label: str) -> str:
+        """Normalize labels like '(Q5)' / 'q5' / '5' to a stable key for pairing."""
+        raw = str(label or "").strip().lower()
+        raw = re.sub(r"[^a-z0-9]+", "", raw)
+        if raw.startswith("q") and len(raw) > 1:
+            raw = raw[1:]
+        return raw or "unknown"
 
     @staticmethod
     def detect_by_heuristic(text: str, page_height_pt: float = 792.0) -> List[Dict[str, Any]]:
@@ -112,6 +122,69 @@ class QuestionDetector:
             return json.loads(raw)
         except Exception as e:
             print(f"[QuestionDetector] layout+question LLM failed: {e}")
+            return None
+
+    @staticmethod
+    async def detect_question_answer_layout_with_llm(
+        question_candidates: Dict[str, Image.Image],
+        answer_candidates: Dict[str, Image.Image],
+    ) -> Optional[Dict[str, Any]]:
+        """One LLM call: detect best orientations and question regions for both question and answer pages."""
+        system_msg = (
+            "You are analyzing two scanned pages: one question page and one answer page. "
+            "For each page, choose best orientation and detect question boundaries. "
+            "Return ONLY valid JSON in this exact shape: "
+            "{"
+            "\"question_best_orientation\":\"r0|r90|r180|r270\","
+            "\"answer_best_orientation\":\"r0|r90|r180|r270\","
+            "\"question_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}],"
+            "\"answer_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}]"
+            "}."
+        )
+        user_msg = (
+            "You will receive 8 images in total. First 4 are QUESTION page candidates (r0,r90,r180,r270). "
+            "Next 4 are ANSWER page candidates (r0,r90,r180,r270). "
+            "Choose best orientation for each page and output per-question regions with labels. "
+            "Do not include footer page number in bottom_percent. Return ONLY JSON."
+        )
+
+        content: list[dict[str, Any]] = [{"type": "text", "text": user_msg}]
+        for label in ["r0", "r90", "r180", "r270"]:
+            if label in question_candidates:
+                content.append({"type": "text", "text": f"QUESTION Candidate {label}"})
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{QuestionDetector._image_to_b64(question_candidates[label])}"},
+                    }
+                )
+        for label in ["r0", "r90", "r180", "r270"]:
+            if label in answer_candidates:
+                content.append({"type": "text", "text": f"ANSWER Candidate {label}"})
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{QuestionDetector._image_to_b64(answer_candidates[label])}"},
+                    }
+                )
+
+        try:
+            resp = create_chat_completion(
+                model="gpt-5.2",
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": content},
+                ],
+                temperature=0.0,
+            )
+            raw = (resp.choices[0].message.content or "").strip()
+            if raw.startswith("```"):
+                raw = raw.split("```", 1)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            return json.loads(raw)
+        except Exception as e:
+            print(f"[QuestionDetector] question+answer layout LLM failed: {e}")
             return None
 
 
@@ -202,6 +275,34 @@ class QuestionSplitter:
             output_pdfs.append(QuestionSplitter.image_to_pdf_bytes(crop))
 
         return output_pdfs
+
+    @staticmethod
+    def split_image_by_questions_with_labels(
+        image: Image.Image,
+        questions: List[Dict[str, Any]],
+    ) -> List[Tuple[str, bytes]]:
+        """Split image and keep label for each cropped PDF."""
+        if not questions:
+            return []
+
+        # Keep the same ordering rule as splitter.
+        def to_float(value: Any, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+        sorted_questions = sorted(
+            questions,
+            key=lambda q: to_float(q.get("top_percent", q.get("vertical_percent", 0.0)), 0.0),
+        )
+
+        pdfs = QuestionSplitter.split_image_by_questions(image, sorted_questions)
+        labeled: List[Tuple[str, bytes]] = []
+        for index, pdf_bytes in enumerate(pdfs):
+            label = str(sorted_questions[index].get("label", f"q{index + 1}"))
+            labeled.append((label, pdf_bytes))
+        return labeled
 
     @staticmethod
     def combine_images_to_pdf(image_list: List[bytes]) -> bytes:
@@ -301,3 +402,127 @@ class DocumentSplitter:
         
         doc.close()
         return all_question_pdfs
+
+    @staticmethod
+    async def split_pdf_by_questions_with_labels(
+        pdf_bytes: bytes,
+        detection_method: str = "llm",
+    ) -> List[Tuple[str, bytes]]:
+        """Split a PDF and return labeled question crops."""
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        all_parts: List[Tuple[str, bytes]] = []
+
+        for page_num in range(1, len(doc) + 1):
+            page = doc[page_num - 1]
+            if detection_method == "llm":
+                pix = page.get_pixmap(dpi=120)
+                base_image = Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")
+                candidates = {
+                    "r0": base_image,
+                    "r90": base_image.rotate(90, expand=True),
+                    "r180": base_image.rotate(180, expand=True),
+                    "r270": base_image.rotate(270, expand=True),
+                }
+                detected = await QuestionDetector.detect_layout_and_questions_with_llm(candidates)
+                questions = detected.get("questions", []) if detected else []
+                best_orientation = str(detected.get("best_orientation", "r0")).lower() if detected else "r0"
+                selected_image = candidates.get(best_orientation, base_image)
+            else:
+                text = str(page.get_text())
+                questions = QuestionDetector.detect_by_heuristic(text)
+                selected_image = Image.open(io.BytesIO(page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
+
+            if not questions:
+                all_parts.append((f"page_{page_num}", QuestionSplitter.image_to_pdf_bytes(selected_image)))
+                continue
+
+            labeled_parts = QuestionSplitter.split_image_by_questions_with_labels(selected_image, questions)
+            all_parts.extend(labeled_parts)
+
+        doc.close()
+        return all_parts
+
+    @staticmethod
+    async def build_question_answer_pairs(
+        question_pdf_bytes: bytes,
+        answer_pdf_bytes: bytes,
+        detection_method: str = "llm",
+    ) -> List[QuestionAnswerPdfPair]:
+        """Split question/answer papers and pair them by normalized question label."""
+        if detection_method != "llm":
+            q_parts = await DocumentSplitter.split_pdf_by_questions_with_labels(
+                question_pdf_bytes,
+                detection_method=detection_method,
+            )
+            a_parts = await DocumentSplitter.split_pdf_by_questions_with_labels(
+                answer_pdf_bytes,
+                detection_method=detection_method,
+            )
+        else:
+            q_doc = fitz.open(stream=question_pdf_bytes, filetype="pdf")
+            a_doc = fitz.open(stream=answer_pdf_bytes, filetype="pdf")
+            q_page = q_doc[0]
+            a_page = a_doc[0]
+
+            q_base = Image.open(io.BytesIO(q_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
+            a_base = Image.open(io.BytesIO(a_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
+
+            q_candidates = {
+                "r0": q_base,
+                "r90": q_base.rotate(90, expand=True),
+                "r180": q_base.rotate(180, expand=True),
+                "r270": q_base.rotate(270, expand=True),
+            }
+            a_candidates = {
+                "r0": a_base,
+                "r90": a_base.rotate(90, expand=True),
+                "r180": a_base.rotate(180, expand=True),
+                "r270": a_base.rotate(270, expand=True),
+            }
+
+            detected = await QuestionDetector.detect_question_answer_layout_with_llm(
+                q_candidates,
+                a_candidates,
+            )
+            if not detected:
+                q_doc.close()
+                a_doc.close()
+                return []
+
+            q_best = str(detected.get("question_best_orientation", "r0")).lower()
+            a_best = str(detected.get("answer_best_orientation", "r0")).lower()
+            q_regions = list(detected.get("question_regions", []))
+            a_regions = list(detected.get("answer_regions", []))
+
+            q_selected = q_candidates.get(q_best, q_base)
+            a_selected = a_candidates.get(a_best, a_base)
+
+            q_parts = QuestionSplitter.split_image_by_questions_with_labels(q_selected, q_regions)
+            a_parts = QuestionSplitter.split_image_by_questions_with_labels(a_selected, a_regions)
+
+            q_doc.close()
+            a_doc.close()
+
+        q_map: Dict[str, List[bytes]] = {}
+        a_map: Dict[str, List[bytes]] = {}
+        for label, pdf_data in q_parts:
+            key = QuestionDetector.normalize_question_label(label)
+            q_map.setdefault(key, []).append(pdf_data)
+        for label, pdf_data in a_parts:
+            key = QuestionDetector.normalize_question_label(label)
+            a_map.setdefault(key, []).append(pdf_data)
+
+        pairs: List[QuestionAnswerPdfPair] = []
+        for key in sorted(set(q_map.keys()) & set(a_map.keys())):
+            count = min(len(q_map[key]), len(a_map[key]))
+            for index in range(count):
+                pairs.append(
+                    QuestionAnswerPdfPair(
+                        question_label=key,
+                        question_pdf=q_map[key][index],
+                        answer_pdf=a_map[key][index],
+                        metadata={"match_index": index},
+                    )
+                )
+
+        return pairs
