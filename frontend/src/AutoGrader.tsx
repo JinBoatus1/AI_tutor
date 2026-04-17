@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 
 export default function AutoGrader() {
   const [prompt, setPrompt] = useState("");
@@ -19,7 +19,7 @@ export default function AutoGrader() {
       formData.append("files", f); // field name must be "files" for the API
     });
 
-    const resp = await fetch(`${API_BASE}/api/grade`, {
+    const resp = await fetch(apiUrl("/api/grade"), {
       method: "POST",
       body: formData,
     });

@@ -1,5 +1,5 @@
 import focsTreeBundled from "./data/focsTree.json";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 
 /** Bundled outline roots (same shape as FOCS tree JSON). */
 export type TextbookTreeRoot = Record<string, unknown>;
@@ -113,7 +113,7 @@ export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
 /** 登录后从服务器拉取用户教材列表与目录 JSON，写入 localStorage。 */
 export async function syncTextbookCatalogFromServer(token: string): Promise<void> {
   try {
-    const r = await fetch(`${API_BASE}/api/user_textbooks`, {
+    const r = await fetch(apiUrl("/api/user_textbooks"), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!r.ok) return;
@@ -126,7 +126,7 @@ export async function syncTextbookCatalogFromServer(token: string): Promise<void
       })
     );
     for (const it of items) {
-      const tr = await fetch(`${API_BASE}/api/user_textbooks/${encodeURIComponent(it.id)}/tree`, {
+      const tr = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(it.id)}/tree`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (tr.ok) {

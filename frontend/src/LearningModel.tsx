@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import "./Chat.css";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import {
   focsOutlineToCurriculum,
@@ -333,7 +333,7 @@ export default function LearningModel() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const resp = await fetch(`${API_BASE}/api/chat`, {
+      const resp = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -479,7 +479,7 @@ export default function LearningModel() {
   const loadSession = async (sid: string) => {
     if (!token) return;
     try {
-      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${sid}`, {
+      const resp = await fetch(apiUrl(`/api/sessions/${sid}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;

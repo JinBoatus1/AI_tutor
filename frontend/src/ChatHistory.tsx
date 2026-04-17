@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "./context/AuthContext";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 import "./ChatHistory.css";
 
 const CONVERSATIONS_SIDEBAR_COLLAPSED_KEY = "ai_tutor_conversations_sidebar_collapsed";
@@ -94,7 +94,7 @@ export default function ChatHistory({
   const fetchSessions = useCallback(async () => {
     if (!token) return;
     try {
-      const resp = await fetch(`${API_BASE}/api/sessions`, {
+      const resp = await fetch(apiUrl("/api/sessions"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (resp.ok) {
@@ -114,7 +114,7 @@ export default function ChatHistory({
     e.stopPropagation();
     if (!token) return;
     try {
-      await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+      await fetch(apiUrl(`/api/sessions/${sessionId}`), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

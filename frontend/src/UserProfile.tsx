@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
@@ -93,7 +93,7 @@ export default function UserProfile() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("label", file.name.replace(/\.pdf$/i, "") || "My textbook");
-      const resp = await fetch(`${API_BASE}/api/user_textbooks/from_pdf`, {
+      const resp = await fetch(apiUrl("/api/user_textbooks/from_pdf"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd,

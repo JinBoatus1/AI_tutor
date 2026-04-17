@@ -3,7 +3,7 @@
  * When online, best-effort sync to GET/PUT /api/student_bar so Learning Mode shares the same student_id.
  */
 
-import { API_BASE } from "../apiBase";
+import { apiUrl } from "../apiBase";
 
 const STORAGE_PREFIX = "aiTutorLearningBarV1:";
 
@@ -62,7 +62,7 @@ export async function tryHydrateLearnedFromServer(
     });
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
-    const r = await fetchWithTimeout(`${API_BASE}/api/student_bar?${q.toString()}`, {
+    const r = await fetchWithTimeout(`${apiUrl("/api/student_bar")}?${q.toString()}`, {
       method: "GET",
       headers,
       timeoutMs: 12_000,
@@ -92,7 +92,7 @@ export async function trySyncLearnedToServer(
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const r = await fetchWithTimeout(`${API_BASE}/api/student_bar`, {
+    const r = await fetchWithTimeout(apiUrl("/api/student_bar"), {
       method: "PUT",
       headers,
       body: JSON.stringify({
