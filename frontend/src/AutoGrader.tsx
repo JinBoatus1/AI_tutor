@@ -1,103 +1,171 @@
-import { useState, useRef } from "react";
-import { apiUrl } from "./apiBase";
+import { useMemo, useRef, useState } from "react";
+import { apiUrl } from "./api";
+
+type ScoreMode = "absolute" | "percentage";
+
+type ScoreItem = {
+  score: number;
+  mode: ScoreMode;
+  max_score?: number | null;
+};
+
+type GradeResponse = {
+  paper_id: string;
+  pair_count: number;
+  pairs: string[];
+  scores: Record<string, ScoreItem>;
+  all_absolute: boolean;
+  total_score: number | null;
+  total_max_score: number | null;
+};
 
 export default function AutoGrader() {
-  const [prompt, setPrompt] = useState("");
-  const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [questionFile, setQuestionFile] = useState<File | null>(null);
+  const [answerFile, setAnswerFile] = useState<File | null>(null);
+  const questionInputRef = useRef<HTMLInputElement>(null);
+  const answerInputRef = useRef<HTMLInputElement>(null);
+  const [grading, setGrading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<GradeResponse | null>(null);
 
-  const [result, setResult] = useState("");
+  const sortedScores = useMemo(() => {
+    if (!result) {
+      return [] as Array<[string, ScoreItem]>;
+    }
+    return Object.entries(result.scores).sort((a, b) => {
+      const an = Number(a[0]);
+      const bn = Number(b[0]);
+      const aNum = Number.isFinite(an);
+      const bNum = Number.isFinite(bn);
+      if (aNum && bNum) {
+        return an - bn;
+      }
+      return a[0].localeCompare(b[0]);
+    });
+  }, [result]);
 
   const handleSubmit = async () => {
-    const formData = new FormData();
-
-    formData.append("prompt", prompt);
-    formData.append("text", text);
-
-    files.forEach((f) => {
-      formData.append("files", f); // field name must be "files" for the API
-    });
-
-    const resp = await fetch(apiUrl("/api/grade"), {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await resp.json();
-    if (!resp.ok) {
-      const detail = data?.detail || data?.error || "Backend request failed.";
-      setResult(`Backend error: ${detail}`);
+    setError("");
+    setResult(null);
+    if (!questionFile || !answerFile) {
+      setError("请先上传 question 和 answer 两个文件。");
       return;
     }
-    setResult(data.reply);
+
+    const formData = new FormData();
+
+    formData.append("paper_id", `web-${Date.now()}`);
+    formData.append("question_file", questionFile);
+    formData.append("answer_file", answerFile);
+
+    setGrading(true);
+    try {
+      const resp = await fetch(apiUrl("/api/autograder/grade"), {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await resp.json();
+      if (!resp.ok) {
+        const detail = data?.detail || data?.error || "Backend request failed.";
+        setError(`Backend error: ${detail}`);
+        return;
+      }
+      setResult(data as GradeResponse);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Network error";
+      setError(`Request failed: ${message}`);
+    } finally {
+      setGrading(false);
+    }
   };
 
   return (
     <div className="page-container">
-
       <h1 className="page-title">Auto Grader</h1>
 
       <div className="card">
-
-        <textarea
-          className="input-box"
-          placeholder="Enter grading prompt..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-        />
-
-        <textarea
-          className="input-box"
-          placeholder="Student text answer..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-
-        <div className="autograder-file-row">
-          <input
-            ref={fileInputRef}
-            className="autograder-file-input-hidden"
-            type="file"
-            accept="image/*"
-            multiple
-            aria-label="Attach answer images"
-            onChange={(e) => setFiles(Array.from(e.target.files || []))}
-          />
-          <button
-            type="button"
-            className="autograder-file-choose-btn"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Choose images
-          </button>
-          <span className="autograder-file-status">
-            {files.length === 0
-              ? "No files selected"
-              : `${files.length} file(s): ${files.map((f) => f.name).join(", ")}`}
-          </span>
-        </div>
-
-        <div className="preview-container">
-          {files.map((f, idx) => (
-            <img
-              key={idx}
-              src={URL.createObjectURL(f)}
-              className="preview-img"
+        <div className="autograder-upload-block">
+          <label className="autograder-upload-label">Question 文件</label>
+          <div className="autograder-file-row">
+            <input
+              ref={questionInputRef}
+              className="autograder-file-input-hidden"
+              type="file"
+              accept=".pdf,image/*"
+              aria-label="Upload question file"
+              onChange={(e) => setQuestionFile(e.target.files?.[0] ?? null)}
             />
-          ))}
+            <button
+              type="button"
+              className="autograder-file-choose-btn"
+              onClick={() => questionInputRef.current?.click()}
+            >
+              上传 Question
+            </button>
+            <span className="autograder-file-status">
+              {questionFile ? questionFile.name : "未选择文件"}
+            </span>
+          </div>
         </div>
 
+        <div className="autograder-upload-block">
+          <label className="autograder-upload-label">Answer 文件</label>
+          <div className="autograder-file-row">
+            <input
+              ref={answerInputRef}
+              className="autograder-file-input-hidden"
+              type="file"
+              accept=".pdf,image/*"
+              aria-label="Upload answer file"
+              onChange={(e) => setAnswerFile(e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              className="autograder-file-choose-btn"
+              onClick={() => answerInputRef.current?.click()}
+            >
+              上传 Answer
+            </button>
+            <span className="autograder-file-status">
+              {answerFile ? answerFile.name : "未选择文件"}
+            </span>
+          </div>
+        </div>
 
-        <button className="btn-primary" onClick={handleSubmit}>
-          Run Auto Grader
+        <button className="btn-primary" onClick={handleSubmit} disabled={grading}>
+          {grading ? "评分中..." : "开始评分"}
         </button>
+
+        {error && <p className="autograder-error-text">{error}</p>}
       </div>
 
       {result && (
         <div className="result-box">
-          <h3>Grading Result</h3>
-          <p>{result}</p>
+          <h3>评分结果</h3>
+          <p>paper_id: {result.paper_id}</p>
+          <p>识别题目数: {result.pair_count}</p>
+
+          <div className="autograder-score-list">
+            {sortedScores.map(([qid, item]) => {
+              const display =
+                item.mode === "absolute" && item.max_score != null
+                  ? `${item.score}/${item.max_score}`
+                  : `${item.score}%`;
+              return (
+                <div className="autograder-score-item" key={qid}>
+                  <span>Q{qid}</span>
+                  <strong>{display}</strong>
+                </div>
+              );
+            })}
+          </div>
+
+          {result.all_absolute && result.total_score != null && result.total_max_score != null && (
+            <p className="autograder-total-score">
+              总分: {result.total_score}/{result.total_max_score}
+            </p>
+          )}
         </div>
       )}
     </div>

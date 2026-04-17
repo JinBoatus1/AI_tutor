@@ -4,6 +4,8 @@ import base64
 import json
 import os
 import re
+import shutil
+import tempfile
 from typing import Any, List, Optional
 
 import fitz  # PyMuPDF
@@ -16,6 +18,7 @@ import student_bar_store as sbs
 import user_textbook_store as uts
 from bson import ObjectId
 from datetime import datetime, timezone
+from AutoGrader.public_api import AutoGraderGradeRequest, grade_paper_once
 
 from auth import verify_token
 import database
@@ -875,6 +878,106 @@ async def grade(prompt: str = Form(...), text: str = Form(""), files: List[Uploa
     )
 
     return {"reply": resp.choices[0].message.content}
+
+
+def _suffix_from_upload(upload: UploadFile) -> str:
+    name = (upload.filename or "").lower()
+    if name.endswith(".pdf"):
+        return ".pdf"
+    if name.endswith(".png"):
+        return ".png"
+    if name.endswith(".jpg") or name.endswith(".jpeg"):
+        return ".jpg"
+    return ".bin"
+
+
+def _is_supported_upload(upload: UploadFile) -> bool:
+    name = (upload.filename or "").lower()
+    ctype = (upload.content_type or "").lower()
+    if name.endswith((".pdf", ".png", ".jpg", ".jpeg")):
+        return True
+    if ctype.startswith("image/"):
+        return True
+    return ctype == "application/pdf"
+
+
+@router.post("/api/autograder/grade")
+async def autograder_grade(
+    question_file: UploadFile = File(...),
+    answer_file: UploadFile = File(...),
+    paper_id: str = Form("web-paper"),
+):
+    if not _is_supported_upload(question_file):
+        raise HTTPException(status_code=400, detail="question_file must be pdf/jpg/jpeg/png")
+    if not _is_supported_upload(answer_file):
+        raise HTTPException(status_code=400, detail="answer_file must be pdf/jpg/jpeg/png")
+
+    q_tmp_path: Optional[str] = None
+    a_tmp_path: Optional[str] = None
+    generated_temp_dir: Optional[str] = None
+    try:
+        q_bytes = await question_file.read()
+        a_bytes = await answer_file.read()
+        if not q_bytes:
+            raise HTTPException(status_code=400, detail="question_file is empty")
+        if not a_bytes:
+            raise HTTPException(status_code=400, detail="answer_file is empty")
+
+        q_tmp = tempfile.NamedTemporaryFile(prefix="autograder_question_", suffix=_suffix_from_upload(question_file), delete=False)
+        a_tmp = tempfile.NamedTemporaryFile(prefix="autograder_answer_", suffix=_suffix_from_upload(answer_file), delete=False)
+        q_tmp.write(q_bytes)
+        a_tmp.write(a_bytes)
+        q_tmp.close()
+        a_tmp.close()
+        q_tmp_path = q_tmp.name
+        a_tmp_path = a_tmp.name
+
+        resp = await grade_paper_once(
+            AutoGraderGradeRequest(
+                paper_id=paper_id.strip() or "web-paper",
+                question_source=q_tmp_path,
+                answer_source=a_tmp_path,
+            )
+        )
+        payload = resp.model_dump()
+        generated_temp_dir = payload.get("temp_dir") if isinstance(payload.get("temp_dir"), str) else None
+
+        scores = payload.get("scores", {})
+        all_absolute = bool(scores) and all((item or {}).get("mode") == "absolute" for item in scores.values())
+        if all_absolute:
+            total_score = 0.0
+            total_max_score = 0.0
+            for item in scores.values():
+                total_score += float(item.get("score") or 0.0)
+                total_max_score += float(item.get("max_score") or 0.0)
+            payload["all_absolute"] = True
+            payload["total_score"] = total_score
+            payload["total_max_score"] = total_max_score
+        else:
+            payload["all_absolute"] = False
+            payload["total_score"] = None
+            payload["total_max_score"] = None
+
+        # API 输出不暴露临时目录，且请求结束即清理该目录。
+        payload["temp_dir"] = None
+
+        return payload
+    finally:
+        if q_tmp_path and os.path.exists(q_tmp_path):
+            try:
+                os.remove(q_tmp_path)
+            except OSError:
+                pass
+        if a_tmp_path and os.path.exists(a_tmp_path):
+            try:
+                os.remove(a_tmp_path)
+            except OSError:
+                pass
+        if generated_temp_dir and os.path.isdir(generated_temp_dir):
+            try:
+                shutil.rmtree(generated_temp_dir, ignore_errors=True)
+            except OSError:
+                pass
 
 
 @router.post("/api/upload_textbook")
