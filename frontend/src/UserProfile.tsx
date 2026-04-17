@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
@@ -43,6 +43,8 @@ export default function UserProfile() {
   const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
   const [textbookUploading, setTextbookUploading] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
+  const [pickedPdfName, setPickedPdfName] = useState<string | null>(null);
+  const textbookFileRef = useRef<HTMLInputElement>(null);
 
   const refreshTextbookOptions = useCallback(() => {
     setTextbookOptions(readTextbookOptionList());
@@ -67,18 +69,26 @@ export default function UserProfile() {
     };
   }, [refreshTextbookOptions]);
 
+  const clearTextbookFileInput = () => {
+    setPickedPdfName(null);
+    if (textbookFileRef.current) textbookFileRef.current.value = "";
+  };
+
   const onTextbookFile = async (file: File | null) => {
     if (!file) return;
     if (!token) {
       setTextbookError("Sign in to upload a PDF textbook.");
+      clearTextbookFileInput();
       return;
     }
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       setTextbookError("Please choose a PDF file.");
+      clearTextbookFileInput();
       return;
     }
     setTextbookUploading(true);
     setTextbookError(null);
+    setPickedPdfName(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -104,6 +114,7 @@ export default function UserProfile() {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
       setTextbookUploading(false);
+      clearTextbookFileInput();
     }
   };
 
@@ -186,22 +197,39 @@ export default function UserProfile() {
                 ))}
               </select>
             </div>
-            <div className="profile-account-row" style={{ flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
-              <label className="profile-muted" htmlFor="profile-textbook-file">
+            <div className="profile-account-row profile-file-upload-row">
+              <span className="profile-muted" id="profile-textbook-file-label">
                 Upload new textbook (PDF)
-              </label>
-              <input
-                id="profile-textbook-file"
-                type="file"
-                accept="application/pdf,.pdf"
-                disabled={textbookUploading}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  void onTextbookFile(f ?? null);
-                }}
-              />
-              {textbookUploading ? <span className="profile-muted">Building outline…</span> : null}
+              </span>
+              <div className="profile-file-upload-controls">
+                <input
+                  ref={textbookFileRef}
+                  id="profile-textbook-file"
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="profile-file-input-hidden"
+                  tabIndex={-1}
+                  aria-labelledby="profile-textbook-file-label"
+                  disabled={textbookUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setPickedPdfName(f.name);
+                    void onTextbookFile(f);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="profile-file-choose-btn"
+                  disabled={textbookUploading}
+                  onClick={() => textbookFileRef.current?.click()}
+                >
+                  Choose file
+                </button>
+                <span className="profile-file-status" aria-live="polite">
+                  {textbookUploading ? "Building outline…" : pickedPdfName ?? "No file chosen"}
+                </span>
+              </div>
             </div>
             {textbookError ? (
               <p className="profile-muted" style={{ color: "#c62828", marginTop: "0.5rem" }}>
