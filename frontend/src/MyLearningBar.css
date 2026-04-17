@@ -214,18 +214,16 @@
   margin-left: 4px;
 }
 
-/* Embedded in Learning Mode (left column) */
+/* Embedded in Learning Mode (width comes from parent .learning-bar-column) */
 .learning-bar-embed {
-  flex-shrink: 0;
-  width: min(300px, 34vw);
-  min-width: 220px;
-  max-width: 360px;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   background: #f1f5f9;
-  border-right: 1px solid #cbd5e1;
 }
 
 .learning-bar-embed-scroll {

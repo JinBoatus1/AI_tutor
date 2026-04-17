@@ -221,10 +221,10 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
         setSyncHint(
           ok
             ? variant === "embed"
-              ? "已同步到服务器。"
+              ? "Synced to server."
               : "Synced to server (Learning Mode will use the same progress)."
             : variant === "embed"
-              ? "已保存在本机；无法连接服务器。"
+              ? "Saved on this device; could not reach the server."
               : "Saved on this device; could not reach the server—Learning Mode may be out of sync."
         );
       } catch (e) {
@@ -271,7 +271,7 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
   }, [expandablePaths]);
 
   const embedWrap = (body: ReactNode) => (
-    <div className="learning-bar-embed" aria-label="学习进度">
+    <div className="learning-bar-embed" aria-label="Learning progress">
       <div className="learning-bar-embed-scroll">{body}</div>
     </div>
   );
@@ -288,7 +288,9 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
         <p className="my-learning-bar-meta">
           {variant === "embed" ? (
             <>
-              点击以章节号开头的条目，切换「已学 / 未学」。与「My Learning bar」页面数据一致。
+              {
+                "Click items that start with a section number to toggle learned / not learned. Same data as on the My Learning bar page."
+              }
               {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
             </>
           ) : (
