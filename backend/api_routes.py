@@ -155,8 +155,12 @@ def _max_user_pdf_mb() -> int:
     try:
         v = int(raw)
     except ValueError:
-        v = 100
-    return max(1, min(v, 512))
+        return 100
+    v = max(1, min(v, 512))
+    # 忽略误配的旧上限（如 14）；低于 25 一律按默认 100MB，避免线上仍显示「max 14 MB」
+    if v < 25:
+        return 100
+    return v
 
 
 MAX_USER_PDF_MB = _max_user_pdf_mb()

@@ -12,6 +12,13 @@ export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = [
   { id: "focs", linkLabel: "FCOS" },
 ];
 
+/** 与后端 user_textbook_store.is_valid_user_book_id 一致；仅此类 id 会请求 /api/user_textbooks/{id}/tree */
+const USER_BOOK_ID_RE = /^user_[A-Za-z0-9_-]{4,64}$/;
+
+export function isValidUploadedTextbookId(id: string): boolean {
+  return USER_BOOK_ID_RE.test(id);
+}
+
 function safeParseCatalog(): { id: string; linkLabel: string }[] {
   try {
     const raw = localStorage.getItem(CATALOG_KEY);
@@ -23,7 +30,7 @@ function safeParseCatalog(): { id: string; linkLabel: string }[] {
         const o = x as { id?: unknown; linkLabel?: unknown };
         return typeof o?.id === "string" && typeof o?.linkLabel === "string";
       })
-      .filter((x) => x.id !== "focs");
+      .filter((x) => x.id !== "focs" && isValidUploadedTextbookId(x.id));
   } catch {
     return [];
   }
@@ -43,6 +50,7 @@ export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
 }
 
 export function writeCatalogAndTree(id: string, linkLabel: string, tree: TextbookTreeRoot): void {
+  if (!isValidUploadedTextbookId(id)) return;
   const cur = safeParseCatalog().filter((x) => x.id !== id);
   cur.push({ id, linkLabel: linkLabel || id });
   try {
@@ -56,7 +64,10 @@ export function writeCatalogAndTree(id: string, linkLabel: string, tree: Textboo
 export function readSelectedTextbookId(): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && raw.length > 0) return raw;
+    if (!raw || raw.length === 0) return "focs";
+    if (raw === "focs") return "focs";
+    if (isValidUploadedTextbookId(raw)) return raw;
+    localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -64,9 +75,10 @@ export function readSelectedTextbookId(): string {
 }
 
 export function writeSelectedTextbookId(id: string): void {
+  const safe = id === "focs" || isValidUploadedTextbookId(id) ? id : "focs";
   try {
-    localStorage.setItem(STORAGE_KEY, id);
-    window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id } }));
+    localStorage.setItem(STORAGE_KEY, safe);
+    window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: safe } }));
   } catch {
     /* ignore */
   }
@@ -118,7 +130,9 @@ export async function syncTextbookCatalogFromServer(token: string): Promise<void
     });
     if (!r.ok) return;
     const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
-    const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter((x) => x?.id && x.id !== "focs");
+    const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter(
+      (x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id)
+    );
     localStorage.setItem(
       CATALOG_KEY,
       JSON.stringify({
