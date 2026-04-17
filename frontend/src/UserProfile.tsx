@@ -136,10 +136,13 @@ export default function UserProfile() {
     setTextbookDeleting(true);
     setTextbookError(null);
     try {
-      const resp = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(selectedTextbook)}`), {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resp = await fetch(
+        apiUrl(`/api/user_textbooks/${encodeURIComponent(selectedTextbook)}/delete`),
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       let data: { detail?: string } = {};
       try {
         data = (await resp.json()) as { detail?: string };
@@ -147,6 +150,18 @@ export default function UserProfile() {
         /* non-JSON body */
       }
       if (!resp.ok) {
+        if (resp.status === 404 && isValidUploadedTextbookId(selectedTextbook)) {
+          invalidateTextbookCatalogSync();
+          removeUploadedTextbookFromLocal(selectedTextbook);
+          await syncTextbookCatalogFromServer(token);
+          refreshTextbookOptions();
+          setSelectedTextbook(readSelectedTextbookId());
+          window.dispatchEvent(
+            new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+          );
+          setTextbookError(null);
+          return;
+        }
         setTextbookError(typeof data?.detail === "string" ? data.detail : "Delete failed.");
         return;
       }

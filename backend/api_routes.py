@@ -6,7 +6,7 @@ import os
 import re
 import shutil
 import tempfile
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
@@ -701,12 +701,8 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
     return outline if isinstance(outline, dict) else {}
 
 
-@router.delete("/api/user_textbooks/{book_id}")
-async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = Header(None)):
-    """Permanently delete an uploaded textbook (not FCOS). Also drops learning-bar data for that book."""
-    email = verify_token(authorization)
-    if not email:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+def _delete_user_textbook_core(email: str, book_id: str) -> Dict[str, Any]:
+    """Delete uploaded book + learning bars. Raises HTTPException."""
     if book_id == "focs" or not uts.is_valid_user_book_id(book_id):
         raise HTTPException(status_code=400, detail="Cannot delete this textbook.")
     if not uts.user_owns_book(email, book_id):
@@ -724,6 +720,24 @@ async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = H
     except Exception as e:
         print(f"[user_textbooks] file bar cleanup failed: {e}", flush=True)
     return {"ok": True, "id": book_id}
+
+
+@router.delete("/api/user_textbooks/{book_id}")
+async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = Header(None)):
+    """Permanently delete an uploaded textbook (not FCOS). Also drops learning-bar data for that book."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _delete_user_textbook_core(email, book_id)
+
+
+@router.post("/api/user_textbooks/{book_id}/delete")
+async def delete_my_user_textbook_post(book_id: str, authorization: Optional[str] = Header(None)):
+    """Same as DELETE /api/user_textbooks/{book_id}; POST for proxies that block DELETE."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _delete_user_textbook_core(email, book_id)
 
 
 @router.post("/api/user_textbooks/from_pdf")
