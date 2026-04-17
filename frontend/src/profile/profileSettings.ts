@@ -2,31 +2,42 @@ export type PageBackgroundId = "default" | "mint" | "dark" | "warm" | "white" | 
 
 const STORAGE_KEY = "ai_tutor_profile_settings";
 
+/** Outer page chrome + Learning Mode chat panel (dialog) surface — paired for readability. */
+const THEME: Record<PageBackgroundId, { page: string; chat: string }> = {
+  default: { page: "#e6eaf2", chat: "#ffffff" },
+  mint: { page: "#e0f2f0", chat: "#f5fdfb" },
+  dark: { page: "#1e293b", chat: "#fefefe" },
+  warm: { page: "#f5f0e8", chat: "#fffdf9" },
+  white: { page: "#ffffff", chat: "#fafafa" },
+  black: { page: "#0a0a0a", chat: "#f3f4f6" },
+};
+
+const LABELS: Record<PageBackgroundId, string> = {
+  default: "Default",
+  mint: "Mint",
+  dark: "Dark",
+  warm: "Warm",
+  white: "White",
+  black: "Black",
+};
+
 export const PAGE_BACKGROUND_OPTIONS: {
   id: PageBackgroundId;
   label: string;
-  color: string;
-}[] = [
-  { id: "default", label: "Default", color: "#e6eaf2" },
-  { id: "mint", label: "Mint", color: "#e0f2f0" },
-  { id: "dark", label: "Dark", color: "#1e293b" },
-  { id: "warm", label: "Warm", color: "#f5f0e8" },
-  { id: "white", label: "White", color: "#ffffff" },
-  { id: "black", label: "Black", color: "#0a0a0a" },
-];
-
-const BG_CSS: Record<PageBackgroundId, string> = {
-  default: "#e6eaf2",
-  mint: "#e0f2f0",
-  dark: "#1e293b",
-  warm: "#f5f0e8",
-  white: "#ffffff",
-  black: "#0a0a0a",
-};
+  /** Swatch: page + chat split preview */
+  page: string;
+  chat: string;
+}[] = (Object.keys(THEME) as PageBackgroundId[]).map((id) => ({
+  id,
+  label: LABELS[id],
+  page: THEME[id].page,
+  chat: THEME[id].chat,
+}));
 
 export function applyPageBackground(id: PageBackgroundId): void {
-  const hex = BG_CSS[id] ?? BG_CSS.default;
-  document.documentElement.style.setProperty("--app-page-bg", hex);
+  const t = THEME[id] ?? THEME.default;
+  document.documentElement.style.setProperty("--app-page-bg", t.page);
+  document.documentElement.style.setProperty("--app-chat-panel-bg", t.chat);
 }
 
 export function readPageBackground(): PageBackgroundId {
@@ -35,7 +46,7 @@ export function readPageBackground(): PageBackgroundId {
     if (!raw) return "default";
     const j = JSON.parse(raw) as { pageBackground?: string };
     const id = j.pageBackground as PageBackgroundId | undefined;
-    if (id && id in BG_CSS) return id;
+    if (id && id in THEME) return id;
   } catch {
     /* ignore */
   }

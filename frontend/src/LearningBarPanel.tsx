@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "./MyLearningBar.css";
-import focsTreeBundled from "./data/focsTree.json";
 import { getOrCreateStudentId } from "./utils/studentId";
+import {
+  getTextbookLinkLabel,
+  getTextbookTree,
+  readSelectedTextbookId,
+  TEXTBOOK_OPTIONS,
+  writeSelectedTextbookId,
+  type TextbookId,
+} from "./learningTextbooks";
 import {
   loadLocalLearningBar,
   saveLocalLearningBar,
@@ -11,14 +18,14 @@ import {
 
 type FocsNode = Record<string, unknown>;
 
-const FOCS_TREE = focsTreeBundled as FocsNode;
-
 export type LearningBarPanelVariant = "page" | "embed";
 
 export type LearningBarPanelProps = {
   variant: LearningBarPanelVariant;
   /** When set (e.g. from Learning Mode), progress uses the same student id as the chat session. */
   studentId?: string;
+  /** Shown on the same row as the title (e.g. collapse control in Learning Mode). */
+  embedHeaderEnd?: ReactNode;
 };
 
 function firstSectionToken(title: string): string | null {
@@ -177,7 +184,11 @@ function FocsTreeBranch({
   );
 }
 
-export default function LearningBarPanel({ variant, studentId: studentIdProp }: LearningBarPanelProps) {
+export default function LearningBarPanel({
+  variant,
+  studentId: studentIdProp,
+  embedHeaderEnd,
+}: LearningBarPanelProps) {
   const [fallbackStudentId] = useState(() => getOrCreateStudentId());
   const studentId = studentIdProp ?? fallbackStudentId;
   const [learned, setLearned] = useState<string[]>([]);
@@ -186,8 +197,14 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
   const [saving, setSaving] = useState(false);
   const [syncHint, setSyncHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedTextbookId, setSelectedTextbookId] = useState<TextbookId>(() => readSelectedTextbookId());
+  const [bookPickerOpen, setBookPickerOpen] = useState(false);
+  const bookBtnRef = useRef<HTMLButtonElement>(null);
+  const bookPopoverRef = useRef<HTMLDivElement>(null);
 
   const learnedSet = useMemo(() => new Set(learned), [learned]);
+
+  const activeTree = useMemo(() => getTextbookTree(selectedTextbookId) as FocsNode, [selectedTextbookId]);
 
   useEffect(() => {
     const local = loadLocalLearningBar(studentId);
@@ -262,8 +279,31 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
     });
   }, []);
 
-  const rootEntries = useMemo(() => childEntries(FOCS_TREE), []);
-  const expandablePaths = useMemo(() => collectExpandablePaths(FOCS_TREE), []);
+  const rootEntries = useMemo(() => childEntries(activeTree), [activeTree]);
+  const expandablePaths = useMemo(() => collectExpandablePaths(activeTree), [activeTree]);
+
+  useEffect(() => {
+    setExpanded({});
+  }, [selectedTextbookId]);
+
+  useEffect(() => {
+    if (!bookPickerOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      const t = e.target as Node;
+      if (bookPopoverRef.current?.contains(t)) return;
+      if (bookBtnRef.current?.contains(t)) return;
+      setBookPickerOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setBookPickerOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [bookPickerOpen]);
 
   const expandAllSections = useCallback(() => setExpanded({}), []);
   const collapseAllSections = useCallback(() => {
@@ -271,7 +311,10 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
   }, [expandablePaths]);
 
   const embedWrap = (body: ReactNode) => (
-    <div className="learning-bar-embed" aria-label="Learning progress">
+    <div
+      className="learning-bar-embed"
+      aria-label={`Learning progress for ${getTextbookLinkLabel(selectedTextbookId)}`}
+    >
       <div className="learning-bar-embed-scroll">{body}</div>
     </div>
   );
@@ -281,10 +324,70 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
     return variant === "embed" ? embedWrap(loading) : <div className="my-learning-bar-page">{loading}</div>;
   }
 
+  const titleWrapInner = (
+    <>
+      <h1 className="my-learning-bar-title">
+        Learning progress for{" "}
+        <button
+          type="button"
+          ref={bookBtnRef}
+          className="my-learning-bar-book-link"
+          onClick={() => setBookPickerOpen((o) => !o)}
+          aria-expanded={bookPickerOpen}
+          aria-haspopup="listbox"
+          aria-controls="learning-textbook-picker"
+        >
+          {getTextbookLinkLabel(selectedTextbookId)}
+        </button>
+      </h1>
+      {bookPickerOpen ? (
+        <div
+          id="learning-textbook-picker"
+          ref={bookPopoverRef}
+          className="my-learning-bar-book-popover"
+          role="listbox"
+          aria-label="Choose textbook"
+        >
+          <div className="my-learning-bar-book-popover-hint">Choose textbook</div>
+          {TEXTBOOK_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              role="option"
+              aria-selected={selectedTextbookId === opt.id}
+              className={`my-learning-bar-book-option ${
+                selectedTextbookId === opt.id ? "my-learning-bar-book-option--active" : ""
+              }`}
+              onClick={() => {
+                setSelectedTextbookId(opt.id);
+                writeSelectedTextbookId(opt.id);
+                setBookPickerOpen(false);
+              }}
+            >
+              <span>{opt.linkLabel}</span>
+              {selectedTextbookId === opt.id ? (
+                <span className="my-learning-bar-book-check" aria-hidden>
+                  ✓
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+
   const main = (
     <>
       <header className="my-learning-bar-header">
-        <h1 className="my-learning-bar-title">Learning progress</h1>
+        {variant === "embed" ? (
+          <div className="my-learning-bar-top-row">
+            <div className="my-learning-bar-title-wrap">{titleWrapInner}</div>
+            {embedHeaderEnd ? <div className="my-learning-bar-top-row-actions">{embedHeaderEnd}</div> : null}
+          </div>
+        ) : (
+          <div className="my-learning-bar-title-wrap">{titleWrapInner}</div>
+        )}
         <p className="my-learning-bar-meta">
           {variant === "embed" ? (
             <>
@@ -334,7 +437,7 @@ export default function LearningBarPanel({ variant, studentId: studentIdProp }: 
         <ul className="focs-node">
           {rootEntries.map(([k, v]) => (
             <FocsTreeBranch
-              key={k}
+              key={`${selectedTextbookId}:${k}`}
               title={k}
               node={v}
               learnedSet={learnedSet}

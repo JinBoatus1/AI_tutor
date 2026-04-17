@@ -23,7 +23,7 @@
   border: 1px solid #ddd;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-chat-panel-bg, #ffffff);
 }
 
 .chat-panel-header-row {
@@ -175,16 +175,9 @@
   min-height: 0;
   background: #f1f5f9;
   border-right: 1px solid #cbd5e1;
-}
-
-.learning-bar-column-header {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 4px 6px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #eef2f7;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  overflow: hidden;
 }
 
 .learning-bar-hide-btn {
@@ -243,6 +236,9 @@
   flex-direction: column;
   border-right: 1px solid #cbd5e1;
   background: #eef2f7;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  overflow: hidden;
 }
 
 .learning-bar-reveal-btn {

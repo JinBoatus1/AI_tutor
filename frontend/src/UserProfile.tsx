@@ -77,8 +77,10 @@ export default function UserProfile() {
         <h2 id="profile-appearance-heading" className="profile-card-title">
           Appearance
         </h2>
-        <p className="profile-setting-desc">Page background (applies across the app).</p>
-        <div className="profile-bg-grid" role="radiogroup" aria-label="Page background">
+        <p className="profile-setting-desc">
+          Page background and Learning Mode chat panel — each preset updates both so text stays easy to read.
+        </p>
+        <div className="profile-bg-grid" role="radiogroup" aria-label="Page and chat panel colors">
           {PAGE_BACKGROUND_OPTIONS.map((opt) => (
             <button
               key={opt.id}
@@ -87,9 +89,15 @@ export default function UserProfile() {
               aria-checked={pageBackground === opt.id}
               className={`profile-bg-swatch ${pageBackground === opt.id ? "profile-bg-swatch--active" : ""}`}
               onClick={() => setPageBackground(opt.id as PageBackgroundId)}
-              title={opt.label}
+              title={`${opt.label}: page + chat panel`}
             >
-              <span className="profile-bg-swatch-dot" style={{ background: opt.color }} aria-hidden />
+              <span
+                className="profile-bg-swatch-dot"
+                style={{
+                  background: `linear-gradient(135deg, ${opt.page} 45%, ${opt.chat} 45%)`,
+                }}
+                aria-hidden
+              />
               <span className="profile-bg-swatch-label">{opt.label}</span>
             </button>
           ))}

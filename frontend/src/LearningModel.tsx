@@ -505,21 +505,24 @@ export default function LearningModel() {
           className="learning-bar-column"
           style={{ width: learningBarWidthPx, flexShrink: 0 }}
         >
-          <div className="learning-bar-column-header">
-            <button
-              type="button"
-              className="learning-bar-hide-btn"
-              onClick={() => persistLearningBarCollapsed(true)}
-              title="Hide learning progress"
-              aria-label="Hide learning progress"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-          </div>
           <div className="learning-bar-column-body">
-            <LearningBarPanel variant="embed" studentId={studentId} />
+            <LearningBarPanel
+              variant="embed"
+              studentId={studentId}
+              embedHeaderEnd={
+                <button
+                  type="button"
+                  className="learning-bar-hide-btn"
+                  onClick={() => persistLearningBarCollapsed(true)}
+                  title="Hide learning progress"
+                  aria-label="Hide learning progress"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              }
+            />
             <div
               className="resize-handle learning-bar-resize-handle"
               onMouseDown={handleLearningBarResizeStart}
