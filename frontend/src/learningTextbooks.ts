@@ -8,6 +8,13 @@ const STORAGE_KEY = "ai_tutor_selected_textbook_id";
 const TREE_PREFIX = "ai_tutor_textbook_tree_";
 const CATALOG_KEY = "ai_tutor_textbook_catalog_v1";
 
+/** Bumped to abandon in-flight syncTextbookCatalogFromServer (e.g. user deletes a book while sync still running). */
+let textbookCatalogSyncGeneration = 0;
+
+export function invalidateTextbookCatalogSync(): void {
+  textbookCatalogSyncGeneration++;
+}
+
 export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = [
   { id: "focs", linkLabel: "FCOS" },
 ];
@@ -94,6 +101,10 @@ export function removeUploadedTextbookFromLocal(id: string): void {
     localStorage.removeItem(TREE_PREFIX + id);
     if (wasSelected) {
       writeSelectedTextbookId("focs");
+    } else {
+      window.dispatchEvent(
+        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+      );
     }
   } catch {
     /* ignore */
@@ -138,14 +149,17 @@ export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
   return { topics: [{ topic: "Textbook", chapters }] };
 }
 
-/** 登录后从服务器拉取用户教材列表与目录 JSON，写入 localStorage。 */
+/** Logged-in: fetch textbook list + trees from server into localStorage. Abandoned if superseded by invalidateTextbookCatalogSync. */
 export async function syncTextbookCatalogFromServer(token: string): Promise<void> {
+  const myGen = ++textbookCatalogSyncGeneration;
   try {
     const r = await fetch(apiUrl("/api/user_textbooks"), {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (myGen !== textbookCatalogSyncGeneration) return;
     if (!r.ok) return;
     const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
+    if (myGen !== textbookCatalogSyncGeneration) return;
     const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter(
       (x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id)
     );
@@ -156,11 +170,14 @@ export async function syncTextbookCatalogFromServer(token: string): Promise<void
       })
     );
     for (const it of items) {
+      if (myGen !== textbookCatalogSyncGeneration) return;
       const tr = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(it.id)}/tree`), {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (myGen !== textbookCatalogSyncGeneration) return;
       if (tr.ok) {
         const tree = await tr.json();
+        if (myGen !== textbookCatalogSyncGeneration) return;
         if (tree && typeof tree === "object") {
           localStorage.setItem(TREE_PREFIX + it.id, JSON.stringify(tree));
         }

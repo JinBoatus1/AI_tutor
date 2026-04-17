@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
+  invalidateTextbookCatalogSync,
   isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
@@ -149,9 +150,14 @@ export default function UserProfile() {
         setTextbookError(typeof data?.detail === "string" ? data.detail : "Delete failed.");
         return;
       }
+      invalidateTextbookCatalogSync();
       removeUploadedTextbookFromLocal(selectedTextbook);
+      await syncTextbookCatalogFromServer(token);
       refreshTextbookOptions();
       setSelectedTextbook(readSelectedTextbookId());
+      window.dispatchEvent(
+        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+      );
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
