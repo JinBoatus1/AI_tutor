@@ -17,6 +17,13 @@ from .models import (
     SourceItem,
     SourceType,
 )
+from .public_api import (
+    AutoGraderExternalApi,
+    AutoGraderGradeRequest,
+    AutoGraderGradeResponse,
+    AutoGraderScoreItem,
+    grade_paper_once,
+)
 from .service import get_autograder, has_autograder, register_autograder
 
 __all__ = [
@@ -28,6 +35,10 @@ __all__ = [
     "GradeTaskItem",
     "QuestionAnswerPdfPair",
     "PaperQuestionAnswerPairs",
+    "AutoGraderScoreItem",
+    "AutoGraderGradeRequest",
+    "AutoGraderGradeResponse",
+    "AutoGraderExternalApi",
     "AutoGradeJobSubmitRequest",
     "AutoGradeJobSubmitResponse",
     "AutoGradeJobStatusResponse",
@@ -42,6 +53,7 @@ __all__ = [
     "WorkerPoolBase",
     "AutoGraderEntry",
     "InMemoryAutoGrader",
+    "grade_paper_once",
     "register_autograder",
     "get_autograder",
     "has_autograder",
