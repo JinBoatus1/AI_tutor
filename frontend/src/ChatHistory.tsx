@@ -92,7 +92,7 @@ export default function ChatHistory({
     e.stopPropagation();
     if (!token) return;
     try {
-      await fetch(`${API}/api/sessions/${sessionId}`, {
+      await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
