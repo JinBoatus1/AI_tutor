@@ -620,6 +620,59 @@ Now build the full tree from the OCR text below.
 OCR text:
 """
 
+TEXTBOOK_CLASSIFY_PROMPT = """You classify OCR text taken from the first pages of a PDF.
+
+Answer whether this is primarily a **textbook or standard course book** for teaching/learning: structured chapters or sections, instructional prose, definitions, examples, exercises—meant to be studied over many pages.
+
+Answer **not** a textbook if it is mainly: a single research paper or preprint, a benchmark/score report, an exam paper, worksheets only, slide decks, legal or financial forms, a novel or news article, a CV/resume, a poster, marketing material, or similar non-textbook documents.
+
+OCR excerpt:
+---
+{snippet}
+---
+
+Return ONLY valid JSON on one line: {{"is_textbook": true}} or {{"is_textbook": false}}. No markdown, no code fences, no other text."""
+
+
+def _ocr_looks_like_textbook(ocr_text: str) -> bool:
+    """LLM gate: My Profile only saves uploads that look like real textbooks/course books."""
+    snippet = (ocr_text or "").strip()[:8000]
+    if len(snippet) < 30:
+        return False
+    prompt = TEXTBOOK_CLASSIFY_PROMPT.format(snippet=snippet)
+    resp = create_chat_completion(
+        model="gpt-5.2",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+    )
+    raw = (resp.choices[0].message.content or "").strip()
+    cleaned = re.sub(r"```(?:json)?\s*|\s*```", "", raw, flags=re.I).strip()
+    try:
+        obj = json.loads(cleaned)
+    except json.JSONDecodeError:
+        m = re.search(r'\{\s*"is_textbook"\s*:\s*(true|false)\s*\}', cleaned, re.I)
+        if not m:
+            return False
+        try:
+            obj = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return False
+    val = obj.get("is_textbook")
+    if val is True:
+        return True
+    if val is False:
+        return False
+    if isinstance(val, str) and val.lower() in ("true", "false"):
+        return val.lower() == "true"
+    return False
+
+
+NOT_TEXTBOOK_UPLOAD_DETAIL = (
+    "This PDF does not look like a textbook or standard course book. "
+    "My Profile only accepts textbook-style PDFs for Learning Mode. "
+    "Use Auto Grader for other document types."
+)
+
 
 @router.get("/api/user_textbooks")
 async def list_my_textbooks(authorization: Optional[str] = Header(None)):
@@ -700,6 +753,9 @@ async def create_user_textbook_from_pdf(
 
     if len(ocr_text.strip()) < 20:
         raise HTTPException(status_code=400, detail="OCR failed. Try another file.")
+
+    if not _ocr_looks_like_textbook(ocr_text):
+        raise HTTPException(status_code=400, detail=NOT_TEXTBOOK_UPLOAD_DETAIL)
 
     tree_prompt = FOCS_STYLE_OUTLINE_PROMPT_HEAD + ocr_text[:12000]
     tree_resp = create_chat_completion(

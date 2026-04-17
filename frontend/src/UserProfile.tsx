@@ -167,8 +167,9 @@ export default function UserProfile() {
         </h2>
         <p className="profile-setting-desc">
           When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch
-          to that book. After you upload a PDF, the server builds an outline JSON in the same shape as FCOS (nested
-          objects and page numbers).
+          to that book. After you upload a PDF, the server checks that it is a real textbook or course book, then builds
+          an outline JSON in the same shape as FCOS (nested objects and page numbers). Other PDF types are not accepted
+          here—use Auto Grader for those.
         </p>
         {!user ? (
           <p className="profile-muted">Sign in to upload your own PDF and save it to your account.</p>
