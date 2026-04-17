@@ -91,24 +91,56 @@ export function writeSelectedTextbookId(id: string): void {
   }
 }
 
-/** After server DELETE: drop catalog + cached tree; switch to FCOS if that book was selected. */
-export function removeUploadedTextbookFromLocal(id: string): void {
-  if (!isValidUploadedTextbookId(id)) return;
-  const cur = safeParseCatalog().filter((x) => x.id !== id);
-  const wasSelected = readSelectedTextbookId() === id;
+/** If selected id is no longer in the catalog, reset to FCOS and notify listeners. */
+export function reconcileSelectedTextbookWithCatalog(): void {
   try {
-    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
-    localStorage.removeItem(TREE_PREFIX + id);
-    if (wasSelected) {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw || raw === "focs") return;
+    if (!isValidUploadedTextbookId(raw)) {
       writeSelectedTextbookId("focs");
-    } else {
-      window.dispatchEvent(
-        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
-      );
+      return;
+    }
+    if (!safeParseCatalog().some((x) => x.id === raw)) {
+      writeSelectedTextbookId("focs");
     }
   } catch {
     /* ignore */
   }
+}
+
+function pruneOrphanTextbookTrees(validUploadedIds: Set<string>): void {
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(TREE_PREFIX)) continue;
+      const bookId = k.slice(TREE_PREFIX.length);
+      if (isValidUploadedTextbookId(bookId) && !validUploadedIds.has(bookId)) {
+        toRemove.push(k);
+      }
+    }
+    for (const k of toRemove) {
+      localStorage.removeItem(k);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** After server DELETE: drop catalog + cached tree; reset selection if it pointed at this book. */
+export function removeUploadedTextbookFromLocal(id: string): void {
+  if (!isValidUploadedTextbookId(id)) return;
+  const cur = safeParseCatalog().filter((x) => x.id !== id);
+  try {
+    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
+    localStorage.removeItem(TREE_PREFIX + id);
+  } catch {
+    /* ignore */
+  }
+  reconcileSelectedTextbookWithCatalog();
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
 }
 
 export function getTextbookTree(id: string): TextbookTreeRoot {
@@ -183,6 +215,12 @@ export async function syncTextbookCatalogFromServer(token: string): Promise<void
         }
       }
     }
+    if (myGen !== textbookCatalogSyncGeneration) return;
+    pruneOrphanTextbookTrees(new Set(items.map((x) => x.id)));
+    reconcileSelectedTextbookWithCatalog();
+    window.dispatchEvent(
+      new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+    );
   } catch {
     /* offline */
   }

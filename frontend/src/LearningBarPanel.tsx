@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import "./MyLearningBar.css";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
@@ -7,6 +8,7 @@ import {
   getTextbookTree,
   readSelectedTextbookId,
   readTextbookOptionList,
+  reconcileSelectedTextbookWithCatalog,
   syncTextbookCatalogFromServer,
   writeSelectedTextbookId,
 } from "./learningTextbooks";
@@ -215,6 +217,7 @@ export default function LearningBarPanel({
   embedHeaderEnd,
 }: LearningBarPanelProps) {
   const { token } = useAuth();
+  const location = useLocation();
   const [fallbackStudentId] = useState(() => getOrCreateStudentId());
   const studentId = studentIdProp ?? fallbackStudentId;
   const [learned, setLearned] = useState<string[]>([]);
@@ -237,12 +240,28 @@ export default function LearningBarPanel({
 
   const activeTree = useMemo(() => getTextbookTree(selectedTextbookId) as FocsNode, [selectedTextbookId]);
 
+  useLayoutEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setSelectedTextbookId(readSelectedTextbookId());
+    setBookOptions(readTextbookOptionList());
+  }, []);
+
+  useEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setSelectedTextbookId(readSelectedTextbookId());
+    setBookOptions(readTextbookOptionList());
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
     void (async () => {
       await syncTextbookCatalogFromServer(token);
-      if (!cancelled) setBookOptions(readTextbookOptionList());
+      if (!cancelled) {
+        reconcileSelectedTextbookWithCatalog();
+        setBookOptions(readTextbookOptionList());
+        setSelectedTextbookId(readSelectedTextbookId());
+      }
     })();
     return () => {
       cancelled = true;
@@ -251,6 +270,7 @@ export default function LearningBarPanel({
 
   useEffect(() => {
     const onChange = () => {
+      reconcileSelectedTextbookWithCatalog();
       setSelectedTextbookId(readSelectedTextbookId());
       setBookOptions(readTextbookOptionList());
     };

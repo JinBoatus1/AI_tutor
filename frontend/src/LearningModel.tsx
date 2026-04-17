@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useLocation } from "react-router-dom";
 import "./Chat.css";
 import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
@@ -6,6 +7,7 @@ import {
   focsOutlineToCurriculum,
   getTextbookTree,
   readSelectedTextbookId,
+  reconcileSelectedTextbookWithCatalog,
 } from "./learningTextbooks";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
@@ -49,6 +51,7 @@ function readLearningBarCollapsed(): boolean {
 }
 
 export default function LearningModel() {
+  const location = useLocation();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
   const { user, token } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -83,8 +86,21 @@ export default function LearningModel() {
     setCurriculumTree(focsOutlineToCurriculum(tree));
   }, [textbookId, setCurriculumTree]);
 
+  useLayoutEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setTextbookId(readSelectedTextbookId());
+  }, []);
+
   useEffect(() => {
-    const sync = () => setTextbookId(readSelectedTextbookId());
+    reconcileSelectedTextbookWithCatalog();
+    setTextbookId(readSelectedTextbookId());
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const sync = () => {
+      reconcileSelectedTextbookWithCatalog();
+      setTextbookId(readSelectedTextbookId());
+    };
     window.addEventListener("ai-tutor-textbook-changed", sync);
     window.addEventListener("storage", sync);
     return () => {

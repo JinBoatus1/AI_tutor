@@ -8,6 +8,7 @@ import {
   isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
+  reconcileSelectedTextbookWithCatalog,
   removeUploadedTextbookFromLocal,
   syncTextbookCatalogFromServer,
   type TextbookTreeRoot,
@@ -51,6 +52,7 @@ export default function UserProfile() {
   const textbookFileRef = useRef<HTMLInputElement>(null);
 
   const refreshTextbookOptions = useCallback(() => {
+    reconcileSelectedTextbookWithCatalog();
     setTextbookOptions(readTextbookOptionList());
     setSelectedTextbook(readSelectedTextbookId());
   }, []);
@@ -155,10 +157,6 @@ export default function UserProfile() {
           removeUploadedTextbookFromLocal(selectedTextbook);
           await syncTextbookCatalogFromServer(token);
           refreshTextbookOptions();
-          setSelectedTextbook(readSelectedTextbookId());
-          window.dispatchEvent(
-            new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
-          );
           setTextbookError(null);
           return;
         }
@@ -169,10 +167,6 @@ export default function UserProfile() {
       removeUploadedTextbookFromLocal(selectedTextbook);
       await syncTextbookCatalogFromServer(token);
       refreshTextbookOptions();
-      setSelectedTextbook(readSelectedTextbookId());
-      window.dispatchEvent(
-        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
-      );
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
