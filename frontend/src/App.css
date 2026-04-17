@@ -145,6 +145,48 @@ html, body, #root {
   word-break: break-word;
 }
 
+.autograder-upload-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.autograder-upload-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.autograder-error-text {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.autograder-score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.autograder-score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.autograder-total-score {
+  margin-top: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
 .app {
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
