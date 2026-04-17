@@ -26,18 +26,29 @@ export function isValidUploadedTextbookId(id: string): boolean {
   return USER_BOOK_ID_RE.test(id);
 }
 
+/** Same id may appear twice in corrupted localStorage; keep last label. */
+function dedupeCatalogById(items: { id: string; linkLabel: string }[]): { id: string; linkLabel: string }[] {
+  const map = new Map<string, string>();
+  for (const row of items) {
+    if (!row.id || row.id === "focs" || !isValidUploadedTextbookId(row.id)) continue;
+    map.set(row.id, row.linkLabel || row.id);
+  }
+  return Array.from(map.entries()).map(([id, linkLabel]) => ({ id, linkLabel }));
+}
+
 function safeParseCatalog(): { id: string; linkLabel: string }[] {
   try {
     const raw = localStorage.getItem(CATALOG_KEY);
     if (!raw) return [];
     const j = JSON.parse(raw) as { items?: unknown };
     if (!Array.isArray(j?.items)) return [];
-    return j.items
+    const rows = j.items
       .filter((x): x is { id: string; linkLabel: string } => {
         const o = x as { id?: unknown; linkLabel?: unknown };
         return typeof o?.id === "string" && typeof o?.linkLabel === "string";
       })
       .filter((x) => x.id !== "focs" && isValidUploadedTextbookId(x.id));
+    return dedupeCatalogById(rows);
   } catch {
     return [];
   }
@@ -58,8 +69,10 @@ export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
 
 export function writeCatalogAndTree(id: string, linkLabel: string, tree: TextbookTreeRoot): void {
   if (!isValidUploadedTextbookId(id)) return;
-  const cur = safeParseCatalog().filter((x) => x.id !== id);
-  cur.push({ id, linkLabel: linkLabel || id });
+  const cur = dedupeCatalogById([
+    ...safeParseCatalog().filter((x) => x.id !== id),
+    { id, linkLabel: linkLabel || id },
+  ]);
   try {
     localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
     localStorage.setItem(TREE_PREFIX + id, JSON.stringify(tree));
@@ -73,8 +86,18 @@ export function readSelectedTextbookId(): string {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw || raw.length === 0) return "focs";
     if (raw === "focs") return "focs";
-    if (isValidUploadedTextbookId(raw)) return raw;
-    localStorage.removeItem(STORAGE_KEY);
+    if (!isValidUploadedTextbookId(raw)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return "focs";
+    }
+    if (!safeParseCatalog().some((x) => x.id === raw)) {
+      localStorage.setItem(STORAGE_KEY, "focs");
+      queueMicrotask(() =>
+        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: "focs" } }))
+      );
+      return "focs";
+    }
+    return raw;
   } catch {
     /* ignore */
   }
@@ -143,6 +166,20 @@ export function removeUploadedTextbookFromLocal(id: string): void {
   );
 }
 
+/** Wipe all user-uploaded entries from this browser only (catalog + cached trees). Does not call the server. */
+export function clearAllUploadedTextbooksFromBrowser(): void {
+  try {
+    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: [] }));
+  } catch {
+    /* ignore */
+  }
+  pruneOrphanTextbookTrees(new Set());
+  reconcileSelectedTextbookWithCatalog();
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
+}
+
 export function getTextbookTree(id: string): TextbookTreeRoot {
   if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
   try {
@@ -181,47 +218,48 @@ export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
   return { topics: [{ topic: "Textbook", chapters }] };
 }
 
-/** Logged-in: fetch textbook list + trees from server into localStorage. Abandoned if superseded by invalidateTextbookCatalogSync. */
-export async function syncTextbookCatalogFromServer(token: string): Promise<void> {
+/**
+ * Fetch textbook list + trees from server into localStorage.
+ * Returns false if the list request failed, was aborted, or went offline.
+ */
+export async function syncTextbookCatalogFromServer(token: string): Promise<boolean> {
   const myGen = ++textbookCatalogSyncGeneration;
   try {
     const r = await fetch(apiUrl("/api/user_textbooks"), {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (myGen !== textbookCatalogSyncGeneration) return;
-    if (!r.ok) return;
+    if (myGen !== textbookCatalogSyncGeneration) return false;
+    if (!r.ok) return false;
     const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
-    if (myGen !== textbookCatalogSyncGeneration) return;
-    const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter(
-      (x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id)
+    if (myGen !== textbookCatalogSyncGeneration) return false;
+    const items = dedupeCatalogById(
+      (Array.isArray(data?.textbooks) ? data.textbooks : [])
+        .filter((x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id))
+        .map((x) => ({ id: x.id, linkLabel: x.label || x.id }))
     );
-    localStorage.setItem(
-      CATALOG_KEY,
-      JSON.stringify({
-        items: items.map((x) => ({ id: x.id, linkLabel: x.label || x.id })),
-      })
-    );
+    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: items }));
     for (const it of items) {
-      if (myGen !== textbookCatalogSyncGeneration) return;
+      if (myGen !== textbookCatalogSyncGeneration) return false;
       const tr = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(it.id)}/tree`), {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (myGen !== textbookCatalogSyncGeneration) return;
+      if (myGen !== textbookCatalogSyncGeneration) return false;
       if (tr.ok) {
         const tree = await tr.json();
-        if (myGen !== textbookCatalogSyncGeneration) return;
+        if (myGen !== textbookCatalogSyncGeneration) return false;
         if (tree && typeof tree === "object") {
           localStorage.setItem(TREE_PREFIX + it.id, JSON.stringify(tree));
         }
       }
     }
-    if (myGen !== textbookCatalogSyncGeneration) return;
+    if (myGen !== textbookCatalogSyncGeneration) return false;
     pruneOrphanTextbookTrees(new Set(items.map((x) => x.id)));
     reconcileSelectedTextbookWithCatalog();
     window.dispatchEvent(
       new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
     );
+    return true;
   } catch {
-    /* offline */
+    return false;
   }
 }

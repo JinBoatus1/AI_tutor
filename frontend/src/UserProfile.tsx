@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
+  clearAllUploadedTextbooksFromBrowser,
   invalidateTextbookCatalogSync,
   isValidUploadedTextbookId,
   readSelectedTextbookId,
@@ -65,6 +66,18 @@ export default function UserProfile() {
       refreshTextbookOptions();
     })();
   }, [token, refreshTextbookOptions]);
+
+  const onClearLocalUploadsOnly = () => {
+    if (
+      !window.confirm(
+        "Remove every uploaded book from this browser only? This does not delete files on the server. FCOS stays available."
+      )
+    ) {
+      return;
+    }
+    clearAllUploadedTextbooksFromBrowser();
+    refreshTextbookOptions();
+  };
 
   useEffect(() => {
     const onChange = () => refreshTextbookOptions();
@@ -182,7 +195,13 @@ export default function UserProfile() {
     setTextbookError(null);
     try {
       invalidateTextbookCatalogSync();
-      await syncTextbookCatalogFromServer(token);
+      const ok = await syncTextbookCatalogFromServer(token);
+      if (!ok) {
+        setTextbookError(
+          "Could not load your textbook list from the server (network or sign-in). Your local list was not changed."
+        );
+        return;
+      }
       refreshTextbookOptions();
       window.dispatchEvent(
         new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
@@ -299,8 +318,20 @@ export default function UserProfile() {
                 {catalogSyncing ? "Syncing…" : "Sync textbook list with server"}
               </button>
               <span className="profile-muted profile-textbook-sync-hint">
-                Use this if a book still appears after it was removed on the server (for example delete ran while
-                something else was in progress). Learning Mode will match the same list.
+                Replaces this browser's list with what your account has on the server. If this fails (offline / 401),
+                the red message above explains it. Learning Mode uses the same data.
+              </span>
+              <button
+                type="button"
+                className="profile-textbook-reset-local-btn"
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
+                onClick={onClearLocalUploadsOnly}
+              >
+                Clear uploaded books from this browser only
+              </button>
+              <span className="profile-muted profile-textbook-sync-hint">
+                Removes all user-uploaded entries from local storage (not the server). Use when the list is stuck or
+                shows duplicates; then use Sync to pull real books back from the server.
               </span>
             </div>
             <div className="profile-account-row profile-file-upload-row">

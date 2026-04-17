@@ -334,3 +334,26 @@
   line-height: 1.45;
   max-width: 100%;
 }
+
+.profile-textbook-reset-local-btn {
+  margin-top: 0.35rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #9a3412;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.profile-textbook-reset-local-btn:hover:not(:disabled) {
+  background: #ffedd5;
+  border-color: #fb923c;
+}
+
+.profile-textbook-reset-local-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
