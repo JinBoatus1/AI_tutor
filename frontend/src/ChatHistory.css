@@ -1,5 +1,90 @@
 /* Chat History Sidebar — Premium Dark Theme */
 
+.ch-sidebar-root {
+  flex-shrink: 0;
+  align-self: stretch;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ch-sidebar-root--collapsed {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+}
+
+.ch-reveal-btn {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: linear-gradient(180deg, #0f1729 0%, #111827 100%);
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.ch-reveal-btn:hover {
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.1);
+}
+
+.ch-reveal-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(20, 184, 166, 0.45);
+}
+
+.ch-reveal-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ch-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ch-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.ch-collapse-btn:hover {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.ch-collapse-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.4);
+}
+
+.ch-collapse-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .ch-sidebar {
   display: flex;
   flex-direction: column;

@@ -12,12 +12,118 @@
   margin-bottom: 16px;
 }
 
+.my-learning-bar-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.my-learning-bar-top-row .my-learning-bar-title-wrap {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.my-learning-bar-top-row-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-top: 1px;
+}
+
+.my-learning-bar-title-wrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+
 .my-learning-bar-title {
   font-size: clamp(1.35rem, 3vw, 1.85rem);
   font-weight: 800;
   color: #0f766e;
-  margin: 0 0 6px;
+  margin: 0;
   letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.my-learning-bar-book-link {
+  font: inherit;
+  font-weight: 800;
+  color: #0d9488;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: 4px;
+}
+
+.my-learning-bar-book-link:hover {
+  color: #115e59;
+}
+
+.my-learning-bar-book-link:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+.my-learning-bar-book-popover {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 6px;
+  z-index: 50;
+  min-width: 220px;
+  max-width: min(100%, 280px);
+  padding: 6px 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.18);
+}
+
+.my-learning-bar-book-popover-hint {
+  padding: 6px 14px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.my-learning-bar-book-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+
+.my-learning-bar-book-option:hover {
+  background: #f1f5f9;
+}
+
+.my-learning-bar-book-option--active {
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.my-learning-bar-book-check {
+  color: #0d9488;
+  font-weight: 700;
 }
 
 .my-learning-bar-meta {
@@ -212,4 +318,62 @@
   color: #94a3b8;
   font-size: 0.82em;
   margin-left: 4px;
+}
+
+/* Embedded in Learning Mode (width comes from parent .learning-bar-column) */
+.learning-bar-embed {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+}
+
+.learning-bar-embed-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px 14px;
+  font-family: inherit;
+}
+
+.learning-bar-embed .my-learning-bar-header {
+  margin-bottom: 10px;
+}
+
+.learning-bar-embed .my-learning-bar-top-row {
+  margin-bottom: 4px;
+}
+
+.learning-bar-embed .my-learning-bar-title {
+  font-size: 1.05rem;
+}
+
+.learning-bar-embed .my-learning-bar-meta {
+  font-size: 0.76rem;
+  margin-bottom: 8px;
+}
+
+.learning-bar-embed .my-learning-bar-legend {
+  margin-bottom: 10px;
+  gap: 12px;
+  font-size: 0.75rem;
+}
+
+.learning-bar-embed .my-learning-bar-tree {
+  padding: 10px 10px 12px;
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.05);
+}
+
+.learning-bar-embed .focs-node__label {
+  font-size: 0.8rem;
+}
+
+.learning-bar-embed .my-learning-bar-expand-btn {
+  padding: 5px 10px;
+  font-size: 0.75rem;
 }

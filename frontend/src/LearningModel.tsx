@@ -6,16 +6,42 @@ import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
 import ChatHistory from "./ChatHistory";
+import LearningBarPanel from "./LearningBarPanel";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "Let’s do a quick learning diagnosis first, then start the teaching. Please answer these 3 questions in one message:\n1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far?\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far? If it helps, mark your place in the **Learning progress** tree on the left (click numbered sections), or just describe it here.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
 /** Must match backend MAX_USER_PDF_BYTES (~14MB). */
 const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
+
+const LEARNING_BAR_WIDTH_KEY = "ai_tutor_learning_bar_width_px";
+const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
+const LEARNING_BAR_MIN_PX = 200;
+const LEARNING_BAR_MAX_PX = 560;
+const LEARNING_BAR_DEFAULT_PX = 280;
+
+function readLearningBarWidthPx(): number {
+  try {
+    const raw = localStorage.getItem(LEARNING_BAR_WIDTH_KEY);
+    const v = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(v)) return LEARNING_BAR_DEFAULT_PX;
+    return Math.min(LEARNING_BAR_MAX_PX, Math.max(LEARNING_BAR_MIN_PX, v));
+  } catch {
+    return LEARNING_BAR_DEFAULT_PX;
+  }
+}
+
+function readLearningBarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(LEARNING_BAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export default function LearningModel() {
   const [studentId] = useState<string>(() => getOrCreateStudentId());
@@ -45,6 +71,63 @@ export default function LearningModel() {
   const [rightPanelWidth, setRightPanelWidth] = useState(67); // ~2/3 textbook, ~1/3 chat
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
+  const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
+  const learningBarDragRef = useRef<{ x: number; width: number } | null>(null);
+  const learningBarWidthRef = useRef(learningBarWidthPx);
+  learningBarWidthRef.current = learningBarWidthPx;
+
+  const persistLearningBarCollapsed = useCallback((collapsed: boolean) => {
+    setLearningBarCollapsed(collapsed);
+    try {
+      if (collapsed) localStorage.setItem(LEARNING_BAR_COLLAPSED_KEY, "1");
+      else localStorage.removeItem(LEARNING_BAR_COLLAPSED_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleLearningBarResizeMove = useCallback((e: MouseEvent) => {
+    const start = learningBarDragRef.current;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const next = Math.min(
+      LEARNING_BAR_MAX_PX,
+      Math.max(LEARNING_BAR_MIN_PX, start.width + dx)
+    );
+    learningBarWidthRef.current = next;
+    setLearningBarWidthPx(next);
+  }, []);
+
+  const handleLearningBarResizeEnd = useCallback(() => {
+    learningBarDragRef.current = null;
+    window.removeEventListener("mousemove", handleLearningBarResizeMove);
+    window.removeEventListener("mouseup", handleLearningBarResizeEnd);
+    try {
+      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(learningBarWidthRef.current));
+    } catch {
+      /* ignore */
+    }
+  }, [handleLearningBarResizeMove]);
+
+  const handleLearningBarResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      learningBarDragRef.current = { x: e.clientX, width: learningBarWidthRef.current };
+      window.addEventListener("mousemove", handleLearningBarResizeMove);
+      window.addEventListener("mouseup", handleLearningBarResizeEnd);
+    },
+    [handleLearningBarResizeMove, handleLearningBarResizeEnd]
+  );
+
+  useEffect(() => {
+    return () => {
+      learningBarDragRef.current = null;
+      window.removeEventListener("mousemove", handleLearningBarResizeMove);
+      window.removeEventListener("mouseup", handleLearningBarResizeEnd);
+    };
+  }, [handleLearningBarResizeMove, handleLearningBarResizeEnd]);
 
   const hasLeftPanelContent = Boolean(
     dataMatchedTopic ||
@@ -403,6 +486,54 @@ export default function LearningModel() {
 
   return (
     <div className="learning-page-wrapper">
+      {learningBarCollapsed ? (
+        <div className="learning-bar-root learning-bar-root--collapsed">
+          <button
+            type="button"
+            className="learning-bar-reveal-btn"
+            onClick={() => persistLearningBarCollapsed(false)}
+            title="Show learning progress"
+            aria-label="Show learning progress"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <div
+          className="learning-bar-column"
+          style={{ width: learningBarWidthPx, flexShrink: 0 }}
+        >
+          <div className="learning-bar-column-body">
+            <LearningBarPanel
+              variant="embed"
+              studentId={studentId}
+              embedHeaderEnd={
+                <button
+                  type="button"
+                  className="learning-bar-hide-btn"
+                  onClick={() => persistLearningBarCollapsed(true)}
+                  title="Hide learning progress"
+                  aria-label="Hide learning progress"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              }
+            />
+            <div
+              className="resize-handle learning-bar-resize-handle"
+              onMouseDown={handleLearningBarResizeStart}
+              title="Drag right to widen, left to narrow"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize learning progress panel"
+            />
+          </div>
+        </div>
+      )}
       {user && (
         <ChatHistory
           activeSessionId={sessionId}

@@ -3,6 +3,8 @@ import { useAuth } from "./context/AuthContext";
 import { API_BASE } from "./apiBase";
 import "./ChatHistory.css";
 
+const CONVERSATIONS_SIDEBAR_COLLAPSED_KEY = "ai_tutor_conversations_sidebar_collapsed";
+
 interface Session {
   id: string;
   title: string;
@@ -68,6 +70,26 @@ export default function ChatHistory({
   const { token } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [search, setSearch] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(CONVERSATIONS_SIDEBAR_COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const persistSidebarCollapsed = useCallback((collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+    try {
+      if (collapsed) {
+        localStorage.setItem(CONVERSATIONS_SIDEBAR_COLLAPSED_KEY, "1");
+      } else {
+        localStorage.removeItem(CONVERSATIONS_SIDEBAR_COLLAPSED_KEY);
+      }
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     if (!token) return;
@@ -113,37 +135,69 @@ export default function ChatHistory({
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
-  return (
-    <aside className="ch-sidebar">
-      <div className="ch-header">
-        <div className="ch-header-row">
-          <span className="ch-title">Conversations</span>
-          <button className="ch-new-btn" onClick={onNewChat} title="New conversation">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New
-          </button>
-        </div>
-        {sessions.length > 3 && (
-          <div className="ch-search">
-            <svg className="ch-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              className="ch-search-input"
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        )}
+  if (sidebarCollapsed) {
+    return (
+      <div className="ch-sidebar-root ch-sidebar-root--collapsed">
+        <button
+          type="button"
+          className="ch-reveal-btn"
+          onClick={() => persistSidebarCollapsed(false)}
+          title="显示对话列表"
+          aria-label="显示对话列表"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
       </div>
+    );
+  }
 
-      <div className="ch-list">
+  return (
+    <div className="ch-sidebar-root">
+      <aside className="ch-sidebar" aria-label="Conversations">
+        <div className="ch-header">
+          <div className="ch-header-row">
+            <span className="ch-title">Conversations</span>
+            <div className="ch-header-actions">
+              <button
+                type="button"
+                className="ch-collapse-btn"
+                onClick={() => persistSidebarCollapsed(true)}
+                title="隐藏对话列表"
+                aria-label="隐藏对话列表"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button className="ch-new-btn" onClick={onNewChat} title="New conversation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New
+              </button>
+            </div>
+          </div>
+          {sessions.length > 3 && (
+            <div className="ch-search">
+              <svg className="ch-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                className="ch-search-input"
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="ch-list">
         {groups.length === 0 ? (
           <div className="ch-empty">
             <div className="ch-empty-icon">
@@ -194,7 +248,8 @@ export default function ChatHistory({
             </div>
           ))
         )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import Home from "./Home";
 import AutoGrader from "./AutoGrader";
 import LearningModel from "./LearningModel";
 import MyLearningBar from "./MyLearningBar";
+import UserProfile from "./UserProfile";
 import SignInModal from "./SignInModal";
 import { useAuth } from "./context/AuthContext";
 
@@ -49,13 +50,12 @@ function App() {
             </div>
           </div>
         )}
-        <nav className="navbar">
-          <h2 className="navbar-brand">Equal Education for Everyone</h2>
+        <nav className="navbar" aria-label="Main navigation">
           <div className="nav-buttons">
             <Link to="/" className="btn-nav">Home</Link>
             <Link to="/autograder" className="btn-nav">Auto Grader</Link>
             <Link to="/learning" className="btn-nav btn-nav--learning">Learning Mode</Link>
-            <Link to="/learning-bar" className="btn-nav">My Learning bar</Link>
+            <Link to="/profile" className="btn-nav">My profile</Link>
           </div>
           <div className="nav-auth">
             {loading ? null : user ? (
@@ -84,6 +84,7 @@ function App() {
             <Route path="/autograder" element={<AutoGrader />} />
             <Route path="/learning" element={<LearningModel />} />
             <Route path="/learning-bar" element={<MyLearningBar />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Routes>
         </div>
 
