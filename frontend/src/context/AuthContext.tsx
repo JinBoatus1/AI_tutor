@@ -1,22 +1,39 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import type { User } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  signOut,
+} from "firebase/auth";
+import type { User, ConfirmationResult } from "firebase/auth";
+import { auth, googleProvider, microsoftProvider, appleProvider } from "../firebase";
 
 interface AuthUser {
   email: string;
   displayName: string | null;
   photoURL: string | null;
   uid: string;
+  isAnonymous: boolean;
 }
+
+export type AuthMethod = "google" | "microsoft" | "apple" | "phone" | "email" | "anonymous";
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login: () => Promise<void>;
+  loginWithProvider: (method: AuthMethod) => Promise<void>;
+  loginWithEmail: (email: string, password: string, isSignUp: boolean) => Promise<void>;
+  sendPhoneCode: (phoneNumber: string, containerId: string) => Promise<void>;
+  confirmPhoneCode: (code: string) => Promise<void>;
   logout: () => Promise<void>;
+  showSignIn: boolean;
+  setShowSignIn: (v: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -25,10 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [phoneConfirmation, setPhoneConfirmation] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
     if (!auth) {
-      // Firebase not configured; keep app usable without auth.
       setUser(null);
       setToken(null);
       setLoading(false);
@@ -57,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
             uid: firebaseUser.uid,
+            isAnonymous: firebaseUser.isAnonymous,
           });
           setToken(idToken);
         } else {
@@ -76,15 +95,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async () => {
-    if (!auth || !googleProvider) return;
+  const loginWithProvider = async (method: AuthMethod) => {
+    if (!auth) return;
     try {
-      await signInWithPopup(auth, googleProvider);
+      if (method === "anonymous") {
+        await signInAnonymously(auth);
+      } else {
+        const provider =
+          method === "google" ? googleProvider :
+          method === "microsoft" ? microsoftProvider :
+          method === "apple" ? appleProvider :
+          null;
+        if (!provider) return;
+        await signInWithPopup(auth, provider);
+      }
+      setShowSignIn(false);
     } catch (e: any) {
       if (e?.code !== "auth/popup-closed-by-user") {
         console.error("[Auth] Sign-in failed:", e);
-        alert(`Sign-in failed: ${e?.message || e}`);
+        throw e;
       }
+    }
+  };
+
+  const loginWithEmail = async (email: string, password: string, isSignUp: boolean) => {
+    if (!auth) return;
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      setShowSignIn(false);
+    } catch (e: any) {
+      console.error("[Auth] Email sign-in failed:", e);
+      throw e;
+    }
+  };
+
+  const sendPhoneCode = async (phoneNumber: string, containerId: string) => {
+    if (!auth) return;
+    try {
+      const recaptcha = new RecaptchaVerifier(auth, containerId, { size: "invisible" });
+      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
+      setPhoneConfirmation(confirmation);
+    } catch (e: any) {
+      console.error("[Auth] Phone sign-in failed:", e);
+      throw e;
+    }
+  };
+
+  const confirmPhoneCode = async (code: string) => {
+    if (!phoneConfirmation) throw new Error("No phone confirmation pending");
+    try {
+      await phoneConfirmation.confirm(code);
+      setPhoneConfirmation(null);
+      setShowSignIn(false);
+    } catch (e: any) {
+      console.error("[Auth] Phone code confirmation failed:", e);
+      throw e;
     }
   };
 
@@ -94,7 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{
+      user, token, loading,
+      loginWithProvider, loginWithEmail, sendPhoneCode, confirmPhoneCode,
+      logout, showSignIn, setShowSignIn,
+    }}>
       {children}
     </AuthContext.Provider>
   );

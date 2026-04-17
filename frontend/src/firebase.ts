@@ -1,7 +1,12 @@
 import type { FirebaseApp } from "firebase/app";
 import { initializeApp } from "firebase/app";
 import type { Auth } from "firebase/auth";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  OAuthProvider,
+  EmailAuthProvider,
+} from "firebase/auth";
 
 type FirebaseConfig = {
   apiKey?: string;
@@ -28,4 +33,7 @@ if (!firebaseReady) {
 
 export const app: FirebaseApp | null = firebaseReady ? initializeApp(firebaseConfig) : null;
 export const auth: Auth | null = app ? getAuth(app) : null;
+
 export const googleProvider: GoogleAuthProvider | null = app ? new GoogleAuthProvider() : null;
+export const microsoftProvider: OAuthProvider | null = app ? new OAuthProvider("microsoft.com") : null;
+export const appleProvider: OAuthProvider | null = app ? new OAuthProvider("apple.com") : null;
