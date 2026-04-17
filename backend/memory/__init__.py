@@ -1,3 +1,3 @@
-from .memory import Status, Memory, open_memory
+from .memory import DeleteMode, Status, Memory, open_memory
 
-__all__ = ["Status", "Memory", "open_memory"]
+__all__ = ["Status", "DeleteMode", "Memory", "open_memory"]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Dict, List, Protocol, Tuple, Union
+from typing import List, Optional, Protocol, Tuple, TypedDict, Union
 
 
 class Status(IntEnum):
@@ -13,13 +13,27 @@ class Status(IntEnum):
     INVALID_PARAM = -3
 
 
+class DeleteMode(IntEnum):
+    PATH = 1
+    NON_SUMMARY_JSON = 2
+
+
+class MemoryRecord(TypedDict):
+    id: Optional[str]
+    time: Union[str, int, None]
+    content: Optional[str]
+
+
 class Memory(Protocol):
-    """对外只承诺 read/write"""
+    """对外承诺 read/write/delete"""
 
     def write(self, address: str, content: str) -> int:
         ...
 
-    def read(self, address: str) -> Tuple[int, List[Dict[str, Any]]]:
+    def read(self, address: str) -> Tuple[int, List[MemoryRecord]]:
+        ...
+
+    def delete(self, address: str, mode: Union[str, DeleteMode] = DeleteMode.PATH) -> int:
         ...
 
 
