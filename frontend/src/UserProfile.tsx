@@ -5,13 +5,13 @@ import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
   clearAllUploadedTextbooksFromBrowser,
+  fetchTextbookOptionsFromServer,
   invalidateTextbookCatalogSync,
   isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
   reconcileSelectedTextbookWithCatalog,
   removeUploadedTextbookFromLocal,
-  syncTextbookCatalogFromServer,
   type TextbookTreeRoot,
   writeCatalogAndTree,
   writeSelectedTextbookId,
@@ -53,18 +53,22 @@ export default function UserProfile() {
   const [pickedPdfName, setPickedPdfName] = useState<string | null>(null);
   const textbookFileRef = useRef<HTMLInputElement>(null);
 
-  const refreshTextbookOptions = useCallback(() => {
+  const refreshTextbookOptions = useCallback(async () => {
     reconcileSelectedTextbookWithCatalog();
+    if (token) {
+      try {
+        await fetchTextbookOptionsFromServer(token);
+      } catch {
+        /* keep current in-memory list */
+      }
+    }
     setTextbookOptions(readTextbookOptionList());
     setSelectedTextbook(readSelectedTextbookId());
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    void (async () => {
-      await syncTextbookCatalogFromServer(token);
-      refreshTextbookOptions();
-    })();
+    void refreshTextbookOptions();
   }, [token, refreshTextbookOptions]);
 
   const onClearLocalUploadsOnly = () => {
@@ -76,11 +80,11 @@ export default function UserProfile() {
       return;
     }
     clearAllUploadedTextbooksFromBrowser();
-    refreshTextbookOptions();
+    void refreshTextbookOptions();
   };
 
   useEffect(() => {
-    const onChange = () => refreshTextbookOptions();
+    const onChange = () => void refreshTextbookOptions();
     window.addEventListener("ai-tutor-textbook-changed", onChange);
     window.addEventListener("storage", onChange);
     return () => {
@@ -129,7 +133,7 @@ export default function UserProfile() {
       }
       writeCatalogAndTree(data.id, data.label || data.id, data.tree);
       writeSelectedTextbookId(data.id);
-      refreshTextbookOptions();
+      void refreshTextbookOptions();
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
@@ -169,8 +173,9 @@ export default function UserProfile() {
         if (resp.status === 404 && isValidUploadedTextbookId(selectedTextbook)) {
           invalidateTextbookCatalogSync();
           removeUploadedTextbookFromLocal(selectedTextbook);
-          await syncTextbookCatalogFromServer(token);
-          refreshTextbookOptions();
+          await fetchTextbookOptionsFromServer(token);
+          setTextbookOptions(readTextbookOptionList());
+          setSelectedTextbook(readSelectedTextbookId());
           setTextbookError(null);
           return;
         }
@@ -179,8 +184,9 @@ export default function UserProfile() {
       }
       invalidateTextbookCatalogSync();
       removeUploadedTextbookFromLocal(selectedTextbook);
-      await syncTextbookCatalogFromServer(token);
-      refreshTextbookOptions();
+      await fetchTextbookOptionsFromServer(token);
+      setTextbookOptions(readTextbookOptionList());
+      setSelectedTextbook(readSelectedTextbookId());
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
@@ -195,17 +201,16 @@ export default function UserProfile() {
     setTextbookError(null);
     try {
       invalidateTextbookCatalogSync();
-      const ok = await syncTextbookCatalogFromServer(token);
-      if (!ok) {
+      try {
+        await fetchTextbookOptionsFromServer(token);
+      } catch {
         setTextbookError(
           "Could not load your textbook list from the server (network or sign-in). Your local list was not changed."
         );
         return;
       }
-      refreshTextbookOptions();
-      window.dispatchEvent(
-        new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
-      );
+      setTextbookOptions(readTextbookOptionList());
+      setSelectedTextbook(readSelectedTextbookId());
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {

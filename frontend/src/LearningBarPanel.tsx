@@ -4,12 +4,15 @@ import "./MyLearningBar.css";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
 import {
+  fetchTextbookOptionsFromServer,
+  fetchTextbookTreeForId,
   getTextbookLinkLabel,
   getTextbookTree,
+  isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
   reconcileSelectedTextbookWithCatalog,
-  syncTextbookCatalogFromServer,
+  resetServerTextbookSessionForLogout,
   writeSelectedTextbookId,
 } from "./learningTextbooks";
 import {
@@ -228,6 +231,7 @@ export default function LearningBarPanel({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [bookOptions, setBookOptions] = useState(() => readTextbookOptionList());
   const [selectedTextbookId, setSelectedTextbookId] = useState<string>(() => readSelectedTextbookId());
+  const [outlineTree, setOutlineTree] = useState<FocsNode>(() => getTextbookTree("focs") as FocsNode);
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const bookBtnRef = useRef<HTMLButtonElement>(null);
   const bookPopoverRef = useRef<HTMLDivElement>(null);
@@ -237,8 +241,6 @@ export default function LearningBarPanel({
   const prevStudentIdRef = useRef(studentId);
 
   const learnedSet = useMemo(() => new Set(learned), [learned]);
-
-  const activeTree = useMemo(() => getTextbookTree(selectedTextbookId) as FocsNode, [selectedTextbookId]);
 
   useLayoutEffect(() => {
     reconcileSelectedTextbookWithCatalog();
@@ -250,23 +252,54 @@ export default function LearningBarPanel({
     reconcileSelectedTextbookWithCatalog();
     setSelectedTextbookId(readSelectedTextbookId());
     setBookOptions(readTextbookOptionList());
-  }, [location.pathname]);
+    if (token) {
+      void fetchTextbookOptionsFromServer(token).catch(() => {});
+    }
+  }, [location.pathname, token]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      resetServerTextbookSessionForLogout();
+      if (isValidUploadedTextbookId(readSelectedTextbookId())) {
+        writeSelectedTextbookId("focs");
+      }
+      setBookOptions(readTextbookOptionList());
+      setSelectedTextbookId(readSelectedTextbookId());
+      setOutlineTree(getTextbookTree("focs") as FocsNode);
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      await syncTextbookCatalogFromServer(token);
-      if (!cancelled) {
+      try {
+        await fetchTextbookOptionsFromServer(token);
+        if (cancelled) return;
         reconcileSelectedTextbookWithCatalog();
         setBookOptions(readTextbookOptionList());
         setSelectedTextbookId(readSelectedTextbookId());
+      } catch {
+        if (!cancelled) {
+          setBookOptions(readTextbookOptionList());
+          setSelectedTextbookId(readSelectedTextbookId());
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const tree = (await fetchTextbookTreeForId(token, selectedTextbookId)) as FocsNode;
+      if (!cancelled) {
+        setOutlineTree(tree && typeof tree === "object" && Object.keys(tree).length > 0 ? tree : ({} as FocsNode));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTextbookId, token]);
 
   useEffect(() => {
     const onChange = () => {
@@ -368,8 +401,8 @@ export default function LearningBarPanel({
     });
   }, []);
 
-  const rootEntries = useMemo(() => childEntries(activeTree), [activeTree]);
-  const expandablePaths = useMemo(() => collectExpandablePaths(activeTree), [activeTree]);
+  const rootEntries = useMemo(() => childEntries(outlineTree), [outlineTree]);
+  const expandablePaths = useMemo(() => collectExpandablePaths(outlineTree), [outlineTree]);
 
   useEffect(() => {
     setExpanded({});

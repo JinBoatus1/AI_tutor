@@ -4,8 +4,8 @@ import "./Chat.css";
 import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import {
+  fetchTextbookTreeForId,
   focsOutlineToCurriculum,
-  getTextbookTree,
   readSelectedTextbookId,
   reconcileSelectedTextbookWithCatalog,
 } from "./learningTextbooks";
@@ -82,9 +82,16 @@ export default function LearningModel() {
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
 
   useEffect(() => {
-    const tree = getTextbookTree(textbookId);
-    setCurriculumTree(focsOutlineToCurriculum(tree));
-  }, [textbookId, setCurriculumTree]);
+    let cancelled = false;
+    void (async () => {
+      const tree = await fetchTextbookTreeForId(token, textbookId);
+      if (cancelled) return;
+      setCurriculumTree(focsOutlineToCurriculum(tree));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [textbookId, token, setCurriculumTree]);
 
   useLayoutEffect(() => {
     reconcileSelectedTextbookWithCatalog();
