@@ -3,8 +3,8 @@ html, body, #root {
   overflow: hidden !important;
   height: 100vh;
   max-height: 100vh;
-  /* Page chrome tint; inner cards stay white. */
-  background: #e6eaf2;
+  /* Page chrome tint; overridden via --app-page-bg from Profile settings */
+  background: var(--app-page-bg, #e6eaf2);
 }
 
 .app-container {

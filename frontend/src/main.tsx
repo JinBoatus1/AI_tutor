@@ -4,12 +4,15 @@ import App from "./App.tsx";
 import "./index.css";
 import { CurriculumProvider } from "./context/CurriculumContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ProfileSettingsProvider } from "./context/ProfileSettingsContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
       <CurriculumProvider>
-        <App />
+        <ProfileSettingsProvider>
+          <App />
+        </ProfileSettingsProvider>
       </CurriculumProvider>
     </AuthProvider>
   </StrictMode>
