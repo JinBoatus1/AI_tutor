@@ -4,8 +4,10 @@ import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
+  isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
+  removeUploadedTextbookFromLocal,
   syncTextbookCatalogFromServer,
   type TextbookTreeRoot,
   writeCatalogAndTree,
@@ -42,6 +44,7 @@ export default function UserProfile() {
   const [textbookOptions, setTextbookOptions] = useState(() => readTextbookOptionList());
   const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
   const [textbookUploading, setTextbookUploading] = useState(false);
+  const [textbookDeleting, setTextbookDeleting] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
   const [pickedPdfName, setPickedPdfName] = useState<string | null>(null);
   const textbookFileRef = useRef<HTMLInputElement>(null);
@@ -118,6 +121,44 @@ export default function UserProfile() {
     }
   };
 
+  const onDeleteSelectedUpload = async () => {
+    if (!token || !isValidUploadedTextbookId(selectedTextbook)) return;
+    const label =
+      textbookOptions.find((o) => o.id === selectedTextbook)?.linkLabel ?? selectedTextbook;
+    if (
+      !window.confirm(
+        `Permanently delete "${label}"? The PDF, outline, and learning progress for this book will be removed. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setTextbookDeleting(true);
+    setTextbookError(null);
+    try {
+      const resp = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(selectedTextbook)}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      let data: { detail?: string } = {};
+      try {
+        data = (await resp.json()) as { detail?: string };
+      } catch {
+        /* non-JSON body */
+      }
+      if (!resp.ok) {
+        setTextbookError(typeof data?.detail === "string" ? data.detail : "Delete failed.");
+        return;
+      }
+      removeUploadedTextbookFromLocal(selectedTextbook);
+      refreshTextbookOptions();
+      setSelectedTextbook(readSelectedTextbookId());
+    } catch {
+      setTextbookError("Could not reach the server. Try again later.");
+    } finally {
+      setTextbookDeleting(false);
+    }
+  };
+
   return (
     <div className="profile-page">
       <header className="profile-page-header">
@@ -184,7 +225,7 @@ export default function UserProfile() {
                 className="profile-signout-btn"
                 style={{ minWidth: "12rem", cursor: "pointer" }}
                 value={selectedTextbook}
-                disabled={textbookUploading}
+                disabled={textbookUploading || textbookDeleting}
                 onChange={(e) => {
                   const id = e.target.value;
                   setSelectedTextbook(id);
@@ -198,6 +239,21 @@ export default function UserProfile() {
                 ))}
               </select>
             </div>
+            {isValidUploadedTextbookId(selectedTextbook) ? (
+              <div className="profile-textbook-delete-row">
+                <button
+                  type="button"
+                  className="profile-textbook-delete-btn"
+                  disabled={textbookUploading || textbookDeleting}
+                  onClick={() => void onDeleteSelectedUpload()}
+                >
+                  {textbookDeleting ? "Deleting…" : "Delete this uploaded textbook"}
+                </button>
+                <span className="profile-muted profile-textbook-delete-hint">
+                  Removes the PDF and outline from your account and clears learning progress for this book.
+                </span>
+              </div>
+            ) : null}
             <div className="profile-account-row profile-file-upload-row">
               <span className="profile-muted" id="profile-textbook-file-label">
                 Upload new textbook (PDF)
@@ -211,7 +267,7 @@ export default function UserProfile() {
                   className="profile-file-input-hidden"
                   tabIndex={-1}
                   aria-labelledby="profile-textbook-file-label"
-                  disabled={textbookUploading}
+                  disabled={textbookUploading || textbookDeleting}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
@@ -222,7 +278,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   className="profile-file-choose-btn"
-                  disabled={textbookUploading}
+                  disabled={textbookUploading || textbookDeleting}
                   onClick={() => textbookFileRef.current?.click()}
                 >
                   Choose file

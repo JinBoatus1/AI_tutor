@@ -701,6 +701,31 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
     return outline if isinstance(outline, dict) else {}
 
 
+@router.delete("/api/user_textbooks/{book_id}")
+async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = Header(None)):
+    """Permanently delete an uploaded textbook (not FCOS). Also drops learning-bar data for that book."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if book_id == "focs" or not uts.is_valid_user_book_id(book_id):
+        raise HTTPException(status_code=400, detail="Cannot delete this textbook.")
+    if not uts.user_owns_book(email, book_id):
+        raise HTTPException(status_code=404, detail="Textbook not found")
+    if not uts.delete_user_textbook(email, book_id):
+        raise HTTPException(status_code=404, detail="Textbook not found")
+    col = database.learning_bars()
+    if col is not None:
+        try:
+            col.delete_one({"user_email": email, "subject": book_id})
+        except Exception as e:
+            print(f"[user_textbooks] Mongo learning_bars delete failed: {e}", flush=True)
+    try:
+        sbs.delete_all_file_bars_for_textbook(book_id)
+    except Exception as e:
+        print(f"[user_textbooks] file bar cleanup failed: {e}", flush=True)
+    return {"ok": True, "id": book_id}
+
+
 @router.post("/api/user_textbooks/from_pdf")
 async def create_user_textbook_from_pdf(
     authorization: Optional[str] = Header(None),

@@ -84,6 +84,22 @@ export function writeSelectedTextbookId(id: string): void {
   }
 }
 
+/** After server DELETE: drop catalog + cached tree; switch to FCOS if that book was selected. */
+export function removeUploadedTextbookFromLocal(id: string): void {
+  if (!isValidUploadedTextbookId(id)) return;
+  const cur = safeParseCatalog().filter((x) => x.id !== id);
+  const wasSelected = readSelectedTextbookId() === id;
+  try {
+    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
+    localStorage.removeItem(TREE_PREFIX + id);
+    if (wasSelected) {
+      writeSelectedTextbookId("focs");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function getTextbookTree(id: string): TextbookTreeRoot {
   if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
   try {

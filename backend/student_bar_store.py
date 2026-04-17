@@ -55,6 +55,26 @@ def _bar_path(student_id: str, textbook_id: str = "focs") -> str:
     return os.path.join(STUDENT_BAR_DIR, f"{sid}__{tid}.json")
 
 
+def delete_all_file_bars_for_textbook(textbook_id: str) -> int:
+    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FCOS."""
+    tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
+    if tid == "focs":
+        return 0
+    n = 0
+    if not os.path.isdir(STUDENT_BAR_DIR):
+        return 0
+    suffix = f"__{tid}.json"
+    for name in os.listdir(STUDENT_BAR_DIR):
+        if not name.endswith(suffix):
+            continue
+        try:
+            os.remove(os.path.join(STUDENT_BAR_DIR, name))
+            n += 1
+        except OSError:
+            pass
+    return n
+
+
 def _empty_bar(student_id: str, textbook_id: str = "focs") -> Dict[str, Any]:
     return {
         "student_id": _safe_student_id(student_id),
