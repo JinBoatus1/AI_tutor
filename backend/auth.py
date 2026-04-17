@@ -43,5 +43,6 @@ def verify_token(authorization: Optional[str]) -> Optional[str]:
     try:
         decoded = firebase_auth.verify_id_token(token)
         return decoded.get("email")
-    except Exception:
+    except Exception as e:
+        print(f"[Auth] Token verification failed: {e}", flush=True)
         return None

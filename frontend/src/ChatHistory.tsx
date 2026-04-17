@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "./context/AuthContext";
+import { API_BASE } from "./apiBase";
 import "./ChatHistory.css";
 
 interface Session {
@@ -15,8 +16,6 @@ interface ChatHistoryProps {
   onNewChat: () => void;
   refreshTrigger: number;
 }
-
-const API = import.meta.env.VITE_API_URL;
 
 function groupByDate(sessions: Session[]): { label: string; items: Session[] }[] {
   const now = new Date();
@@ -73,7 +72,7 @@ export default function ChatHistory({
   const fetchSessions = useCallback(async () => {
     if (!token) return;
     try {
-      const resp = await fetch(`${API}/api/sessions`, {
+      const resp = await fetch(`${API_BASE}/api/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (resp.ok) {
