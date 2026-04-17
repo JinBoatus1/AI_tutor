@@ -149,7 +149,18 @@ class ChatMessage(BaseModel):
     textbook_id: Optional[str] = None  # "focs" 或 "user_<id>"（后者需登录且为本人教材）
 
 
-MAX_USER_PDF_BYTES = 14 * 1024 * 1024  # 约 14MB
+# 教材整本 PDF 上限（聊天附件与 /api/user_textbooks/from_pdf 共用）；可用环境变量 MAX_USER_PDF_MB（1–512，默认 100）
+def _max_user_pdf_mb() -> int:
+    raw = os.getenv("MAX_USER_PDF_MB", "100").strip()
+    try:
+        v = int(raw)
+    except ValueError:
+        v = 100
+    return max(1, min(v, 512))
+
+
+MAX_USER_PDF_MB = _max_user_pdf_mb()
+MAX_USER_PDF_BYTES = MAX_USER_PDF_MB * 1024 * 1024
 MAX_USER_PDF_PAGES_RENDER = 8
 
 
@@ -241,7 +252,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if len(pdf_bytes) > MAX_USER_PDF_BYTES:
             raise HTTPException(
                 status_code=400,
-                detail=f"PDF too large (max {MAX_USER_PDF_BYTES // (1024 * 1024)} MB).",
+                detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).",
             )
         try:
             pdf_pages = lr.render_user_pdf_first_pages_to_base64(
@@ -644,7 +655,7 @@ async def create_user_textbook_from_pdf(
     if len(pdf_bytes) > MAX_USER_PDF_BYTES:
         raise HTTPException(
             status_code=400,
-            detail=f"PDF too large (max {MAX_USER_PDF_BYTES // (1024 * 1024)} MB).",
+            detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).",
         )
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")

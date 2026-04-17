@@ -20,8 +20,8 @@ const TEXTBOOK_PANEL_MAX_PCT = 90;
 const WELCOME_MSG =
   "1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far? If it helps, mark your place in the **Learning progress** tree on the left (click numbered sections), or just describe it here.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
-/** Must match backend MAX_USER_PDF_BYTES (~14MB). */
-const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
+/** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
+const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const LEARNING_BAR_WIDTH_KEY = "ai_tutor_learning_bar_width_px";
 const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
