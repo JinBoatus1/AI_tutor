@@ -1,7 +1,14 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useLocation } from "react-router-dom";
 import "./Chat.css";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
+import {
+  fetchTextbookTreeForId,
+  focsOutlineToCurriculum,
+  readSelectedTextbookId,
+  reconcileSelectedTextbookWithCatalog,
+} from "./learningTextbooks";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
@@ -13,10 +20,10 @@ const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "1) Are you learning new content or reviewing for an exam?\n2) Which chapter/section have you reached so far? If it helps, mark your place in the **Learning progress** tree on the left (click numbered sections), or just describe it here.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**, click the topics you already know (any row in the tree toggles learned / not learned).\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
-/** Must match backend MAX_USER_PDF_BYTES (~14MB). */
-const MAX_PDF_UPLOAD_BYTES = 14 * 1024 * 1024;
+/** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
+const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const LEARNING_BAR_WIDTH_KEY = "ai_tutor_learning_bar_width_px";
 const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
@@ -44,13 +51,15 @@ function readLearningBarCollapsed(): boolean {
 }
 
 export default function LearningModel() {
+  const location = useLocation();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
   const { user, token } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
-  const { curriculumTree } = useCurriculum();
+  const { curriculumTree, setCurriculumTree } = useCurriculum();
+  const [textbookId, setTextbookId] = useState(() => readSelectedTextbookId());
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
   const [dataMatchedTopic, setDataMatchedTopic] = useState<{
@@ -71,6 +80,41 @@ export default function LearningModel() {
   const [rightPanelWidth, setRightPanelWidth] = useState(67); // ~2/3 textbook, ~1/3 chat
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const tree = await fetchTextbookTreeForId(token, textbookId);
+      if (cancelled) return;
+      setCurriculumTree(focsOutlineToCurriculum(tree));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [textbookId, token, setCurriculumTree]);
+
+  useLayoutEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setTextbookId(readSelectedTextbookId());
+  }, []);
+
+  useEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setTextbookId(readSelectedTextbookId());
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const sync = () => {
+      reconcileSelectedTextbookWithCatalog();
+      setTextbookId(readSelectedTextbookId());
+    };
+    window.addEventListener("ai-tutor-textbook-changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("ai-tutor-textbook-changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
 
   const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
   const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
@@ -312,7 +356,7 @@ export default function LearningModel() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const resp = await fetch(`${API_BASE}/api/chat`, {
+      const resp = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -322,6 +366,7 @@ export default function LearningModel() {
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
           student_id: studentId,
           session_id: sessionId,
+          textbook_id: textbookId,
         }),
         signal: controller.signal,
       });
@@ -457,7 +502,7 @@ export default function LearningModel() {
   const loadSession = async (sid: string) => {
     if (!token) return;
     try {
-      const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${sid}`, {
+      const resp = await fetch(apiUrl(`/api/sessions/${sid}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;

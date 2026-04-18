@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import type { User, ConfirmationResult } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { resetServerTextbookSessionForLogout } from "../learningTextbooks";
 
 interface AuthUser {
   email: string;
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setToken(idToken);
         } else {
+          resetServerTextbookSessionForLogout();
           setUser(null);
           setToken(null);
         }
@@ -156,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (!auth) return;
     await signOut(auth);
+    resetServerTextbookSessionForLogout();
   };
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "./context/AuthContext";
-import { API_BASE } from "./apiBase";
+import { apiUrl } from "./apiBase";
 import "./ChatHistory.css";
 
 const CONVERSATIONS_SIDEBAR_COLLAPSED_KEY = "ai_tutor_conversations_sidebar_collapsed";
@@ -94,7 +94,7 @@ export default function ChatHistory({
   const fetchSessions = useCallback(async () => {
     if (!token) return;
     try {
-      const resp = await fetch(`${API_BASE}/api/sessions`, {
+      const resp = await fetch(apiUrl("/api/sessions"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (resp.ok) {
@@ -114,7 +114,7 @@ export default function ChatHistory({
     e.stopPropagation();
     if (!token) return;
     try {
-      await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+      await fetch(apiUrl(`/api/sessions/${sessionId}`), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -142,8 +142,8 @@ export default function ChatHistory({
           type="button"
           className="ch-reveal-btn"
           onClick={() => persistSidebarCollapsed(false)}
-          title="显示对话列表"
-          aria-label="显示对话列表"
+          title="Show conversations"
+          aria-label="Show conversations"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <polyline points="9 18 15 12 9 6" />
@@ -164,8 +164,8 @@ export default function ChatHistory({
                 type="button"
                 className="ch-collapse-btn"
                 onClick={() => persistSidebarCollapsed(true)}
-                title="隐藏对话列表"
-                aria-label="隐藏对话列表"
+                title="Hide conversation list"
+                aria-label="Hide conversation list"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <polyline points="15 18 9 12 15 6" />

@@ -15,6 +15,27 @@ import database
 STUDENT_BAR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "student_bars")
 
 
+def _path_section_token(path: str) -> str:
+    """与前端 LearningBarPanel.pathBasedToken 一致：无「5.1」式编号时的节点 id（FNV-1a / UTF-8）。"""
+    h = 2166136261
+    for b in path.encode("utf-8"):
+        h ^= b
+        h = (h * 16777619) & 0xFFFFFFFF
+    return f"p{len(path)}_{h:x}"
+
+
+def _learned_section_sort_key(sec: str) -> tuple:
+    s = str(sec)
+    if re.match(r"^\d+(?:\.\d+)*$", s):
+        return (0, tuple(int(p) for p in s.split(".")))
+    return (1, s)
+
+
+def sort_learned_section_list(sections: List[str]) -> List[str]:
+    """与前端 sortSectionTokens 一致：数字节号在前，path token（p…）按字符串排在后。"""
+    return sorted(sections, key=_learned_section_sort_key)
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -27,15 +48,37 @@ def _safe_student_id(student_id: Optional[str]) -> str:
     return cleaned or "default_student"
 
 
-def _bar_path(student_id: str) -> str:
+def _bar_path(student_id: str, textbook_id: str = "focs") -> str:
     os.makedirs(STUDENT_BAR_DIR, exist_ok=True)
     sid = _safe_student_id(student_id)
-    return os.path.join(STUDENT_BAR_DIR, f"{sid}.json")
+    tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
+    return os.path.join(STUDENT_BAR_DIR, f"{sid}__{tid}.json")
 
 
-def _empty_bar(student_id: str) -> Dict[str, Any]:
+def delete_all_file_bars_for_textbook(textbook_id: str) -> int:
+    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FCOS."""
+    tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
+    if tid == "focs":
+        return 0
+    n = 0
+    if not os.path.isdir(STUDENT_BAR_DIR):
+        return 0
+    suffix = f"__{tid}.json"
+    for name in os.listdir(STUDENT_BAR_DIR):
+        if not name.endswith(suffix):
+            continue
+        try:
+            os.remove(os.path.join(STUDENT_BAR_DIR, name))
+            n += 1
+        except OSError:
+            pass
+    return n
+
+
+def _empty_bar(student_id: str, textbook_id: str = "focs") -> Dict[str, Any]:
     return {
         "student_id": _safe_student_id(student_id),
+        "textbook_id": textbook_id or "focs",
         "current_section": None,
         "learned_sections": [],
         "planned_sections": [],
@@ -44,17 +87,18 @@ def _empty_bar(student_id: str) -> Dict[str, Any]:
     }
 
 
-def load_bar(student_id: str) -> Dict[str, Any]:
-    path = _bar_path(student_id)
+def load_bar(student_id: str, textbook_id: str = "focs") -> Dict[str, Any]:
+    path = _bar_path(student_id, textbook_id)
     if not os.path.exists(path):
-        return _empty_bar(student_id)
+        return _empty_bar(student_id, textbook_id)
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, dict):
-            return _empty_bar(student_id)
+            return _empty_bar(student_id, textbook_id)
         # Backward/defensive defaults
         data.setdefault("student_id", _safe_student_id(student_id))
+        data.setdefault("textbook_id", textbook_id or "focs")
         data.setdefault("current_section", None)
         data.setdefault("learned_sections", [])
         data.setdefault("planned_sections", [])
@@ -62,30 +106,33 @@ def load_bar(student_id: str) -> Dict[str, Any]:
         data.setdefault("updated_at", _now_iso())
         return data
     except Exception:
-        return _empty_bar(student_id)
+        return _empty_bar(student_id, textbook_id)
 
 
-def save_bar(student_id: str, bar: Dict[str, Any]) -> None:
-    path = _bar_path(student_id)
+def save_bar(student_id: str, bar: Dict[str, Any], textbook_id: str = "focs") -> None:
+    path = _bar_path(student_id, textbook_id)
     bar["student_id"] = _safe_student_id(student_id)
+    bar["textbook_id"] = textbook_id or "focs"
     bar["updated_at"] = _now_iso()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(bar, f, ensure_ascii=False, indent=2)
 
 
-def load_bar_mongo(user_email: str) -> Dict[str, Any]:
+def load_bar_mongo(user_email: str, textbook_id: str = "focs") -> Dict[str, Any]:
     """Load learning bar from MongoDB for a logged-in user."""
     col = database.learning_bars()
+    tid = textbook_id or "focs"
     if col is None:
-        return _empty_bar(user_email)
-    doc = col.find_one({"user_email": user_email, "subject": "focs"})
+        return _empty_bar(user_email, tid)
+    doc = col.find_one({"user_email": user_email, "subject": tid})
     if not doc:
-        return _empty_bar(user_email)
+        return _empty_bar(user_email, tid)
     bar = dict(doc)
     bar.pop("_id", None)
     bar.pop("user_email", None)
     bar.pop("subject", None)
     bar.setdefault("student_id", user_email)
+    bar.setdefault("textbook_id", tid)
     bar.setdefault("current_section", None)
     bar.setdefault("learned_sections", [])
     bar.setdefault("planned_sections", [])
@@ -94,41 +141,49 @@ def load_bar_mongo(user_email: str) -> Dict[str, Any]:
     return bar
 
 
-def save_bar_mongo(user_email: str, bar: Dict[str, Any]) -> None:
+def save_bar_mongo(user_email: str, bar: Dict[str, Any], textbook_id: str = "focs") -> None:
     """Save learning bar to MongoDB for a logged-in user."""
     col = database.learning_bars()
     if col is None:
         return
+    tid = textbook_id or "focs"
     bar["updated_at"] = _now_iso()
+    bar["textbook_id"] = tid
     doc = {k: v for k, v in bar.items() if k not in ("_id",)}
     doc["user_email"] = user_email
-    doc["subject"] = "focs"
+    doc["subject"] = tid
     col.update_one(
-        {"user_email": user_email, "subject": "focs"},
+        {"user_email": user_email, "subject": tid},
         {"$set": doc},
         upsert=True,
     )
 
 
-def _load_tree_token_map() -> Dict[str, str]:
-    """Map section token (e.g. 5, 5.1, 5.1.1) -> canonical tree title."""
-    if not os.path.exists(lr.FOCS_JSON_PATH):
+def _load_tree_token_map_from_raw(raw: Dict[str, Any]) -> Dict[str, str]:
+    """Map section token（如 5.1）或 path token（p…）-> 目录标题。"""
+    if not raw:
         return {}
-    with open(lr.FOCS_JSON_PATH, "r", encoding="utf-8") as f:
-        raw = json.load(f)
     mapping: Dict[str, str] = {}
 
-    def walk(obj: Dict[str, Any]) -> None:
+    def walk(obj: Dict[str, Any], path_prefix: str) -> None:
         for k, v in obj.items():
             if k == "_range" or not isinstance(v, dict):
                 continue
+            path = f"{path_prefix}/{k}" if path_prefix else k
             first = k.split()[0] if k.split() else ""
             if re.match(r"^\d+(?:\.\d+)*$", first):
                 mapping[first] = k
-            walk(v)
+            else:
+                mapping[_path_section_token(path)] = k
+            walk(v, path)
 
-    walk(raw)
+    walk(raw, "")
     return mapping
+
+
+def _load_tree_token_map(textbook_id: str = "focs", user_email: Optional[str] = None) -> Dict[str, str]:
+    raw = lr.load_outline_dict(textbook_id, user_email)
+    return _load_tree_token_map_from_raw(raw)
 
 
 def _extract_section_tokens(message: str, valid_tokens: set[str]) -> List[str]:
@@ -140,12 +195,10 @@ def _extract_section_tokens(message: str, valid_tokens: set[str]) -> List[str]:
     return out
 
 
-def _root_chapter_ints_from_focs() -> List[int]:
-    """FOCS.json 顶层章编号（如 1,2,…,5），不含小节。"""
-    if not os.path.exists(lr.FOCS_JSON_PATH):
+def _root_chapter_ints_from_raw(raw: Dict[str, Any]) -> List[int]:
+    """教材目录顶层章编号（如 1,2,…,5），不含小节。"""
+    if not raw:
         return []
-    with open(lr.FOCS_JSON_PATH, "r", encoding="utf-8") as f:
-        raw = json.load(f)
     nums: List[int] = []
     for k, v in raw.items():
         if k == "_range" or not isinstance(v, dict):
@@ -181,40 +234,46 @@ def _extract_explicit_chapter_numbers(msg: str) -> List[int]:
 
 
 def _apply_learned_through_chapter_n(
-    bar: Dict[str, Any], n: int, valid_tokens: set[str]
+    bar: Dict[str, Any], n: int, valid_tokens: set[str], raw: Dict[str, Any]
 ) -> None:
     """学到第 n 章 → 默认正文第 1..n 章（FOCS 顶层章号，跳过第 0 章 Background）均已掌握。"""
     learned = set(bar.get("learned_sections") or [])
-    for ch in _root_chapter_ints_from_focs():
+    for ch in _root_chapter_ints_from_raw(raw):
         if ch == 0:
             continue
         if ch <= n:
             tok = str(ch)
             if tok in valid_tokens:
                 learned.add(tok)
-    bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+    bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
     bar["current_section"] = str(n)
 
 
-def _ordered_section_tokens_preorder() -> List[str]:
-    """FOCS 树前序遍历的节号列表（与教材目录顺序一致）。"""
-    if not os.path.exists(lr.FOCS_JSON_PATH):
+def _ordered_section_tokens_preorder_from_raw(raw: Dict[str, Any]) -> List[str]:
+    """教材树前序遍历的 token 列表（节号或 path token，与 _load_tree_token_map_from_raw 一致）。"""
+    if not raw:
         return []
-    with open(lr.FOCS_JSON_PATH, "r", encoding="utf-8") as f:
-        raw = json.load(f)
     out: List[str] = []
 
-    def walk(obj: Dict[str, Any]) -> None:
+    def walk(obj: Dict[str, Any], path_prefix: str) -> None:
         for k, v in obj.items():
             if k == "_range" or not isinstance(v, dict):
                 continue
+            path = f"{path_prefix}/{k}" if path_prefix else k
             first = k.split()[0] if k.split() else ""
             if re.match(r"^\d+(?:\.\d+)*$", first):
                 out.append(first)
-            walk(v)
+            else:
+                out.append(_path_section_token(path))
+            walk(v, path)
 
-    walk(raw)
+    walk(raw, "")
     return out
+
+
+def _ordered_section_tokens_preorder(textbook_id: str = "focs", user_email: Optional[str] = None) -> List[str]:
+    raw = lr.load_outline_dict(textbook_id, user_email)
+    return _ordered_section_tokens_preorder_from_raw(raw)
 
 
 def _extract_subsection_tokens(message: str, valid_tokens: set[str]) -> List[str]:
@@ -254,7 +313,7 @@ def _apply_learned_through_subsection(
     for t in ordered[start : end + 1]:
         if t in valid_tokens:
             learned.add(t)
-    bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+    bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
     bar["current_section"] = target_token
 
 
@@ -263,10 +322,14 @@ def _contains_any(text: str, keywords: List[str]) -> bool:
     return any(k in s for k in keywords)
 
 
-def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
+def update_bar_from_message(
+    student_id: str, message: str, textbook_id: str = "focs", user_email: Optional[str] = None
+) -> Dict[str, Any]:
     """Heuristic update: parse progress mentions from user's message."""
-    bar = load_bar(student_id)
-    token_map = _load_tree_token_map()
+    tid = textbook_id or "focs"
+    bar = load_bar(student_id, tid)
+    raw = lr.load_outline_dict(tid, user_email)
+    token_map = _load_tree_token_map_from_raw(raw)
     valid = set(token_map.keys())
     msg = (message or "").strip()
     tokens = _extract_section_tokens(msg, valid)
@@ -379,12 +442,12 @@ def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
     explicit_chapters = _extract_explicit_chapter_numbers(msg)
     if explicit_chapters and should_apply_through:
         n_through = max(explicit_chapters)
-        _apply_learned_through_chapter_n(bar, n_through, valid)
+        _apply_learned_through_chapter_n(bar, n_through, valid, raw)
 
     # 学到 5.3 等小节 → 该章内从章根到该节的前序节点全部标为已学（不自动标 1–4 章）
     subsection_hits = _extract_subsection_tokens(msg, valid)
     if subsection_hits and should_apply_through:
-        ordered = _ordered_section_tokens_preorder()
+        ordered = _ordered_section_tokens_preorder_from_raw(raw)
         in_order = [t for t in subsection_hits if t in ordered]
         if in_order:
             target_sub = max(in_order, key=lambda t: ordered.index(t))
@@ -395,7 +458,7 @@ def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
         learned = set(bar.get("learned_sections") or [])
         for t in tokens:
             learned.add(t)
-        bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
 
     # Update current section.
     if tokens and _contains_any(msg, current_kw):
@@ -406,7 +469,7 @@ def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
         planned = set(bar.get("planned_sections") or [])
         for t in tokens:
             planned.add(t)
-        bar["planned_sections"] = sorted(planned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["planned_sections"] = sorted(planned, key=_learned_section_sort_key)
 
     # Confusion tracking: if user says "don't understand", count it on mentioned/current section.
     if _contains_any(msg_lower, confusion_kw):
@@ -418,13 +481,20 @@ def update_bar_from_message(student_id: str, message: str) -> Dict[str, Any]:
             confusion_counts[t] = int(confusion_counts.get(t, 0)) + 1
         bar["confusion_counts"] = confusion_counts
 
-    save_bar(student_id, bar)
+    save_bar(student_id, bar, tid)
     return bar
 
 
-def update_bar_from_message_on_bar(bar: Dict[str, Any], message: str) -> Dict[str, Any]:
+def update_bar_from_message_on_bar(
+    bar: Dict[str, Any],
+    message: str,
+    textbook_id: str = "focs",
+    user_email: Optional[str] = None,
+) -> Dict[str, Any]:
     """Same heuristic update as update_bar_from_message but operates on an existing bar dict (no file I/O)."""
-    token_map = _load_tree_token_map()
+    tid = textbook_id or "focs"
+    raw = lr.load_outline_dict(tid, user_email)
+    token_map = _load_tree_token_map_from_raw(raw)
     valid = set(token_map.keys())
     msg = (message or "").strip()
     tokens = _extract_section_tokens(msg, valid)
@@ -469,11 +539,11 @@ def update_bar_from_message_on_bar(bar: Dict[str, Any], message: str) -> Dict[st
     explicit_chapters = _extract_explicit_chapter_numbers(msg)
     if explicit_chapters and should_apply_through:
         n_through = max(explicit_chapters)
-        _apply_learned_through_chapter_n(bar, n_through, valid)
+        _apply_learned_through_chapter_n(bar, n_through, valid, raw)
 
     subsection_hits = _extract_subsection_tokens(msg, valid)
     if subsection_hits and should_apply_through:
-        ordered = _ordered_section_tokens_preorder()
+        ordered = _ordered_section_tokens_preorder_from_raw(raw)
         in_order = [t for t in subsection_hits if t in ordered]
         if in_order:
             target_sub = max(in_order, key=lambda t: ordered.index(t))
@@ -483,7 +553,7 @@ def update_bar_from_message_on_bar(bar: Dict[str, Any], message: str) -> Dict[st
         learned_set = set(bar.get("learned_sections") or [])
         for t in tokens:
             learned_set.add(t)
-        bar["learned_sections"] = sorted(learned_set, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["learned_sections"] = sorted(learned_set, key=_learned_section_sort_key)
 
     if tokens and _contains_any(msg, current_kw):
         bar["current_section"] = tokens[-1]
@@ -492,7 +562,7 @@ def update_bar_from_message_on_bar(bar: Dict[str, Any], message: str) -> Dict[st
         planned = set(bar.get("planned_sections") or [])
         for t in tokens:
             planned.add(t)
-        bar["planned_sections"] = sorted(planned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["planned_sections"] = sorted(planned, key=_learned_section_sort_key)
 
     if _contains_any(msg_lower, confusion_kw):
         confusion_counts = bar.get("confusion_counts") or {}
@@ -510,8 +580,10 @@ def _label(token: str, token_map: Dict[str, str]) -> str:
     return token_map.get(token, token)
 
 
-def build_bar_prompt(bar: Dict[str, Any]) -> str:
-    token_map = _load_tree_token_map()
+def build_bar_prompt(bar: Dict[str, Any], user_email: Optional[str] = None) -> str:
+    tid = bar.get("textbook_id") or "focs"
+    raw = lr.load_outline_dict(tid, user_email)
+    token_map = _load_tree_token_map_from_raw(raw)
     learned = bar.get("learned_sections") or []
     planned = bar.get("planned_sections") or []
     current = bar.get("current_section")

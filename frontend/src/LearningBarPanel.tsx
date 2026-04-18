@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import "./MyLearningBar.css";
 import { getOrCreateStudentId } from "./utils/studentId";
+import { useAuth } from "./context/AuthContext";
 import {
+  fetchTextbookOptionsFromServer,
+  fetchTextbookTreeForId,
   getTextbookLinkLabel,
   getTextbookTree,
+  isValidUploadedTextbookId,
   readSelectedTextbookId,
-  TEXTBOOK_OPTIONS,
+  readTextbookOptionList,
+  reconcileSelectedTextbookWithCatalog,
+  resetServerTextbookSessionForLogout,
   writeSelectedTextbookId,
-  type TextbookId,
 } from "./learningTextbooks";
 import {
   loadLocalLearningBar,
@@ -31,6 +37,28 @@ export type LearningBarPanelProps = {
 function firstSectionToken(title: string): string | null {
   const w = title.trim().split(/\s+/)[0] ?? "";
   return /^\d+(?:\.\d+)*$/.test(w) ? w : null;
+}
+
+/** 与 Python len(str) 对齐：Unicode 码位个数（非 UTF-16 长度） */
+function pathStringLen(path: string): number {
+  let n = 0;
+  for (const _ of path) n++;
+  return n;
+}
+
+/** 与 backend student_bar_store._path_section_token 一致：FNV-1a / UTF-8 */
+function pathBasedToken(path: string): string {
+  const bytes = new TextEncoder().encode(path);
+  let h = 2166136261 >>> 0;
+  for (const b of bytes) {
+    h ^= b;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return `p${pathStringLen(path)}_${h.toString(16)}`;
+}
+
+function sectionTokenForNode(title: string, path: string): string {
+  return firstSectionToken(title) ?? pathBasedToken(path);
 }
 
 function formatRange(node: FocsNode): string {
@@ -57,27 +85,34 @@ function childEntries(node: FocsNode): [string, FocsNode][] {
   ) as [string, FocsNode][];
 }
 
-function collectDescendantSectionTokens(n: FocsNode): string[] {
+function collectDescendantSectionTokens(n: FocsNode, parentPath: string): string[] {
   const out: string[] = [];
   for (const [childTitle, childNode] of childEntries(n)) {
-    const t = firstSectionToken(childTitle);
-    if (t) out.push(t);
-    out.push(...collectDescendantSectionTokens(childNode));
+    const childPath = `${parentPath}/${childTitle}`;
+    out.push(sectionTokenForNode(childTitle, childPath));
+    out.push(...collectDescendantSectionTokens(childNode, childPath));
   }
   return out;
 }
 
 function sortSectionTokens(tokens: string[]): string[] {
+  const numeric = (t: string) => /^\d+(?:\.\d+)*$/.test(t);
   return [...tokens].sort((a, b) => {
-    const pa = a.split(".").map((x) => parseInt(x, 10));
-    const pb = b.split(".").map((x) => parseInt(x, 10));
-    const len = Math.max(pa.length, pb.length);
-    for (let i = 0; i < len; i++) {
-      const da = pa[i] ?? 0;
-      const db = pb[i] ?? 0;
-      if (da !== db) return da - db;
+    const numA = numeric(a);
+    const numB = numeric(b);
+    if (numA !== numB) return numA ? -1 : 1;
+    if (numA && numB) {
+      const pa = a.split(".").map((x) => parseInt(x, 10));
+      const pb = b.split(".").map((x) => parseInt(x, 10));
+      const len = Math.max(pa.length, pb.length);
+      for (let i = 0; i < len; i++) {
+        const da = pa[i] ?? 0;
+        const db = pb[i] ?? 0;
+        if (da !== db) return da - db;
+      }
+      return 0;
     }
-    return 0;
+    return a.localeCompare(b);
   });
 }
 
@@ -109,21 +144,21 @@ function FocsTreeBranch({
   title: string;
   node: FocsNode;
   learnedSet: Set<string>;
-  onToggleToken: (token: string, subtreeRoot?: FocsNode) => void;
+  onToggleToken: (token: string, subtreeRoot?: FocsNode, subtreePath?: string) => void;
   expanded: Record<string, boolean>;
   onToggleExpand: (path: string) => void;
   path: string;
 }) {
-  const token = firstSectionToken(title);
+  const token = sectionTokenForNode(title, path);
   const rangeStr = formatRange(node);
   const children = childEntries(node);
   const hasKids = children.length > 0;
   const isOpen = expanded[path] !== false;
-  const learned = token ? learnedSet.has(token) : false;
+  const learned = learnedSet.has(token);
 
   return (
     <li className="focs-node">
-      <div className={`focs-node__row ${token ? "focs-node__row--toggle" : ""}`}>
+      <div className="focs-node__row focs-node__row--toggle">
         {hasKids ? (
           <button
             type="button"
@@ -140,24 +175,19 @@ function FocsTreeBranch({
         <button
           type="button"
           className={`focs-node__label ${
-            token
-              ? learned
-                ? "focs-node__label--learned focs-node__label--toggle"
-                : "focs-node__label--not focs-node__label--toggle"
-              : "focs-node__label--not"
+            learned
+              ? "focs-node__label--learned focs-node__label--toggle"
+              : "focs-node__label--not focs-node__label--toggle"
           }`}
-          disabled={!token}
-          onClick={() => token && onToggleToken(token, hasKids ? node : undefined)}
+          onClick={() => onToggleToken(token, hasKids ? node : undefined, hasKids ? path : undefined)}
           title={
-            token
-              ? learned
-                ? hasKids
-                  ? "Mark this chapter and all subsections as not learned"
-                  : "Mark as not yet learned"
-                : hasKids
-                  ? "Mark this chapter and all subsections as learned"
-                  : "Mark as learned"
-              : undefined
+            learned
+              ? hasKids
+                ? "Mark this chapter and all subsections as not learned"
+                : "Mark as not yet learned"
+              : hasKids
+                ? "Mark this chapter and all subsections as learned"
+                : "Mark as learned"
           }
         >
           {title}
@@ -189,6 +219,8 @@ export default function LearningBarPanel({
   studentId: studentIdProp,
   embedHeaderEnd,
 }: LearningBarPanelProps) {
+  const { token } = useAuth();
+  const location = useLocation();
   const [fallbackStudentId] = useState(() => getOrCreateStudentId());
   const studentId = studentIdProp ?? fallbackStudentId;
   const [learned, setLearned] = useState<string[]>([]);
@@ -197,34 +229,124 @@ export default function LearningBarPanel({
   const [saving, setSaving] = useState(false);
   const [syncHint, setSyncHint] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selectedTextbookId, setSelectedTextbookId] = useState<TextbookId>(() => readSelectedTextbookId());
+  const [bookOptions, setBookOptions] = useState(() => readTextbookOptionList());
+  const [selectedTextbookId, setSelectedTextbookId] = useState<string>(() => readSelectedTextbookId());
+  const [outlineTree, setOutlineTree] = useState<FocsNode>(() => getTextbookTree("focs") as FocsNode);
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const bookBtnRef = useRef<HTMLButtonElement>(null);
   const bookPopoverRef = useRef<HTMLDivElement>(null);
+  /** 换书前把当前内存里的 learned 写回「上一本书」的 key，避免未落盘的进度被丢掉 */
+  const learnedRef = useRef<string[]>([]);
+  const prevTextbookIdRef = useRef<string | null>(null);
+  const prevStudentIdRef = useRef(studentId);
 
   const learnedSet = useMemo(() => new Set(learned), [learned]);
 
-  const activeTree = useMemo(() => getTextbookTree(selectedTextbookId) as FocsNode, [selectedTextbookId]);
+  useLayoutEffect(() => {
+    reconcileSelectedTextbookWithCatalog();
+    setSelectedTextbookId(readSelectedTextbookId());
+    setBookOptions(readTextbookOptionList());
+  }, []);
 
   useEffect(() => {
-    const local = loadLocalLearningBar(studentId);
+    reconcileSelectedTextbookWithCatalog();
+    setSelectedTextbookId(readSelectedTextbookId());
+    setBookOptions(readTextbookOptionList());
+    if (token) {
+      void fetchTextbookOptionsFromServer(token).catch(() => {});
+    }
+  }, [location.pathname, token]);
+
+  useEffect(() => {
+    if (!token) {
+      resetServerTextbookSessionForLogout();
+      if (isValidUploadedTextbookId(readSelectedTextbookId())) {
+        writeSelectedTextbookId("focs");
+      }
+      setBookOptions(readTextbookOptionList());
+      setSelectedTextbookId(readSelectedTextbookId());
+      setOutlineTree(getTextbookTree("focs") as FocsNode);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        await fetchTextbookOptionsFromServer(token);
+        if (cancelled) return;
+        reconcileSelectedTextbookWithCatalog();
+        setBookOptions(readTextbookOptionList());
+        setSelectedTextbookId(readSelectedTextbookId());
+      } catch {
+        if (!cancelled) {
+          setBookOptions(readTextbookOptionList());
+          setSelectedTextbookId(readSelectedTextbookId());
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const tree = (await fetchTextbookTreeForId(token, selectedTextbookId)) as FocsNode;
+      if (!cancelled) {
+        setOutlineTree(tree && typeof tree === "object" && Object.keys(tree).length > 0 ? tree : ({} as FocsNode));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTextbookId, token]);
+
+  useEffect(() => {
+    const onChange = () => {
+      reconcileSelectedTextbookWithCatalog();
+      setSelectedTextbookId(readSelectedTextbookId());
+      setBookOptions(readTextbookOptionList());
+    };
+    window.addEventListener("ai-tutor-textbook-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("ai-tutor-textbook-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    learnedRef.current = learned;
+  }, [learned]);
+
+  useEffect(() => {
+    const sidChanged = prevStudentIdRef.current !== studentId;
+    prevStudentIdRef.current = studentId;
+
+    const prevBook = prevTextbookIdRef.current;
+    if (!sidChanged && prevBook !== null && prevBook !== selectedTextbookId) {
+      saveLocalLearningBar(studentId, learnedRef.current, prevBook);
+      void trySyncLearnedToServer(studentId, learnedRef.current, prevBook, token);
+    }
+    prevTextbookIdRef.current = selectedTextbookId;
+    const local = loadLocalLearningBar(studentId, selectedTextbookId);
     setLearned(local.learned_sections);
     setHydrated(true);
-  }, [studentId]);
+  }, [studentId, selectedTextbookId, token]);
 
   useEffect(() => {
     if (!hydrated) return;
     if (learned.length > 0) return;
     let cancelled = false;
     void (async () => {
-      const fromServer = await tryHydrateLearnedFromServer(studentId);
+      const fromServer = await tryHydrateLearnedFromServer(studentId, selectedTextbookId, token);
       if (cancelled || !fromServer?.length) return;
       setLearned(fromServer);
     })();
     return () => {
       cancelled = true;
     };
-  }, [hydrated, learned.length, studentId]);
+  }, [hydrated, learned.length, studentId, selectedTextbookId, token]);
 
   const persistLearned = useCallback(
     async (next: string[]) => {
@@ -232,9 +354,9 @@ export default function LearningBarPanel({
       setError(null);
       setSyncHint(null);
       try {
-        saveLocalLearningBar(studentId, next);
+        saveLocalLearningBar(studentId, next, selectedTextbookId);
         setLearned(next);
-        const ok = await trySyncLearnedToServer(studentId, next);
+        const ok = await trySyncLearnedToServer(studentId, next, selectedTextbookId, token);
         setSyncHint(
           ok
             ? variant === "embed"
@@ -251,14 +373,14 @@ export default function LearningBarPanel({
         setSaving(false);
       }
     },
-    [studentId, variant]
+    [studentId, variant, selectedTextbookId, token]
   );
 
   const onToggleToken = useCallback(
-    (token: string, subtreeRoot?: FocsNode) => {
+    (token: string, subtreeRoot?: FocsNode, subtreePath?: string) => {
       const batch =
-        subtreeRoot != null
-          ? Array.from(new Set([token, ...collectDescendantSectionTokens(subtreeRoot)]))
+        subtreeRoot != null && subtreePath != null
+          ? Array.from(new Set([token, ...collectDescendantSectionTokens(subtreeRoot, subtreePath)]))
           : [token];
       const next = new Set(learned);
       const allMarked = batch.every((t) => next.has(t));
@@ -279,8 +401,8 @@ export default function LearningBarPanel({
     });
   }, []);
 
-  const rootEntries = useMemo(() => childEntries(activeTree), [activeTree]);
-  const expandablePaths = useMemo(() => collectExpandablePaths(activeTree), [activeTree]);
+  const rootEntries = useMemo(() => childEntries(outlineTree), [outlineTree]);
+  const expandablePaths = useMemo(() => collectExpandablePaths(outlineTree), [outlineTree]);
 
   useEffect(() => {
     setExpanded({});
@@ -349,7 +471,7 @@ export default function LearningBarPanel({
           aria-label="Choose textbook"
         >
           <div className="my-learning-bar-book-popover-hint">Choose textbook</div>
-          {TEXTBOOK_OPTIONS.map((opt) => (
+          {bookOptions.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -392,7 +514,7 @@ export default function LearningBarPanel({
           {variant === "embed" ? (
             <>
               {
-                "Click items that start with a section number to toggle learned / not learned. Same data as on the My Learning bar page."
+                "Click any topic to toggle learned / not learned (numbered sections keep their numbers; others use a stable id). Same data as on the My Learning bar page."
               }
               {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
             </>
@@ -400,7 +522,7 @@ export default function LearningBarPanel({
             <>
               This page shows your progress against the textbook outline.
               <br />
-              Click any topic that starts with a section number to toggle learned / not learned.
+              Click any topic to toggle learned / not learned.
               {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
             </>
           )}

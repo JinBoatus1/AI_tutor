@@ -1,4 +1,8 @@
-/** Optional: set VITE_API_URL before build/run when frontend and API differ (public HTTPS origin, no trailing slash). */
+/**
+ * Optional: set VITE_API_URL when the frontend and API are on different origins.
+ * Use either the site origin only (`https://api.example.com`) or the same value with `/api`
+ * (`https://api.example.com/api`). Both work: `apiUrl()` avoids generating `/api/api/...`.
+ */
 const raw = import.meta.env.VITE_API_URL?.trim() ?? "";
 /**
  * If VITE_API_URL is unset, use a relative base (""): requests go to current origin + /api/...
@@ -18,6 +22,22 @@ function normalizeBase(built: string): string {
 }
 
 export const API_BASE = normalizeBase(raw);
+
+/**
+ * Build a full API URL. If `VITE_API_URL` / `API_BASE` already ends with `/api` (common in reverse-proxy
+ * setups), strips the duplicate so we never request `/api/api/...` (which often 404s).
+ */
+export function apiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const base = API_BASE.replace(/\/$/, "");
+  if (!base) {
+    return normalizedPath;
+  }
+  if (/\/api$/i.test(base)) {
+    return base + normalizedPath.replace(/^\/api(?=\/)/, "");
+  }
+  return base + normalizedPath;
+}
 
 /**
  * HTTPS page + explicit http:// API triggers mixed-content blocking (failed to fetch).
