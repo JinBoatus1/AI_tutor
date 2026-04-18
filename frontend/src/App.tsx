@@ -51,11 +51,25 @@ function App() {
           </div>
         )}
         <nav className="navbar" aria-label="Main navigation">
+          <Link to="/" className="nav-brand">
+            <span className="nav-brand-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+              </svg>
+            </span>
+            <span className="nav-brand-text">AI Tutor</span>
+          </Link>
           <div className="nav-buttons">
             <Link to="/" className="btn-nav">Home</Link>
             <Link to="/autograder" className="btn-nav">Auto Grader</Link>
             <Link to="/learning" className="btn-nav btn-nav--learning">Learning Mode</Link>
-            <Link to="/profile" className="btn-nav">My profile</Link>
+            <Link to="/profile" className="btn-nav" onClick={(e) => {
+              if (!user && !loading) {
+                e.preventDefault();
+                setShowSignIn(true);
+              }
+            }}>My profile</Link>
           </div>
           <div className="nav-auth">
             {loading ? null : user ? (
@@ -71,8 +85,11 @@ function App() {
                 <button className="nav-signout-btn" onClick={logout}>Sign out</button>
               </div>
             ) : (
-              <button className="nav-signin-btn" onClick={() => setShowSignIn(true)}>
-                <span>Sign in</span>
+              <button className="nav-avatar-empty" onClick={() => setShowSignIn(true)} aria-label="Sign in">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
               </button>
             )}
           </div>

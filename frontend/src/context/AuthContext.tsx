@@ -6,11 +6,9 @@ import {
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
   signOut,
 } from "firebase/auth";
-import type { User, ConfirmationResult } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import { resetServerTextbookSessionForLogout } from "../learningTextbooks";
 
@@ -22,7 +20,7 @@ interface AuthUser {
   isAnonymous: boolean;
 }
 
-export type AuthMethod = "google" | "phone" | "email" | "anonymous";
+export type AuthMethod = "google" | "email" | "anonymous";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -30,8 +28,6 @@ interface AuthContextType {
   loading: boolean;
   loginWithProvider: (method: AuthMethod) => Promise<void>;
   loginWithEmail: (email: string, password: string, isSignUp: boolean) => Promise<void>;
-  sendPhoneCode: (phoneNumber: string, containerId: string) => Promise<void>;
-  confirmPhoneCode: (code: string) => Promise<void>;
   logout: () => Promise<void>;
   showSignIn: boolean;
   setShowSignIn: (v: boolean) => void;
@@ -44,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSignIn, setShowSignIn] = useState(false);
-  const [phoneConfirmation, setPhoneConfirmation] = useState<ConfirmationResult | null>(null);
 
   useEffect(() => {
     if (!auth) {
@@ -131,30 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendPhoneCode = async (phoneNumber: string, containerId: string) => {
-    if (!auth) return;
-    try {
-      const recaptcha = new RecaptchaVerifier(auth, containerId, { size: "invisible" });
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, recaptcha);
-      setPhoneConfirmation(confirmation);
-    } catch (e: any) {
-      console.error("[Auth] Phone sign-in failed:", e);
-      throw e;
-    }
-  };
-
-  const confirmPhoneCode = async (code: string) => {
-    if (!phoneConfirmation) throw new Error("No phone confirmation pending");
-    try {
-      await phoneConfirmation.confirm(code);
-      setPhoneConfirmation(null);
-      setShowSignIn(false);
-    } catch (e: any) {
-      console.error("[Auth] Phone code confirmation failed:", e);
-      throw e;
-    }
-  };
-
   const logout = async () => {
     if (!auth) return;
     await signOut(auth);
@@ -164,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, token, loading,
-      loginWithProvider, loginWithEmail, sendPhoneCode, confirmPhoneCode,
+      loginWithProvider, loginWithEmail,
       logout, showSignIn, setShowSignIn,
     }}>
       {children}
