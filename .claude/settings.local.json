@@ -12,7 +12,21 @@
       "Bash(\"/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/.venv/Scripts/pip.exe\" install firebase-admin pymongo)",
       "Bash('/c/Users/Tiantian Qi/Documents/GitHub/AI_tutor2/backend/.venv/Scripts/python.exe' -c ':*)",
       "Bash(npx vite:*)",
-      "Bash(ls apiBase*)"
+      "Bash(ls apiBase*)",
+      "Bash(gh pr create --base function --head feature/gmail-login-merge --title 'Add Firebase Auth, chat history, and redesigned sign-in UI' --body ':*)",
+      "Bash(gh pr create --base function --head fix/firebase-graceful-fallback --title 'fix: prevent white screen when Firebase env vars are missing' --body ':*)",
+      "WebSearch",
+      "Bash(gh pr create --base function --head fix/chat-history-auth --title 'fix: chat history 401 on cloud deployment' --body ':*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh pr create --base function --head feat/multi-auth --title 'feat: multi-provider sign-in \\(Google, Microsoft, Apple, Phone, Email, Guest\\)' --body ':*)",
+      "Bash(claude plugin:*)",
+      "Bash(npm i:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm list:*)",
+      "Bash(npm config:*)",
+      "Bash(ls \"C:/Users/Tiantian Qi/AppData/Roaming/npm/\"*.cmd)",
+      "Bash(wc -l .planning/codebase/*.md)"
     ]
   }
 }

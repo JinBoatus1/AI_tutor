@@ -33,7 +33,9 @@ def _ensure_init() -> bool:
 def verify_token(authorization: Optional[str]) -> Optional[str]:
     """
     Verify a Firebase ID token from the Authorization header.
-    Returns the user's email on success, None on failure or missing token.
+    Returns a user identifier on success, None on failure or missing token.
+    For email users: returns email. For phone users: returns phone number.
+    For anonymous users: returns 'anon:<uid>'.
     """
     if not authorization or not authorization.startswith("Bearer "):
         return None
@@ -42,7 +44,17 @@ def verify_token(authorization: Optional[str]) -> Optional[str]:
     token = authorization[7:]
     try:
         decoded = firebase_auth.verify_id_token(token)
-        return decoded.get("email")
+        # Prefer email, fall back to phone, then anonymous uid
+        email = decoded.get("email")
+        if email:
+            return email
+        phone = decoded.get("phone_number")
+        if phone:
+            return phone
+        uid = decoded.get("uid")
+        if uid:
+            return f"anon:{uid}"
+        return None
     except Exception as e:
         print(f"[Auth] Token verification failed: {e}", flush=True)
         return None

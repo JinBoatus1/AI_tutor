@@ -1,60 +1,67 @@
+/* Profile Page — matches SignInModal editorial design language */
+
 .profile-page {
   width: 100%;
-  max-width: 40rem;
+  max-width: 42rem;
   margin: 0 auto;
-  padding: 20px 16px 32px;
+  padding: 28px 20px 40px;
   overflow-y: auto;
   max-height: 100%;
-  font-family: "Inter", system-ui, sans-serif;
 }
 
+/* ── Header ── */
 .profile-page-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .profile-page-title {
-  margin: 0 0 6px;
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 0 0 8px;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 400;
   letter-spacing: -0.02em;
   color: #0f172a;
 }
 
 .profile-page-subtitle {
   margin: 0;
-  font-size: 0.9rem;
-  color: #64748b;
-  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.55;
 }
 
+/* ── Cards ── */
 .profile-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 18px 20px 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: 1px solid #eef0f4;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
 }
 
 .profile-card-title {
-  margin: 0 0 14px;
-  font-size: 0.75rem;
+  margin: 0 0 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #94a3b8;
 }
 
+/* ── Account section ── */
 .profile-account-block {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .profile-account-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .profile-avatar-lg {
@@ -62,7 +69,7 @@
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #eef0f4;
   flex-shrink: 0;
 }
 
@@ -70,10 +77,11 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0f766e, #14b8a6);
-  color: #fff;
+  background: linear-gradient(170deg, #0c1222 0%, #0a1a2e 45%, #0c2828 100%);
+  color: #5eead4;
+  font-family: 'DM Serif Display', Georgia, serif;
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -86,130 +94,186 @@
 
 .profile-display-name {
   margin: 0;
+  font-family: 'DM Sans', sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   color: #0f172a;
 }
 
 .profile-email {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
-  color: #64748b;
+  margin: 3px 0 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #94a3b8;
   word-break: break-all;
 }
 
 .profile-muted {
   margin: 0;
-  font-size: 0.9rem;
-  color: #64748b;
-  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: #94a3b8;
+  line-height: 1.55;
 }
 
+/* ── Buttons — matching SignInModal provider button style ── */
 .profile-google-btn {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
   background: #fff;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #334155;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #1e293b;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-google-btn:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border-color: #dce0e8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
 }
 
 .profile-signout-btn {
   align-self: flex-start;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 0.875rem;
-  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid #eef0f4;
+  background: #fafbfc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 500;
   color: #475569;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: all 0.2s;
 }
 
 .profile-signout-btn:hover {
   background: #f1f5f9;
-  border-color: #cbd5e1;
+  border-color: #dce0e8;
 }
 
+/* ── Textbook section ── */
 .profile-setting-desc {
-  margin: 0 0 12px;
-  font-size: 0.875rem;
-  color: #64748b;
+  margin: 0 0 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #94a3b8;
+  line-height: 1.55;
 }
 
-.profile-bg-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.profile-bg-swatch {
+.profile-textbook-delete-row {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  padding: 10px 14px;
-  min-width: 5.5rem;
-  border: 2px solid #e2e8f0;
+  margin: 12px 0 4px;
+}
+
+.profile-textbook-delete-btn {
+  padding: 8px 16px;
   border-radius: 10px;
-  background: #fafafa;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-}
-
-.profile-bg-swatch:hover {
-  border-color: #cbd5e1;
+  border: 1px solid #fecaca;
   background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.profile-bg-swatch--active {
-  border-color: #0d9488;
-  background: #f0fdfa;
-  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
+.profile-textbook-delete-btn:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #f87171;
 }
 
-.profile-bg-swatch-dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
+.profile-textbook-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.profile-bg-swatch-label {
+.profile-textbook-delete-hint {
+  font-family: 'DM Sans', sans-serif;
   font-size: 0.78rem;
-  font-weight: 600;
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.profile-textbook-sync-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+
+.profile-textbook-sync-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #eef0f4;
+  background: #fafbfc;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 500;
   color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-@media (max-width: 480px) {
-  .profile-bg-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .profile-bg-swatch {
-    min-width: 0;
-  }
+.profile-textbook-sync-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #dce0e8;
 }
 
-/* Custom file picker (English labels; avoids OS-localized native file input UI) */
+.profile-textbook-sync-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-textbook-sync-hint {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.profile-textbook-reset-local-btn {
+  margin-top: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid #fdba74;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #9a3412;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profile-textbook-reset-local-btn:hover:not(:disabled) {
+  background: #fff7ed;
+  border-color: #fb923c;
+}
+
+.profile-textbook-reset-local-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── File upload zone ── */
 .profile-file-upload-row {
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .profile-file-upload-controls {
@@ -217,7 +281,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem;
+  gap: 10px;
 }
 
 .profile-file-input-hidden {
@@ -233,127 +297,102 @@
 }
 
 .profile-file-choose-btn {
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #334155;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1.5px dashed rgba(94, 234, 212, 0.35);
+  background: rgba(94, 234, 212, 0.03);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #0d9488;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: all 0.2s;
 }
 
 .profile-file-choose-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: rgba(94, 234, 212, 0.06);
+  border-color: rgba(94, 234, 212, 0.5);
 }
 
 .profile-file-choose-btn:disabled {
-  opacity: 0.65;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .profile-file-status {
-  font-size: 0.875rem;
-  color: #64748b;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #94a3b8;
   max-width: min(100%, 14rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.profile-textbook-delete-row {
+/* ── Appearance swatches ── */
+.profile-bg-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-bg-swatch {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-.profile-textbook-delete-btn {
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #b91c1c;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 16px;
+  min-width: 5.5rem;
+  border: 1.5px solid #eef0f4;
+  border-radius: 12px;
+  background: #fafbfc;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.profile-textbook-delete-btn:hover:not(:disabled) {
-  background: #fee2e2;
-  border-color: #f87171;
+.profile-bg-swatch:hover {
+  border-color: #dce0e8;
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-.profile-textbook-delete-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
+.profile-bg-swatch--active {
+  border-color: rgba(20, 184, 166, 0.4);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
 }
 
-.profile-textbook-delete-hint {
-  font-size: 0.8rem;
-  line-height: 1.45;
-  max-width: 100%;
+.profile-bg-swatch-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.profile-textbook-sync-row {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin: 0.75rem 0 0.25rem;
+.profile-bg-swatch-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #64748b;
 }
 
-.profile-textbook-sync-btn {
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #334155;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .profile-page {
+    padding: 20px 14px 32px;
+  }
 
-.profile-textbook-sync-btn:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-}
+  .profile-page-title {
+    font-size: 1.6rem;
+  }
 
-.profile-textbook-sync-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+  .profile-bg-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
 
-.profile-textbook-sync-hint {
-  font-size: 0.8rem;
-  line-height: 1.45;
-  max-width: 100%;
-}
-
-.profile-textbook-reset-local-btn {
-  margin-top: 0.35rem;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 1px solid #fdba74;
-  background: #fff7ed;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #9a3412;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.profile-textbook-reset-local-btn:hover:not(:disabled) {
-  background: #ffedd5;
-  border-color: #fb923c;
-}
-
-.profile-textbook-reset-local-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
+  .profile-bg-swatch {
+    min-width: 0;
+  }
 }
