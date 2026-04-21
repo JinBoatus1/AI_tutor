@@ -26,12 +26,21 @@ type FocsNode = Record<string, unknown>;
 
 export type LearningBarPanelVariant = "page" | "embed";
 
+export type OutlineSectionPreviewDetail = {
+  sectionTitle: string;
+  path: string;
+  startBook: number;
+  endBook: number;
+};
+
 export type LearningBarPanelProps = {
   variant: LearningBarPanelVariant;
   /** When set (e.g. from Learning Mode), progress uses the same student id as the chat session. */
   studentId?: string;
   /** Shown on the same row as the title (e.g. collapse control in Learning Mode). */
   embedHeaderEnd?: ReactNode;
+  /** Learning Mode: click a row with page numbers → open PDF pages in the textbook panel. */
+  onOutlineSectionPreview?: (detail: OutlineSectionPreviewDetail) => void;
 };
 
 function firstSectionToken(title: string): string | null {
@@ -73,6 +82,19 @@ function formatRange(node: FocsNode): string {
     return s === e ? `(p. ${s})` : `(pp. ${s}–${e})`;
   }
   return "";
+}
+
+/** Outline book page range (printed / logical pages in JSON), same as backend chat uses before PDF offset. */
+function bookPageRangeFromNode(node: FocsNode): { start: number; end: number } | null {
+  const r = node._range as { start?: number; end?: number } | undefined;
+  if (r && r.start != null) {
+    const e = r.end ?? r.start;
+    return { start: r.start, end: e };
+  }
+  const s = node.start as number | undefined;
+  const e = node.end as number | undefined;
+  if (s != null && e != null) return { start: s, end: e };
+  return null;
 }
 
 function childEntries(node: FocsNode): [string, FocsNode][] {
@@ -140,6 +162,7 @@ function FocsTreeBranch({
   expanded,
   onToggleExpand,
   path,
+  onOpenPages,
 }: {
   title: string;
   node: FocsNode;
@@ -148,13 +171,46 @@ function FocsTreeBranch({
   expanded: Record<string, boolean>;
   onToggleExpand: (path: string) => void;
   path: string;
+  onOpenPages?: (detail: OutlineSectionPreviewDetail) => void;
 }) {
   const token = sectionTokenForNode(title, path);
   const rangeStr = formatRange(node);
+  const bookRange = bookPageRangeFromNode(node);
   const children = childEntries(node);
   const hasKids = children.length > 0;
   const isOpen = expanded[path] !== false;
   const learned = learnedSet.has(token);
+  const splitLearnAndTitle = Boolean(onOpenPages);
+
+  const toggleLearned = () =>
+    onToggleToken(token, hasKids ? node : undefined, hasKids ? path : undefined);
+
+  const titleClick = () => {
+    if (onOpenPages && bookRange) {
+      onOpenPages({
+        sectionTitle: title,
+        path,
+        startBook: bookRange.start,
+        endBook: bookRange.end,
+      });
+    } else {
+      toggleLearned();
+    }
+  };
+
+  const learnDotTitle = learned
+    ? hasKids
+      ? "Mark this chapter and all subsections as not learned"
+      : "Mark as not yet learned"
+    : hasKids
+      ? "Mark this chapter and all subsections as learned"
+      : "Mark as learned";
+
+  const titleBtnTitle = splitLearnAndTitle
+    ? bookRange
+      ? "Show these pages in the textbook panel"
+      : learnDotTitle
+    : learnDotTitle;
 
   return (
     <li className="focs-node">
@@ -172,6 +228,15 @@ function FocsTreeBranch({
         ) : (
           <span className="focs-node__chevron focs-node__chevron--spacer">▶</span>
         )}
+        {splitLearnAndTitle ? (
+          <button
+            type="button"
+            className={`focs-node__learn-dot ${learned ? "focs-node__learn-dot--on" : "focs-node__learn-dot--off"}`}
+            onClick={toggleLearned}
+            aria-pressed={learned}
+            aria-label={learnDotTitle}
+          />
+        ) : null}
         <button
           type="button"
           className={`focs-node__label ${
@@ -179,16 +244,8 @@ function FocsTreeBranch({
               ? "focs-node__label--learned focs-node__label--toggle"
               : "focs-node__label--not focs-node__label--toggle"
           }`}
-          onClick={() => onToggleToken(token, hasKids ? node : undefined, hasKids ? path : undefined)}
-          title={
-            learned
-              ? hasKids
-                ? "Mark this chapter and all subsections as not learned"
-                : "Mark as not yet learned"
-              : hasKids
-                ? "Mark this chapter and all subsections as learned"
-                : "Mark as learned"
-          }
+          onClick={titleClick}
+          title={titleBtnTitle}
         >
           {title}
           {rangeStr ? <span className="focs-node__range">{rangeStr}</span> : null}
@@ -206,6 +263,7 @@ function FocsTreeBranch({
               expanded={expanded}
               onToggleExpand={onToggleExpand}
               path={path + "/" + k}
+              onOpenPages={onOpenPages}
             />
           ))}
         </ul>
@@ -218,6 +276,7 @@ export default function LearningBarPanel({
   variant,
   studentId: studentIdProp,
   embedHeaderEnd,
+  onOutlineSectionPreview,
 }: LearningBarPanelProps) {
   const { token } = useAuth();
   const location = useLocation();
@@ -514,7 +573,7 @@ export default function LearningBarPanel({
           {variant === "embed" ? (
             <>
               {
-                "Click any topic to toggle learned / not learned (numbered sections keep their numbers; others use a stable id). Same data as on the My Learning bar page."
+                "Click the dot to toggle learned / not learned. Click the section title (when it has page numbers) to open those pages in the textbook panel. Same data as on the My Learning bar page."
               }
               {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
             </>
@@ -567,6 +626,7 @@ export default function LearningBarPanel({
               expanded={expanded}
               onToggleExpand={onToggleExpand}
               path={k}
+              onOpenPages={variant === "embed" ? onOutlineSectionPreview : undefined}
             />
           ))}
         </ul>

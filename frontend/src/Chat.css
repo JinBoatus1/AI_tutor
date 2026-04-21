@@ -151,6 +151,28 @@
   margin-top: 2px;
 }
 
+.outline-preview-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: #475569;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.outline-preview-error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
 .left-panel-hide-btn:hover {
   background: #e5e7eb;
   color: #374151;

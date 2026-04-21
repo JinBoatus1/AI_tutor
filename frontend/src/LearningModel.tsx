@@ -13,14 +13,14 @@ import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
 import ChatHistory from "./ChatHistory";
-import LearningBarPanel from "./LearningBarPanel";
+import LearningBarPanel, { type OutlineSectionPreviewDetail } from "./LearningBarPanel";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
 
 const WELCOME_MSG =
-  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**, click the topics you already know (any row in the tree toggles learned / not learned).\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**: use the **dot** to mark topics learned / not learned; click a **section title** that shows page numbers to open those book pages in the textbook panel.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
 
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -71,6 +71,8 @@ export default function LearningModel() {
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
   const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
   const [sectionPageIndex, setSectionPageIndex] = useState(0);
+  const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
+  const [outlinePreviewError, setOutlinePreviewError] = useState<string | null>(null);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [pdfAttachment, setPdfAttachment] = useState<{ name: string; dataUrl: string } | null>(null);
@@ -115,6 +117,69 @@ export default function LearningModel() {
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  const handleOutlineSectionPreview = useCallback(
+    async (detail: OutlineSectionPreviewDetail) => {
+      setOutlinePreviewError(null);
+      setLeftPanelOpen(true);
+      setDataMatchedTopic(null);
+      setMatchedSection(null);
+      setReferencePageImage(null);
+      setReferencePageSnippets(null);
+      setReferenceSectionPages(null);
+      setSectionPageIndex(0);
+      setOutlinePreviewLoading(true);
+      if (textbookId.startsWith("user_") && !token) {
+        setOutlinePreviewLoading(false);
+        setOutlinePreviewError("Sign in to view pages for your uploaded textbook.");
+        return;
+      }
+      try {
+        const qs = new URLSearchParams({
+          textbook_id: textbookId,
+          start_book: String(detail.startBook),
+          end_book: String(detail.endBook),
+          section_title: detail.sectionTitle,
+        });
+        const headers: Record<string, string> = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const resp = await fetch(apiUrl(`/api/textbook_pages?${qs}`), { headers });
+        const data = (await resp.json()) as {
+          detail?: string;
+          pages_b64?: string[];
+          matched_topic?: { name: string; start: number; end: number };
+        };
+        if (!resp.ok) {
+          setOutlinePreviewError(
+            typeof data?.detail === "string" ? data.detail : "Could not load book pages."
+          );
+          return;
+        }
+        const b64 = Array.isArray(data?.pages_b64) ? data.pages_b64 : [];
+        if (b64.length) {
+          setReferenceSectionPages(b64.map((x) => `data:image/png;base64,${x}`));
+          if (data.matched_topic) {
+            setDataMatchedTopic({
+              name: data.matched_topic.name,
+              start: data.matched_topic.start,
+              end: data.matched_topic.end,
+            });
+          }
+        } else {
+          setReferenceSectionPages(null);
+          setDataMatchedTopic(null);
+          setOutlinePreviewError(
+            "No PDF pages were rendered (missing PDF on the server or invalid page range)."
+          );
+        }
+      } catch {
+        setOutlinePreviewError("Could not reach the server while loading pages.");
+      } finally {
+        setOutlinePreviewLoading(false);
+      }
+    },
+    [textbookId, token]
+  );
 
   const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
   const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
@@ -176,6 +241,8 @@ export default function LearningModel() {
   const hasLeftPanelContent = Boolean(
     dataMatchedTopic ||
       matchedSection ||
+      outlinePreviewLoading ||
+      Boolean(outlinePreviewError) ||
       (referenceSectionPages && referenceSectionPages.length > 0) ||
       (referencePageSnippets && referencePageSnippets.length > 0) ||
       referencePageImage
@@ -315,6 +382,7 @@ export default function LearningModel() {
     const hasPdf = Boolean(pdfSnapshot);
     if (!userText && !hasImages && !hasPdf) return;
     if (isAwaitingReply) return;
+    setOutlinePreviewError(null);
 
     const displayMessage =
       userText ||
@@ -497,6 +565,8 @@ export default function LearningModel() {
     setEnlargedImageSrc(null);
     setPdfAttachment(null);
     setIsAwaitingReply(false);
+    setOutlinePreviewLoading(false);
+    setOutlinePreviewError(null);
   };
 
   const loadSession = async (sid: string) => {
@@ -519,6 +589,8 @@ export default function LearningModel() {
       setReferencePageSnippets(null);
       setReferenceSectionPages(null);
       setSectionPageIndex(0);
+      setOutlinePreviewLoading(false);
+      setOutlinePreviewError(null);
     } catch (e) {
       console.error("Failed to load session", e);
     }
@@ -554,6 +626,7 @@ export default function LearningModel() {
             <LearningBarPanel
               variant="embed"
               studentId={studentId}
+              onOutlineSectionPreview={handleOutlineSectionPreview}
               embedHeaderEnd={
                 <button
                   type="button"
@@ -632,6 +705,18 @@ export default function LearningModel() {
             </button>
           </div>
         )}
+
+        {outlinePreviewLoading ? (
+          <div className="outline-preview-status" role="status" aria-live="polite">
+            <span className="learning-reply-status-spinner" aria-hidden />
+            <span>Loading book pages…</span>
+          </div>
+        ) : null}
+        {outlinePreviewError ? (
+          <p className="outline-preview-error" role="alert">
+            {outlinePreviewError}
+          </p>
+        ) : null}
 
         {matchedSection ? (
           <div className="match-box">

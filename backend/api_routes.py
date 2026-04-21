@@ -169,6 +169,8 @@ def _max_user_pdf_mb() -> int:
 MAX_USER_PDF_MB = _max_user_pdf_mb()
 MAX_USER_PDF_BYTES = MAX_USER_PDF_MB * 1024 * 1024
 MAX_USER_PDF_PAGES_RENDER = 8
+# Learning Mode: sidebar outline → PDF preview (max pages per request)
+MAX_TEXTBOOK_PREVIEW_PAGES = 72
 
 
 def _strip_base64_payload(s: str) -> str:
@@ -699,6 +701,59 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
         raise HTTPException(status_code=404, detail="Textbook not found")
     outline = uts.load_outline(email, book_id)
     return outline if isinstance(outline, dict) else {}
+
+
+@router.get("/api/textbook_pages")
+async def render_textbook_pages(
+    textbook_id: str = Query("focs"),
+    start_book: int = Query(..., ge=1, le=10000),
+    end_book: int = Query(..., ge=1, le=10000),
+    section_title: str = Query(""),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Render PDF page images for an outline book-page range (printed page numbers in the tree).
+    Same offset rules as chat; used when the student clicks a section in the learning progress tree.
+    """
+    user_email = verify_token(authorization)
+    tid = (textbook_id or "focs").strip() or "focs"
+    if tid.startswith("user_"):
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        if not uts.is_valid_user_book_id(tid) or not uts.user_owns_book(user_email, tid):
+            raise HTTPException(status_code=404, detail="Textbook not found")
+    else:
+        tid = "focs"
+
+    sb = min(start_book, end_book)
+    eb = max(start_book, end_book)
+    name = (section_title or "").strip()[:600] or "Section"
+
+    with lr.request_book(tid, user_email):
+        pdf = lr.get_effective_pdf_bytes()
+        off = lr.effective_pdf_page_offset()
+        start_pdf = sb + off
+        end_pdf = eb + off
+        if not pdf:
+            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+
+        try:
+            doc = fitz.open(stream=pdf, filetype="pdf")
+            doc_len = len(doc)
+            doc.close()
+        except Exception:
+            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+
+        start_pdf = max(1, min(start_pdf, doc_len))
+        end_pdf = max(start_pdf, min(end_pdf, doc_len))
+        if end_pdf - start_pdf + 1 > MAX_TEXTBOOK_PREVIEW_PAGES:
+            end_pdf = start_pdf + MAX_TEXTBOOK_PREVIEW_PAGES - 1
+
+        pages_b64 = lr.render_pdf_page_range_to_base64(pdf, start_pdf, end_pdf)
+        return {
+            "pages_b64": pages_b64,
+            "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf},
+        }
 
 
 def _delete_user_textbook_core(email: str, book_id: str) -> Dict[str, Any]:
