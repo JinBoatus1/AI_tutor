@@ -31,6 +31,8 @@ export type OutlineSectionPreviewDetail = {
   path: string;
   startBook: number;
   endBook: number;
+  /** 标题首段编号（如 8、8.1）；旧后端无 /api/textbook_pages 时用对话同款章节解析拉页 */
+  sectionHint: string;
 };
 
 export type LearningBarPanelProps = {
@@ -192,6 +194,7 @@ function FocsTreeBranch({
         path,
         startBook: bookRange.start,
         endBook: bookRange.end,
+        sectionHint: firstSectionToken(title) ?? "",
       });
     } else {
       toggleLearned();

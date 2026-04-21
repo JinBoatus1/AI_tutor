@@ -150,6 +150,7 @@ class ChatMessage(BaseModel):
     student_id: Optional[str] = None
     session_id: Optional[str] = None
     textbook_id: Optional[str] = None  # "focs" 或 "user_<id>"（后者需登录且为本人教材）
+    silent: bool = False  # 不写会话/Memory/进度条；用于仅拉书页的降级请求
 
 
 # 教材整本 PDF 上限（聊天附件与 /api/user_textbooks/from_pdf 共用）；可用环境变量 MAX_USER_PDF_MB（1–512，默认 100）
@@ -329,17 +330,18 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "\nAlways map chapters/sections to the textbook tree names exactly. If student wording is vague, propose 2-4 closest options from the tree and ask them to choose."
             )
         # Hidden per-student progress bar from tree structure.
-        try:
-            if user_email:
-                bar = sbs.load_bar_mongo(user_email, tid)
-                bar = sbs.update_bar_from_message_on_bar(bar, chat_message.message, tid, user_email)
-                bar["textbook_id"] = tid
-                sbs.save_bar_mongo(user_email, bar, tid)
-            else:
-                bar = sbs.update_bar_from_message(student_id, chat_message.message, tid)
-            system_content += sbs.build_bar_prompt(bar, user_email)
-        except Exception as e:
-            print(f"[StudentBar] update failed: {e}")
+        if not chat_message.silent:
+            try:
+                if user_email:
+                    bar = sbs.load_bar_mongo(user_email, tid)
+                    bar = sbs.update_bar_from_message_on_bar(bar, chat_message.message, tid, user_email)
+                    bar["textbook_id"] = tid
+                    sbs.save_bar_mongo(user_email, bar, tid)
+                else:
+                    bar = sbs.update_bar_from_message(student_id, chat_message.message, tid)
+                system_content += sbs.build_bar_prompt(bar, user_email)
+            except Exception as e:
+                print(f"[StudentBar] update failed: {e}")
         section_hint = lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
         is_subsection_request = bool(section_hint and "." in section_hint and section_info)
@@ -499,7 +501,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                     pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
                     if pages_b64:
                         result["reference_section_pages_b64"] = pages_b64
-                if _MEMORY_AVAILABLE:
+                if _MEMORY_AVAILABLE and not chat_message.silent:
                     try:
                         if mem is None:
                             mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
@@ -530,7 +532,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                     result["reference_section_pages_b64"] = pages_b64
 
             # 按 FOCS topic 写入 memory：事件（完整 Q&A，带时间）+ summary 流
-            if _MEMORY_AVAILABLE and matched_topic:
+            if _MEMORY_AVAILABLE and matched_topic and not chat_message.silent:
                 try:
                     if mem is None:
                         mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
@@ -545,7 +547,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 except Exception as e:
                     print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
         # Save to MongoDB if user is authenticated
-        if user_email:
+        if user_email and not chat_message.silent:
             col = database.chat_sessions()
             if col is not None:
                 now = datetime.now(timezone.utc).isoformat()
