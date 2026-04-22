@@ -155,7 +155,6 @@ export default function AutoGrader() {
         {result ? (
           <section className="autograder-result" aria-labelledby="autograder-result-heading">
             <h3 id="autograder-result-heading">Grading results</h3>
-            <p className="autograder-result-meta">paper_id: {result.paper_id}</p>
             <p className="autograder-result-meta">Sub-questions detected: {result.pair_count}</p>
 
             <div className="autograder-score-list">
