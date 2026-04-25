@@ -52,7 +52,7 @@ export default function AutoGrader() {
     setError("");
     setResult(null);
     if (!questionFile || !answerFile) {
-      setError("请先上传 question 和 answer 两个文件。");
+      setError("Please upload both a question file and an answer file.");
       return;
     }
 
@@ -90,7 +90,7 @@ export default function AutoGrader() {
 
       <div className="card">
         <div className="autograder-upload-block">
-          <label className="autograder-upload-label">Question 文件</label>
+          <label className="autograder-upload-label">Question file</label>
           <div className="autograder-file-row">
             <input
               ref={questionInputRef}
@@ -105,16 +105,16 @@ export default function AutoGrader() {
               className="autograder-file-choose-btn"
               onClick={() => questionInputRef.current?.click()}
             >
-              上传 Question
+              Choose question
             </button>
             <span className="autograder-file-status">
-              {questionFile ? questionFile.name : "未选择文件"}
+              {questionFile ? questionFile.name : "No file chosen"}
             </span>
           </div>
         </div>
 
         <div className="autograder-upload-block">
-          <label className="autograder-upload-label">Answer 文件</label>
+          <label className="autograder-upload-label">Answer file</label>
           <div className="autograder-file-row">
             <input
               ref={answerInputRef}
@@ -129,16 +129,16 @@ export default function AutoGrader() {
               className="autograder-file-choose-btn"
               onClick={() => answerInputRef.current?.click()}
             >
-              上传 Answer
+              Choose answer
             </button>
             <span className="autograder-file-status">
-              {answerFile ? answerFile.name : "未选择文件"}
+              {answerFile ? answerFile.name : "No file chosen"}
             </span>
           </div>
         </div>
 
         <button className="btn-primary" onClick={handleSubmit} disabled={grading}>
-          {grading ? "评分中..." : "开始评分"}
+          {grading ? "Grading..." : "Start grading"}
         </button>
 
         {error && <p className="autograder-error-text">{error}</p>}
@@ -146,9 +146,9 @@ export default function AutoGrader() {
 
       {result && (
         <div className="result-box">
-          <h3>评分结果</h3>
+          <h3>Grading results</h3>
           <p>paper_id: {result.paper_id}</p>
-          <p>识别题目数: {result.pair_count}</p>
+          <p>Detected sub-questions: {result.pair_count}</p>
 
           <div className="autograder-score-list">
             {sortedScores.map(([qid, item]) => {
