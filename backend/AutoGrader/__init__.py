@@ -24,6 +24,7 @@ from .public_api import (
     AutoGraderScoreItem,
     grade_paper_once,
 )
+from .recognizer import QuestionAnswerRecognizer
 from .service import get_autograder, has_autograder, register_autograder
 
 __all__ = [
@@ -39,6 +40,7 @@ __all__ = [
     "AutoGraderGradeRequest",
     "AutoGraderGradeResponse",
     "AutoGraderExternalApi",
+    "QuestionAnswerRecognizer",
     "AutoGradeJobSubmitRequest",
     "AutoGradeJobSubmitResponse",
     "AutoGradeJobStatusResponse",

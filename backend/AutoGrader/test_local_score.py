@@ -1,15 +1,10 @@
-"""
-Smoke test for the minimal AutoGrader scoring flow.
-
-Input: Q5Q6.jpg + Answer.jpg
-Output: printed score dictionary returned by AutoGraderEntry.
-"""
-
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 import sys
+
 
 CURRENT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = CURRENT_DIR.parent
@@ -31,15 +26,12 @@ async def main() -> None:
 
     entry = AutoGraderEntry()
     result = await entry.pair_and_score_paper(
-        paper_id="q5q6-smoke",
+        paper_id="q5q6-local-test",
         question_source=question_path,
         answer_source=answer_path,
     )
 
-    print("paper_id:", result["paper_id"])
-    print("pair_count:", result["pair_count"])
-    print("scores:")
-    print(result["scores"])
+    print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

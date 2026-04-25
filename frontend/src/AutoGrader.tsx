@@ -1,12 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { apiUrl } from "./api";
 
-type ScoreMode = "absolute" | "percentage";
+type ScoreMode = "absolute" | "percentage" | "manual_review";
 
 type ScoreItem = {
-  score: number;
+  score: number | null;
   mode: ScoreMode;
   max_score?: number | null;
+  manual_review?: boolean;
+  reason?: string | null;
+  question_text?: string | null;
+  answer_text?: string | null;
 };
 
 type GradeResponse = {
@@ -148,10 +152,19 @@ export default function AutoGrader() {
 
           <div className="autograder-score-list">
             {sortedScores.map(([qid, item]) => {
+              if (item.manual_review || item.mode === "manual_review") {
+                return (
+                  <div className="autograder-score-item" key={qid}>
+                    <span>Q{qid}</span>
+                    <strong>人工复核</strong>
+                    {item.reason ? <small>{item.reason}</small> : null}
+                  </div>
+                );
+              }
               const display =
                 item.mode === "absolute" && item.max_score != null
-                  ? `${item.score}/${item.max_score}`
-                  : `${item.score}%`;
+                  ? `${item.score ?? 0}/${item.max_score}`
+                  : `${item.score ?? 0}%`;
               return (
                 <div className="autograder-score-item" key={qid}>
                   <span>Q{qid}</span>

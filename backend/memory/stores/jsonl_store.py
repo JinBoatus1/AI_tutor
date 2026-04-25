@@ -13,8 +13,8 @@ from typing import Any, Dict, Iterable, List, Optional, Protocol, Tuple, Union
 from ..memory import DeleteMode, MemoryRecord, Status
 
 
-# =============== 约定 ===============
-SUMMARY_SEG = "__summary__"  # address 后缀：/<unit>/__summary__ 代表 summary 流
+# =============== Conventions ===============
+SUMMARY_SEG = "__summary__"  # Address suffix: /<unit>/__summary__ refers to the summary stream
 _ALLOWED_ADDR = re.compile(r"^[A-Za-z0-9_\-/]+$")
 _ALLOWED_DELETE_ADDR = re.compile(r"^[A-Za-z0-9_\-./\\/]*$")
 _JSON_SUFFIXES = {".json", ".jsonl"}
@@ -26,10 +26,10 @@ def _iso_utc_now() -> str:
 
 def _to_epoch_seconds(x: Union[int, float, str, datetime]) -> int:
     """
-    支持：
+    Supported inputs:
     - int/float: epoch seconds
-    - str: ISO8601（支持 Z）
-    - datetime: naive 视为 UTC
+    - str: ISO8601 (supports Z)
+    - datetime: naive values are treated as UTC
     """
     if isinstance(x, (int, float)):
         return int(x)
@@ -44,7 +44,7 @@ def _to_epoch_seconds(x: Union[int, float, str, datetime]) -> int:
         s = x.strip()
         if s.endswith("Z"):
             s = s[:-1] + "+00:00"
-        # 允许只给日期
+        # Allow date-only strings.
         try:
             dt = datetime.fromisoformat(s)
         except ValueError:
@@ -70,7 +70,7 @@ class _DeleteStrategy(Protocol):
 
 
 class _PathDeleteStrategy:
-    """删除指定文件，或目录下全部文件（保留目录结构）。"""
+    """Delete a specific file, or all files under a directory while keeping the directory tree."""
 
     def execute(self, target: Path) -> int:
         if not target.exists():
@@ -93,7 +93,7 @@ class _PathDeleteStrategy:
 
 
 class _NonSummaryJsonDeleteStrategy:
-    """删除非 summary 的 json/jsonl 文件，保留 summary 文件与目录结构。"""
+    """Delete non-summary json/jsonl files while keeping summary files and the directory tree."""
 
     @staticmethod
     def _is_deletable_json(p: Path) -> bool:
@@ -136,18 +136,18 @@ class _DeleteStrategyFactory:
 
 class JsonlMemoryStore:
     """
-    纯文本 JSONL 记忆存储（含临时索引）：
+        Plain-text JSONL memory store with temporary indexes:
 
-    每个 unit 目录：
+        Per-unit directory:
       events.jsonl
       summary.jsonl
       events.index.jsonl
       summary.index.jsonl
 
-    book 根目录：
-      _global_index.jsonl   # 全局索引：支持按 id/time 查询
+        Book root directory:
+            _global_index.jsonl   # Global index for id/time queries
 
-    对外：只要求 read/write，但本类额外提供增强检索方法：
+        Public contract only requires read/write, but this class also provides extra lookup helpers:
       - get_by_id(record_id)
       - query_by_time(start, end, address=None, stream=None, limit=None)
       - write_summary(unit_address, summary_text, source_ids=None)
@@ -231,15 +231,15 @@ class JsonlMemoryStore:
     def _post_delete_refresh(self) -> int:
         self._id_cache.clear()
         self._id_cache_loaded = False
-        # 删除后重建全局索引，避免按 id/时间查询读到陈旧地址
+        # Rebuild the global index after delete to avoid stale addresses in id/time queries.
         st = self.rebuild_global_index()
         return st if st == Status.OK else Status.IO_ERROR
 
     def _split_stream(self, address: str) -> Tuple[str, str]:
         """
-        返回 (unit_address, stream)：
-          - address=unit => ("unit","events")
-          - address=unit/__summary__ => ("unit","summary")
+                Return (unit_address, stream):
+                    - address=unit => ("unit", "events")
+                    - address=unit/__summary__ => ("unit", "summary")
         """
         addr = address.strip().strip("/")
         if addr == SUMMARY_SEG:
@@ -282,7 +282,7 @@ class JsonlMemoryStore:
     # ---------------------------
     def _append_bytes(self, path: Path, payload: bytes) -> Tuple[int, int]:
         """
-        以二进制追加写，返回 (offset, length)。
+        Append bytes in binary mode and return (offset, length).
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("ab") as f:
@@ -310,7 +310,7 @@ class JsonlMemoryStore:
     # ---------------------------
     def write(self, address: str, content: str) -> int:
         """
-        写入一条记录（events 或 summary），同时维护：
+        Write one record (events or summary) while maintaining:
         - unit stream index
         - global index
         """
@@ -326,7 +326,7 @@ class JsonlMemoryStore:
             rec: Dict[str, Any] = {
                 "id": uuid.uuid4().hex,
                 "ts": _iso_utc_now(),
-                "t": int(time.time()),  # epoch seconds for time query
+                "t": int(time.time()),  # Epoch seconds for time queries
                 "content": content,
             }
             line = (json.dumps(rec, ensure_ascii=False) + "\n").encode("utf-8")
@@ -334,16 +334,16 @@ class JsonlMemoryStore:
             data_path = self._data_path(unit, stream)
             offset, length = self._append_bytes(data_path, line)
 
-            # unit index
+            # Unit index
             uidx = {"id": rec["id"], "t": rec["t"], "offset": offset, "len": length}
             self._append_bytes(self._index_path(unit, stream),
                                (json.dumps(uidx, ensure_ascii=False) + "\n").encode("utf-8"))
 
-            # global index
+            # Global index
             gidx = {
                 "id": rec["id"],
                 "t": rec["t"],
-                "address": unit,     # 注意：这里存 unit 地址，不带 __summary__
+                "address": unit,     # Store the unit address here without __summary__
                 "stream": stream,
                 "offset": offset,
                 "len": length,
@@ -351,7 +351,7 @@ class JsonlMemoryStore:
             self._append_bytes(self._global_index_path(),
                                (json.dumps(gidx, ensure_ascii=False) + "\n").encode("utf-8"))
 
-            # 更新内存 cache（写入后立刻可按 id 查）
+            # Update the in-memory cache so the record is immediately queryable by id.
             self._id_cache[rec["id"]] = _Loc(unit, stream, offset, length)
             return Status.OK
 
@@ -360,13 +360,13 @@ class JsonlMemoryStore:
 
     def read(self, address: str) -> Tuple[int, List[MemoryRecord]]:
         """
-                按 address 读取全部记录（对外只返回三项）：
+                Read all records by address (public output only returns three fields):
           - unit => events.jsonl
           - unit/__summary__ => summary.jsonl
 
-                每条记录输出结构：
+                Each record is returned as:
                     {"id": str, "time": str|int|None, "content": str|None}
-                其中 time 优先使用 ISO 字符串 ts，若缺失则回退到 epoch t。
+                time prefers the ISO string ts and falls back to epoch t when missing.
         """
         addr = self._validate_address(address)
         if addr is None:
@@ -403,9 +403,9 @@ class JsonlMemoryStore:
 
     def delete(self, address: str, mode: Union[str, DeleteMode] = DeleteMode.PATH) -> int:
         """
-        统一删除入口：
-        - mode=PATH: 删除指定文件，或目录下全部文件（保留目录）
-        - mode=NON_SUMMARY_JSON: 删除所有非 summary 的 json/jsonl 文件（保留目录）
+        Unified delete entry point:
+        - mode=PATH: delete a specific file, or all files under a directory while keeping the directory
+        - mode=NON_SUMMARY_JSON: delete all non-summary json/jsonl files while keeping the directory
         """
         target = self._resolve_delete_target(address)
         if target is None:
@@ -431,8 +431,8 @@ class JsonlMemoryStore:
     # ---------------------------
     def write_summary(self, unit_address: str, summary_text: str, source_ids: Optional[List[str]] = None) -> int:
         """
-        summary 的增强写入：允许附带 source_ids
-        仍然写到 unit/__summary__ 流里（summary.jsonl）。
+        Enhanced summary write: allows optional source_ids.
+        The record is still written to the unit/__summary__ stream (summary.jsonl).
         """
         addr = self._validate_address(unit_address)
         if addr is None:
@@ -440,7 +440,7 @@ class JsonlMemoryStore:
         if not isinstance(summary_text, str):
             return Status.INVALID_PARAM
 
-        # 手动组装记录，然后走同样的写入逻辑
+        # Build the record manually, then follow the same write path.
         try:
             unit = addr
             stream = "summary"
@@ -473,7 +473,7 @@ class JsonlMemoryStore:
 
     def read_latest_summary(self, unit_address: str) -> Tuple[int, Optional[Dict[str, Any]]]:
         """
-        读某单元最新 summary（最后一条）。
+        Read the latest summary for a unit (the last record).
         """
         st, summaries = self.read(unit_address.strip().strip("/") + "/__summary__")
         if st != Status.OK or not summaries:
@@ -521,7 +521,7 @@ class JsonlMemoryStore:
 
     def get_by_id(self, record_id: str) -> Tuple[int, Optional[Dict[str, Any]]]:
         """
-        全局按 id 精确检索（依赖 _global_index.jsonl）。
+        Perform an exact global lookup by id using _global_index.jsonl.
         """
         if not isinstance(record_id, str) or not record_id.strip():
             return (Status.INVALID_PARAM, None)
@@ -546,10 +546,10 @@ class JsonlMemoryStore:
         limit: Optional[int] = None,
     ) -> Tuple[int, List[Dict[str, Any]]]:
         """
-        按时间窗查询：
-        - address=None: 扫全局索引 _global_index.jsonl
-        - address=unit: 扫单元 stream 索引 events.index.jsonl / summary.index.jsonl
-        - stream=None: 全局查询时不过滤；单元查询时默认 events
+        Query records within a time window:
+        - address=None: scan the global index _global_index.jsonl
+        - address=unit: scan the unit stream index events.index.jsonl / summary.index.jsonl
+        - stream=None: do not filter during global queries; default to events for unit queries
         """
         try:
             t0 = _to_epoch_seconds(start)
@@ -565,7 +565,7 @@ class JsonlMemoryStore:
 
         out: List[Dict[str, Any]] = []
 
-        # 选择索引文件
+        # Select the index file.
         if address is None:
             idx_path = self._global_index_path()
             if not idx_path.exists():
@@ -605,7 +605,7 @@ class JsonlMemoryStore:
             except Exception:
                 return (Status.IO_ERROR, [])
 
-        # 单元内查询
+        # Query within a unit.
         unit = self._validate_address(address)
         if unit is None:
             return (Status.INVALID_ADDRESS, [])
@@ -642,11 +642,11 @@ class JsonlMemoryStore:
             return (Status.IO_ERROR, [])
 
     # ---------------------------
-    # Index maintenance (临时索引可重建)
+    # Index maintenance (temporary indexes can be rebuilt)
     # ---------------------------
     def rebuild_unit_index(self, unit_address: str, stream: str = "events") -> int:
         """
-        从 events.jsonl / summary.jsonl 重建对应的 *.index.jsonl
+        Rebuild the corresponding *.index.jsonl from events.jsonl / summary.jsonl.
         """
         unit = self._validate_address(unit_address)
         if unit is None:
@@ -694,7 +694,7 @@ class JsonlMemoryStore:
 
     def rebuild_global_index(self) -> int:
         """
-        重建 _global_index.jsonl：遍历所有 unit 下的 events.jsonl/summary.jsonl
+        Rebuild _global_index.jsonl by scanning all events.jsonl/summary.jsonl files under every unit.
         """
         g = self._global_index_path()
         tmp = g.with_suffix(".tmp")
@@ -702,7 +702,7 @@ class JsonlMemoryStore:
         try:
             with tmp.open("wb") as fg:
                 for data_file in self.base.rglob("*.jsonl"):
-                    # 仅关心 events.jsonl / summary.jsonl
+                    # Only care about events.jsonl / summary.jsonl
                     name = data_file.name
                     if name not in ("events.jsonl", "summary.jsonl"):
                         continue
