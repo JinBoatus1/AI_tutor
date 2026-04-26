@@ -156,7 +156,7 @@ export default function AutoGrader() {
                 return (
                   <div className="autograder-score-item" key={qid}>
                     <span>Q{qid}</span>
-                    <strong>人工复核</strong>
+                    <strong>Manual review</strong>
                     {item.reason ? <small>{item.reason}</small> : null}
                   </div>
                 );
@@ -176,7 +176,7 @@ export default function AutoGrader() {
 
           {result.all_absolute && result.total_score != null && result.total_max_score != null && (
             <p className="autograder-total-score">
-              总分: {result.total_score}/{result.total_max_score}
+              Total score: {result.total_score}/{result.total_max_score}
             </p>
           )}
         </div>
