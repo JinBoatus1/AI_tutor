@@ -4,63 +4,64 @@ import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
+  clearAllUploadedTextbooksFromBrowser,
+  fetchTextbookOptionsFromServer,
+  invalidateTextbookCatalogSync,
+  isValidUploadedTextbookId,
   readSelectedTextbookId,
   readTextbookOptionList,
-  syncTextbookCatalogFromServer,
+  reconcileSelectedTextbookWithCatalog,
+  removeUploadedTextbookFromLocal,
   type TextbookTreeRoot,
   writeCatalogAndTree,
   writeSelectedTextbookId,
 } from "./learningTextbooks";
 import "./UserProfile.css";
 
-function GoogleIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-        fill="#EA4335"
-      />
-    </svg>
-  );
-}
-
 export default function UserProfile() {
-  const { user, loading, login, logout, token } = useAuth();
+  const { user, loading, logout, setShowSignIn, token } = useAuth();
   const { pageBackground, setPageBackground } = useProfileSettings();
   const [textbookOptions, setTextbookOptions] = useState(() => readTextbookOptionList());
   const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
   const [textbookUploading, setTextbookUploading] = useState(false);
+  const [textbookDeleting, setTextbookDeleting] = useState(false);
+  const [catalogSyncing, setCatalogSyncing] = useState(false);
   const [textbookError, setTextbookError] = useState<string | null>(null);
   const [pickedPdfName, setPickedPdfName] = useState<string | null>(null);
   const textbookFileRef = useRef<HTMLInputElement>(null);
 
-  const refreshTextbookOptions = useCallback(() => {
+  const refreshTextbookOptions = useCallback(async () => {
+    reconcileSelectedTextbookWithCatalog();
+    if (token) {
+      try {
+        await fetchTextbookOptionsFromServer(token);
+      } catch {
+        /* keep current in-memory list */
+      }
+    }
     setTextbookOptions(readTextbookOptionList());
     setSelectedTextbook(readSelectedTextbookId());
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    void (async () => {
-      await syncTextbookCatalogFromServer(token);
-      refreshTextbookOptions();
-    })();
+    void refreshTextbookOptions();
   }, [token, refreshTextbookOptions]);
 
+  const onClearLocalUploadsOnly = () => {
+    if (
+      !window.confirm(
+        "Remove every uploaded book from this browser only? This does not delete files on the server. FCOS stays available."
+      )
+    ) {
+      return;
+    }
+    clearAllUploadedTextbooksFromBrowser();
+    void refreshTextbookOptions();
+  };
+
   useEffect(() => {
-    const onChange = () => refreshTextbookOptions();
+    const onChange = () => void refreshTextbookOptions();
     window.addEventListener("ai-tutor-textbook-changed", onChange);
     window.addEventListener("storage", onChange);
     return () => {
@@ -109,12 +110,88 @@ export default function UserProfile() {
       }
       writeCatalogAndTree(data.id, data.label || data.id, data.tree);
       writeSelectedTextbookId(data.id);
-      refreshTextbookOptions();
+      void refreshTextbookOptions();
     } catch {
       setTextbookError("Could not reach the server. Try again later.");
     } finally {
       setTextbookUploading(false);
       clearTextbookFileInput();
+    }
+  };
+
+  const onDeleteSelectedUpload = async () => {
+    if (!token || !isValidUploadedTextbookId(selectedTextbook)) return;
+    const label =
+      textbookOptions.find((o) => o.id === selectedTextbook)?.linkLabel ?? selectedTextbook;
+    if (
+      !window.confirm(
+        `Permanently delete "${label}"? The PDF, outline, and learning progress for this book will be removed. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setTextbookDeleting(true);
+    setTextbookError(null);
+    try {
+      const resp = await fetch(
+        apiUrl(`/api/user_textbooks/${encodeURIComponent(selectedTextbook)}/delete`),
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      let data: { detail?: string } = {};
+      try {
+        data = (await resp.json()) as { detail?: string };
+      } catch {
+        /* non-JSON body */
+      }
+      if (!resp.ok) {
+        if (resp.status === 404 && isValidUploadedTextbookId(selectedTextbook)) {
+          invalidateTextbookCatalogSync();
+          removeUploadedTextbookFromLocal(selectedTextbook);
+          await fetchTextbookOptionsFromServer(token);
+          setTextbookOptions(readTextbookOptionList());
+          setSelectedTextbook(readSelectedTextbookId());
+          setTextbookError(null);
+          return;
+        }
+        setTextbookError(typeof data?.detail === "string" ? data.detail : "Delete failed.");
+        return;
+      }
+      invalidateTextbookCatalogSync();
+      removeUploadedTextbookFromLocal(selectedTextbook);
+      await fetchTextbookOptionsFromServer(token);
+      setTextbookOptions(readTextbookOptionList());
+      setSelectedTextbook(readSelectedTextbookId());
+    } catch {
+      setTextbookError("Could not reach the server. Try again later.");
+    } finally {
+      setTextbookDeleting(false);
+    }
+  };
+
+  /** Re-fetch the textbook list from the server and refresh this browser (fixes “ghost” books after a race or 404 delete). */
+  const onResyncCatalogFromServer = async () => {
+    if (!token) return;
+    setCatalogSyncing(true);
+    setTextbookError(null);
+    try {
+      invalidateTextbookCatalogSync();
+      try {
+        await fetchTextbookOptionsFromServer(token);
+      } catch {
+        setTextbookError(
+          "Could not load your textbook list from the server (network or sign-in). Your local list was not changed."
+        );
+        return;
+      }
+      setTextbookOptions(readTextbookOptionList());
+      setSelectedTextbook(readSelectedTextbookId());
+    } catch {
+      setTextbookError("Could not reach the server. Try again later.");
+    } finally {
+      setCatalogSyncing(false);
     }
   };
 
@@ -153,9 +230,8 @@ export default function UserProfile() {
         ) : (
           <div className="profile-account-block">
             <p className="profile-muted">You are not signed in. Sign in to save chat history and sync learning progress.</p>
-            <button type="button" className="profile-google-btn" onClick={login}>
-              <GoogleIcon size={18} />
-              Sign in with Google
+            <button type="button" className="profile-google-btn" onClick={() => setShowSignIn(true)}>
+              Sign in
             </button>
           </div>
         )}
@@ -167,8 +243,9 @@ export default function UserProfile() {
         </h2>
         <p className="profile-setting-desc">
           When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch
-          to that book. After you upload a PDF, the server builds an outline JSON in the same shape as FCOS (nested
-          objects and page numbers).
+          to that book. After you upload a PDF, the server checks that it is a real textbook or course book, then builds
+          an outline JSON in the same shape as FCOS (nested objects and page numbers). Other PDF types are not accepted
+          here—use Auto Grader for those.
         </p>
         {!user ? (
           <p className="profile-muted">Sign in to upload your own PDF and save it to your account.</p>
@@ -183,7 +260,7 @@ export default function UserProfile() {
                 className="profile-signout-btn"
                 style={{ minWidth: "12rem", cursor: "pointer" }}
                 value={selectedTextbook}
-                disabled={textbookUploading}
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
                 onChange={(e) => {
                   const id = e.target.value;
                   setSelectedTextbook(id);
@@ -196,6 +273,47 @@ export default function UserProfile() {
                   </option>
                 ))}
               </select>
+            </div>
+            {isValidUploadedTextbookId(selectedTextbook) ? (
+              <div className="profile-textbook-delete-row">
+                <button
+                  type="button"
+                  className="profile-textbook-delete-btn"
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
+                  onClick={() => void onDeleteSelectedUpload()}
+                >
+                  {textbookDeleting ? "Deleting…" : "Delete this uploaded textbook"}
+                </button>
+                <span className="profile-muted profile-textbook-delete-hint">
+                  Removes the PDF and outline from your account and clears learning progress for this book.
+                </span>
+              </div>
+            ) : null}
+            <div className="profile-textbook-sync-row">
+              <button
+                type="button"
+                className="profile-textbook-sync-btn"
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
+                onClick={() => void onResyncCatalogFromServer()}
+              >
+                {catalogSyncing ? "Syncing…" : "Sync textbook list with server"}
+              </button>
+              <span className="profile-muted profile-textbook-sync-hint">
+                Replaces this browser's list with what your account has on the server. If this fails (offline / 401),
+                the red message above explains it. Learning Mode uses the same data.
+              </span>
+              <button
+                type="button"
+                className="profile-textbook-reset-local-btn"
+                disabled={textbookUploading || textbookDeleting || catalogSyncing}
+                onClick={onClearLocalUploadsOnly}
+              >
+                Clear uploaded books from this browser only
+              </button>
+              <span className="profile-muted profile-textbook-sync-hint">
+                Removes all user-uploaded entries from local storage (not the server). Use when the list is stuck or
+                shows duplicates; then use Sync to pull real books back from the server.
+              </span>
             </div>
             <div className="profile-account-row profile-file-upload-row">
               <span className="profile-muted" id="profile-textbook-file-label">
@@ -210,7 +328,7 @@ export default function UserProfile() {
                   className="profile-file-input-hidden"
                   tabIndex={-1}
                   aria-labelledby="profile-textbook-file-label"
-                  disabled={textbookUploading}
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
@@ -221,7 +339,7 @@ export default function UserProfile() {
                 <button
                   type="button"
                   className="profile-file-choose-btn"
-                  disabled={textbookUploading}
+                  disabled={textbookUploading || textbookDeleting || catalogSyncing}
                   onClick={() => textbookFileRef.current?.click()}
                 >
                   Choose file

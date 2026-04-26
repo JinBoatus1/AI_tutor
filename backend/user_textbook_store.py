@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -120,3 +121,14 @@ def load_pdf_bytes(email: str, book_id: str) -> Optional[bytes]:
 
 def user_owns_book(email: str, book_id: str) -> bool:
     return bool(load_meta(email, book_id))
+
+
+def delete_user_textbook(email: str, book_id: str) -> bool:
+    """Remove the uploaded book directory. Returns True if a book was removed."""
+    if not is_valid_user_book_id(book_id):
+        return False
+    root = book_root(email, book_id)
+    if not os.path.isdir(root):
+        return False
+    shutil.rmtree(root, ignore_errors=True)
+    return not os.path.isdir(root)

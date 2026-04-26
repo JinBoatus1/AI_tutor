@@ -6,7 +6,7 @@ import os
 import re
 import shutil
 import tempfile
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
@@ -150,10 +150,28 @@ class ChatMessage(BaseModel):
     student_id: Optional[str] = None
     session_id: Optional[str] = None
     textbook_id: Optional[str] = None  # "focs" 或 "user_<id>"（后者需登录且为本人教材）
+    silent: bool = False  # 不写会话/Memory/进度条；用于仅拉书页的降级请求
 
 
-MAX_USER_PDF_BYTES = 14 * 1024 * 1024  # 约 14MB
+# 教材整本 PDF 上限（聊天附件与 /api/user_textbooks/from_pdf 共用）；可用环境变量 MAX_USER_PDF_MB（1–512，默认 100）
+def _max_user_pdf_mb() -> int:
+    raw = os.getenv("MAX_USER_PDF_MB", "100").strip()
+    try:
+        v = int(raw)
+    except ValueError:
+        return 100
+    v = max(1, min(v, 512))
+    # 忽略误配的旧上限（如 14）；低于 25 一律按默认 100MB，避免线上仍显示「max 14 MB」
+    if v < 25:
+        return 100
+    return v
+
+
+MAX_USER_PDF_MB = _max_user_pdf_mb()
+MAX_USER_PDF_BYTES = MAX_USER_PDF_MB * 1024 * 1024
 MAX_USER_PDF_PAGES_RENDER = 8
+# Learning Mode: sidebar outline → PDF preview (max pages per request)
+MAX_TEXTBOOK_PREVIEW_PAGES = 72
 
 
 def _strip_base64_payload(s: str) -> str:
@@ -244,7 +262,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if len(pdf_bytes) > MAX_USER_PDF_BYTES:
             raise HTTPException(
                 status_code=400,
-                detail=f"PDF too large (max {MAX_USER_PDF_BYTES // (1024 * 1024)} MB).",
+                detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).",
             )
         try:
             pdf_pages = lr.render_user_pdf_first_pages_to_base64(
@@ -312,17 +330,18 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "\nAlways map chapters/sections to the textbook tree names exactly. If student wording is vague, propose 2-4 closest options from the tree and ask them to choose."
             )
         # Hidden per-student progress bar from tree structure.
-        try:
-            if user_email:
-                bar = sbs.load_bar_mongo(user_email, tid)
-                bar = sbs.update_bar_from_message_on_bar(bar, chat_message.message, tid, user_email)
-                bar["textbook_id"] = tid
-                sbs.save_bar_mongo(user_email, bar, tid)
-            else:
-                bar = sbs.update_bar_from_message(student_id, chat_message.message, tid)
-            system_content += sbs.build_bar_prompt(bar, user_email)
-        except Exception as e:
-            print(f"[StudentBar] update failed: {e}")
+        if not chat_message.silent:
+            try:
+                if user_email:
+                    bar = sbs.load_bar_mongo(user_email, tid)
+                    bar = sbs.update_bar_from_message_on_bar(bar, chat_message.message, tid, user_email)
+                    bar["textbook_id"] = tid
+                    sbs.save_bar_mongo(user_email, bar, tid)
+                else:
+                    bar = sbs.update_bar_from_message(student_id, chat_message.message, tid)
+                system_content += sbs.build_bar_prompt(bar, user_email)
+            except Exception as e:
+                print(f"[StudentBar] update failed: {e}")
         section_hint = lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
         is_subsection_request = bool(section_hint and "." in section_hint and section_info)
@@ -482,7 +501,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                     pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
                     if pages_b64:
                         result["reference_section_pages_b64"] = pages_b64
-                if _MEMORY_AVAILABLE:
+                if _MEMORY_AVAILABLE and not chat_message.silent:
                     try:
                         if mem is None:
                             mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
@@ -513,7 +532,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                     result["reference_section_pages_b64"] = pages_b64
 
             # 按 FOCS topic 写入 memory：事件（完整 Q&A，带时间）+ summary 流
-            if _MEMORY_AVAILABLE and matched_topic:
+            if _MEMORY_AVAILABLE and matched_topic and not chat_message.silent:
                 try:
                     if mem is None:
                         mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
@@ -528,7 +547,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 except Exception as e:
                     print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
         # Save to MongoDB if user is authenticated
-        if user_email:
+        if user_email and not chat_message.silent:
             col = database.chat_sessions()
             if col is not None:
                 now = datetime.now(timezone.utc).isoformat()
@@ -605,6 +624,59 @@ Now build the full tree from the OCR text below.
 OCR text:
 """
 
+TEXTBOOK_CLASSIFY_PROMPT = """You classify OCR text taken from the first pages of a PDF.
+
+Answer whether this is primarily a **textbook or standard course book** for teaching/learning: structured chapters or sections, instructional prose, definitions, examples, exercises—meant to be studied over many pages.
+
+Answer **not** a textbook if it is mainly: a single research paper or preprint, a benchmark/score report, an exam paper, worksheets only, slide decks, legal or financial forms, a novel or news article, a CV/resume, a poster, marketing material, or similar non-textbook documents.
+
+OCR excerpt:
+---
+{snippet}
+---
+
+Return ONLY valid JSON on one line: {{"is_textbook": true}} or {{"is_textbook": false}}. No markdown, no code fences, no other text."""
+
+
+def _ocr_looks_like_textbook(ocr_text: str) -> bool:
+    """LLM gate: My Profile only saves uploads that look like real textbooks/course books."""
+    snippet = (ocr_text or "").strip()[:8000]
+    if len(snippet) < 30:
+        return False
+    prompt = TEXTBOOK_CLASSIFY_PROMPT.format(snippet=snippet)
+    resp = create_chat_completion(
+        model="gpt-5.2",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+    )
+    raw = (resp.choices[0].message.content or "").strip()
+    cleaned = re.sub(r"```(?:json)?\s*|\s*```", "", raw, flags=re.I).strip()
+    try:
+        obj = json.loads(cleaned)
+    except json.JSONDecodeError:
+        m = re.search(r'\{\s*"is_textbook"\s*:\s*(true|false)\s*\}', cleaned, re.I)
+        if not m:
+            return False
+        try:
+            obj = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return False
+    val = obj.get("is_textbook")
+    if val is True:
+        return True
+    if val is False:
+        return False
+    if isinstance(val, str) and val.lower() in ("true", "false"):
+        return val.lower() == "true"
+    return False
+
+
+NOT_TEXTBOOK_UPLOAD_DETAIL = (
+    "This PDF does not look like a textbook or standard course book. "
+    "My Profile only accepts textbook-style PDFs for Learning Mode. "
+    "Use Auto Grader for other document types."
+)
+
 
 @router.get("/api/user_textbooks")
 async def list_my_textbooks(authorization: Optional[str] = Header(None)):
@@ -633,6 +705,98 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
     return outline if isinstance(outline, dict) else {}
 
 
+@router.get("/api/textbook_pages")
+async def render_textbook_pages(
+    textbook_id: str = Query("focs"),
+    start_book: int = Query(..., ge=1, le=10000),
+    end_book: int = Query(..., ge=1, le=10000),
+    section_title: str = Query(""),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Render PDF page images for an outline book-page range (printed page numbers in the tree).
+    Same offset rules as chat; used when the student clicks a section in the learning progress tree.
+    """
+    user_email = verify_token(authorization)
+    tid = (textbook_id or "focs").strip() or "focs"
+    if tid.startswith("user_"):
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        if not uts.is_valid_user_book_id(tid) or not uts.user_owns_book(user_email, tid):
+            raise HTTPException(status_code=404, detail="Textbook not found")
+    else:
+        tid = "focs"
+
+    sb = min(start_book, end_book)
+    eb = max(start_book, end_book)
+    name = (section_title or "").strip()[:600] or "Section"
+
+    with lr.request_book(tid, user_email):
+        pdf = lr.get_effective_pdf_bytes()
+        off = lr.effective_pdf_page_offset()
+        start_pdf = sb + off
+        end_pdf = eb + off
+        if not pdf:
+            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+
+        try:
+            doc = fitz.open(stream=pdf, filetype="pdf")
+            doc_len = len(doc)
+            doc.close()
+        except Exception:
+            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+
+        start_pdf = max(1, min(start_pdf, doc_len))
+        end_pdf = max(start_pdf, min(end_pdf, doc_len))
+        if end_pdf - start_pdf + 1 > MAX_TEXTBOOK_PREVIEW_PAGES:
+            end_pdf = start_pdf + MAX_TEXTBOOK_PREVIEW_PAGES - 1
+
+        pages_b64 = lr.render_pdf_page_range_to_base64(pdf, start_pdf, end_pdf)
+        return {
+            "pages_b64": pages_b64,
+            "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf},
+        }
+
+
+def _delete_user_textbook_core(email: str, book_id: str) -> Dict[str, Any]:
+    """Delete uploaded book + learning bars. Raises HTTPException."""
+    if book_id == "focs" or not uts.is_valid_user_book_id(book_id):
+        raise HTTPException(status_code=400, detail="Cannot delete this textbook.")
+    if not uts.user_owns_book(email, book_id):
+        raise HTTPException(status_code=404, detail="Textbook not found")
+    if not uts.delete_user_textbook(email, book_id):
+        raise HTTPException(status_code=404, detail="Textbook not found")
+    col = database.learning_bars()
+    if col is not None:
+        try:
+            col.delete_one({"user_email": email, "subject": book_id})
+        except Exception as e:
+            print(f"[user_textbooks] Mongo learning_bars delete failed: {e}", flush=True)
+    try:
+        sbs.delete_all_file_bars_for_textbook(book_id)
+    except Exception as e:
+        print(f"[user_textbooks] file bar cleanup failed: {e}", flush=True)
+    return {"ok": True, "id": book_id}
+
+
+@router.delete("/api/user_textbooks/{book_id}")
+async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = Header(None)):
+    """Permanently delete an uploaded textbook (not FCOS). Also drops learning-bar data for that book."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _delete_user_textbook_core(email, book_id)
+
+
+@router.post("/api/user_textbooks/{book_id}/delete")
+async def delete_my_user_textbook_post(book_id: str, authorization: Optional[str] = Header(None)):
+    """Same as DELETE /api/user_textbooks/{book_id}; POST for proxies that block DELETE."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _delete_user_textbook_core(email, book_id)
+
+
 @router.post("/api/user_textbooks/from_pdf")
 async def create_user_textbook_from_pdf(
     authorization: Optional[str] = Header(None),
@@ -647,7 +811,7 @@ async def create_user_textbook_from_pdf(
     if len(pdf_bytes) > MAX_USER_PDF_BYTES:
         raise HTTPException(
             status_code=400,
-            detail=f"PDF too large (max {MAX_USER_PDF_BYTES // (1024 * 1024)} MB).",
+            detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).",
         )
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -685,6 +849,9 @@ async def create_user_textbook_from_pdf(
 
     if len(ocr_text.strip()) < 20:
         raise HTTPException(status_code=400, detail="OCR failed. Try another file.")
+
+    if not _ocr_looks_like_textbook(ocr_text):
+        raise HTTPException(status_code=400, detail=NOT_TEXTBOOK_UPLOAD_DETAIL)
 
     tree_prompt = FOCS_STYLE_OUTLINE_PROMPT_HEAD + ocr_text[:12000]
     tree_resp = create_chat_completion(
@@ -755,10 +922,7 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
     email = verify_token(authorization)
     if email:
         bar = sbs.load_bar_mongo(email, tid)
-        bar["learned_sections"] = sorted(
-            set(body.learned_sections),
-            key=lambda x: tuple(int(p) for p in str(x).split(".")),
-        )
+        bar["learned_sections"] = sbs.sort_learned_section_list(list(set(body.learned_sections)))
         bar["textbook_id"] = tid
         sbs.save_bar_mongo(email, bar, tid)
         return bar
@@ -766,10 +930,7 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
         tid = "focs"
     sid = body.student_id or "default_student"
     bar = sbs.load_bar(sid, tid)
-    bar["learned_sections"] = sorted(
-        set(body.learned_sections),
-        key=lambda x: tuple(int(p) for p in str(x).split(".")),
-    )
+    bar["learned_sections"] = sbs.sort_learned_section_list(list(set(body.learned_sections)))
     bar["textbook_id"] = tid
     sbs.save_bar(sid, bar, tid)
     return bar

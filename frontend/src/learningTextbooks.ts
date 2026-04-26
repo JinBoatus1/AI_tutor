@@ -4,37 +4,75 @@ import { apiUrl } from "./apiBase";
 /** Bundled outline roots (same shape as FOCS tree JSON). */
 export type TextbookTreeRoot = Record<string, unknown>;
 
+/** Only the last-selected id is persisted in the browser; lists and trees come from the API (server data dir). */
 const STORAGE_KEY = "ai_tutor_selected_textbook_id";
+/** Legacy keys — removed on first successful server fetch. */
 const TREE_PREFIX = "ai_tutor_textbook_tree_";
 const CATALOG_KEY = "ai_tutor_textbook_catalog_v1";
+
+let textbookCatalogSyncGeneration = 0;
+
+export function invalidateTextbookCatalogSync(): void {
+  textbookCatalogSyncGeneration++;
+}
 
 export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = [
   { id: "focs", linkLabel: "FCOS" },
 ];
 
-function safeParseCatalog(): { id: string; linkLabel: string }[] {
+const USER_BOOK_ID_RE = /^user_[A-Za-z0-9_-]{4,64}$/;
+
+export function isValidUploadedTextbookId(id: string): boolean {
+  return USER_BOOK_ID_RE.test(id);
+}
+
+function dedupeCatalogById(items: { id: string; linkLabel: string }[]): { id: string; linkLabel: string }[] {
+  const map = new Map<string, string>();
+  for (const row of items) {
+    if (!row.id || row.id === "focs" || !isValidUploadedTextbookId(row.id)) continue;
+    map.set(row.id, row.linkLabel || row.id);
+  }
+  return Array.from(map.entries()).map(([id, linkLabel]) => ({ id, linkLabel }));
+}
+
+/** Last successful GET /api/user_textbooks (upload rows only). */
+let lastServerUploads: { id: string; linkLabel: string }[] = [];
+const lastServerIdSet = new Set<string>();
+/** After at least one successful list fetch (or explicit clear), selection can be validated against lastServerIdSet. */
+let serverUploadsLoaded = false;
+
+const sessionTreeCache = new Map<string, TextbookTreeRoot>();
+
+function setServerUploadCatalog(items: { id: string; linkLabel: string }[]): void {
+  lastServerUploads = dedupeCatalogById(items);
+  lastServerIdSet.clear();
+  for (const x of lastServerUploads) {
+    lastServerIdSet.add(x.id);
+  }
+  serverUploadsLoaded = true;
+}
+
+function purgeLegacyTextbookLocalStorage(): void {
   try {
-    const raw = localStorage.getItem(CATALOG_KEY);
-    if (!raw) return [];
-    const j = JSON.parse(raw) as { items?: unknown };
-    if (!Array.isArray(j?.items)) return [];
-    return j.items
-      .filter((x): x is { id: string; linkLabel: string } => {
-        const o = x as { id?: unknown; linkLabel?: unknown };
-        return typeof o?.id === "string" && typeof o?.linkLabel === "string";
-      })
-      .filter((x) => x.id !== "focs");
+    localStorage.removeItem(CATALOG_KEY);
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(TREE_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) {
+      localStorage.removeItem(k);
+    }
   } catch {
-    return [];
+    /* ignore */
   }
 }
 
-/** Built-in + uploaded (catalog) options for pickers. */
+/** FCOS + last server list (in-memory). Not persisted to localStorage. */
 export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
-  const custom = safeParseCatalog();
   const seen = new Set<string>();
   const out: { id: string; linkLabel: string }[] = [];
-  for (const o of [...BUILTIN_TEXTBOOK_OPTIONS, ...custom]) {
+  for (const o of [...BUILTIN_TEXTBOOK_OPTIONS, ...lastServerUploads]) {
     if (seen.has(o.id)) continue;
     seen.add(o.id);
     out.push(o);
@@ -42,21 +80,59 @@ export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
   return out;
 }
 
+/** Fetch textbook rows from server, refresh in-memory catalog, strip legacy web cache, reconcile selection. */
+export async function fetchTextbookOptionsFromServer(token: string): Promise<{ id: string; linkLabel: string }[]> {
+  const myGen = ++textbookCatalogSyncGeneration;
+  const r = await fetch(apiUrl("/api/user_textbooks"), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (myGen !== textbookCatalogSyncGeneration) throw new Error("aborted");
+  if (!r.ok) throw new Error(`list ${r.status}`);
+  const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
+  if (myGen !== textbookCatalogSyncGeneration) throw new Error("aborted");
+  const items = dedupeCatalogById(
+    (Array.isArray(data?.textbooks) ? data.textbooks : [])
+      .filter((x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id))
+      .map((x) => ({ id: x.id, linkLabel: x.label || x.id }))
+  );
+  purgeLegacyTextbookLocalStorage();
+  setServerUploadCatalog(items);
+  sessionTreeCache.clear();
+  reconcileSelectedTextbookWithCatalog();
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
+  return readTextbookOptionList();
+}
+
+/** After upload: put tree in session + append row (no localStorage catalog). */
 export function writeCatalogAndTree(id: string, linkLabel: string, tree: TextbookTreeRoot): void {
-  const cur = safeParseCatalog().filter((x) => x.id !== id);
-  cur.push({ id, linkLabel: linkLabel || id });
-  try {
-    localStorage.setItem(CATALOG_KEY, JSON.stringify({ items: cur }));
-    localStorage.setItem(TREE_PREFIX + id, JSON.stringify(tree));
-  } catch {
-    /* ignore */
-  }
+  if (!isValidUploadedTextbookId(id)) return;
+  sessionTreeCache.set(id, tree);
+  const others = lastServerUploads.filter((x) => x.id !== id);
+  setServerUploadCatalog([...others, { id, linkLabel: linkLabel || id }]);
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
 }
 
 export function readSelectedTextbookId(): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && raw.length > 0) return raw;
+    if (!raw || raw.length === 0) return "focs";
+    if (raw === "focs") return "focs";
+    if (!isValidUploadedTextbookId(raw)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return "focs";
+    }
+    if (serverUploadsLoaded && !lastServerIdSet.has(raw)) {
+      localStorage.setItem(STORAGE_KEY, "focs");
+      queueMicrotask(() =>
+        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: "focs" } }))
+      );
+      return "focs";
+    }
+    return raw;
   } catch {
     /* ignore */
   }
@@ -64,21 +140,87 @@ export function readSelectedTextbookId(): string {
 }
 
 export function writeSelectedTextbookId(id: string): void {
+  const safe = id === "focs" || isValidUploadedTextbookId(id) ? id : "focs";
   try {
-    localStorage.setItem(STORAGE_KEY, id);
-    window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id } }));
+    localStorage.setItem(STORAGE_KEY, safe);
+    window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: safe } }));
   } catch {
     /* ignore */
   }
 }
 
-export function getTextbookTree(id: string): TextbookTreeRoot {
-  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+export function reconcileSelectedTextbookWithCatalog(): void {
   try {
-    const raw = localStorage.getItem(TREE_PREFIX + id);
-    if (raw) return JSON.parse(raw) as TextbookTreeRoot;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw || raw === "focs") return;
+    if (!isValidUploadedTextbookId(raw)) {
+      writeSelectedTextbookId("focs");
+      return;
+    }
+    if (serverUploadsLoaded && !lastServerIdSet.has(raw)) {
+      writeSelectedTextbookId("focs");
+    }
   } catch {
     /* ignore */
+  }
+}
+
+export function removeUploadedTextbookFromLocal(id: string): void {
+  if (!isValidUploadedTextbookId(id)) return;
+  sessionTreeCache.delete(id);
+  lastServerUploads = lastServerUploads.filter((x) => x.id !== id);
+  lastServerIdSet.delete(id);
+  try {
+    localStorage.removeItem(TREE_PREFIX + id);
+  } catch {
+    /* ignore */
+  }
+  reconcileSelectedTextbookWithCatalog();
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
+}
+
+export function clearAllUploadedTextbooksFromBrowser(): void {
+  sessionTreeCache.clear();
+  lastServerUploads = [];
+  lastServerIdSet.clear();
+  serverUploadsLoaded = true;
+  purgeLegacyTextbookLocalStorage();
+  writeSelectedTextbookId("focs");
+  window.dispatchEvent(
+    new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
+  );
+}
+
+/** FCOS from bundle; user books from session cache (filled by fetchTree / writeCatalogAndTree). */
+export function getTextbookTree(id: string): TextbookTreeRoot {
+  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+  return sessionTreeCache.get(id) ?? {};
+}
+
+/** Load outline for one book; uses session cache. */
+export async function fetchTextbookTreeForId(
+  token: string | null | undefined,
+  id: string
+): Promise<TextbookTreeRoot> {
+  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+  if (!isValidUploadedTextbookId(id)) return {};
+  if (sessionTreeCache.has(id)) return sessionTreeCache.get(id)!;
+  if (!token) return {};
+  const myGen = textbookCatalogSyncGeneration;
+  const tr = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(id)}/tree`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (myGen !== textbookCatalogSyncGeneration) return sessionTreeCache.get(id) ?? {};
+  if (!tr.ok) {
+    sessionTreeCache.set(id, {});
+    return {};
+  }
+  const tree = (await tr.json()) as TextbookTreeRoot;
+  if (tree && typeof tree === "object") {
+    sessionTreeCache.set(id, tree);
+    return tree;
   }
   return {};
 }
@@ -87,7 +229,6 @@ export function getTextbookLinkLabel(id: string): string {
   return readTextbookOptionList().find((t) => t.id === id)?.linkLabel ?? id;
 }
 
-/** 将 FOCS 形目录转为 CurriculumContext 使用的 topics/chapters 结构（供 Learning Mode 侧栏匹配）。 */
 export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
   topics: { topic: string; chapters: { chapter: string; key_points: string[] }[] }[];
 } {
@@ -110,33 +251,31 @@ export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
   return { topics: [{ topic: "Textbook", chapters }] };
 }
 
-/** 登录后从服务器拉取用户教材列表与目录 JSON，写入 localStorage。 */
-export async function syncTextbookCatalogFromServer(token: string): Promise<void> {
+/** Refreshes in-memory catalog from server (same as opening Learning / Profile with token). */
+export async function syncTextbookCatalogFromServer(token: string): Promise<boolean> {
   try {
-    const r = await fetch(apiUrl("/api/user_textbooks"), {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!r.ok) return;
-    const data = (await r.json()) as { textbooks?: { id: string; label?: string }[] };
-    const items = (Array.isArray(data?.textbooks) ? data.textbooks : []).filter((x) => x?.id && x.id !== "focs");
-    localStorage.setItem(
-      CATALOG_KEY,
-      JSON.stringify({
-        items: items.map((x) => ({ id: x.id, linkLabel: x.label || x.id })),
-      })
-    );
-    for (const it of items) {
-      const tr = await fetch(apiUrl(`/api/user_textbooks/${encodeURIComponent(it.id)}/tree`), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (tr.ok) {
-        const tree = await tr.json();
-        if (tree && typeof tree === "object") {
-          localStorage.setItem(TREE_PREFIX + it.id, JSON.stringify(tree));
-        }
-      }
+    await fetchTextbookOptionsFromServer(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Call on logout so the next user does not inherit the previous account’s in-memory list. */
+export function resetServerTextbookSessionForLogout(): void {
+  lastServerUploads = [];
+  lastServerIdSet.clear();
+  serverUploadsLoaded = false;
+  sessionTreeCache.clear();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw && raw !== "focs" && isValidUploadedTextbookId(raw)) {
+      localStorage.setItem(STORAGE_KEY, "focs");
+      queueMicrotask(() =>
+        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: "focs" } }))
+      );
     }
   } catch {
-    /* offline */
+    /* ignore */
   }
 }

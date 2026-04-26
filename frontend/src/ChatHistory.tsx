@@ -142,8 +142,8 @@ export default function ChatHistory({
           type="button"
           className="ch-reveal-btn"
           onClick={() => persistSidebarCollapsed(false)}
-          title="显示对话列表"
-          aria-label="显示对话列表"
+          title="Show conversations"
+          aria-label="Show conversations"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <polyline points="9 18 15 12 9 6" />
@@ -164,8 +164,8 @@ export default function ChatHistory({
                 type="button"
                 className="ch-collapse-btn"
                 onClick={() => persistSidebarCollapsed(true)}
-                title="隐藏对话列表"
-                aria-label="隐藏对话列表"
+                title="Hide conversation list"
+                aria-label="Hide conversation list"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <polyline points="15 18 9 12 15 6" />

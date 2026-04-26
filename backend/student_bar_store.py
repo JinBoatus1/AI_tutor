@@ -15,6 +15,27 @@ import database
 STUDENT_BAR_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "student_bars")
 
 
+def _path_section_token(path: str) -> str:
+    """与前端 LearningBarPanel.pathBasedToken 一致：无「5.1」式编号时的节点 id（FNV-1a / UTF-8）。"""
+    h = 2166136261
+    for b in path.encode("utf-8"):
+        h ^= b
+        h = (h * 16777619) & 0xFFFFFFFF
+    return f"p{len(path)}_{h:x}"
+
+
+def _learned_section_sort_key(sec: str) -> tuple:
+    s = str(sec)
+    if re.match(r"^\d+(?:\.\d+)*$", s):
+        return (0, tuple(int(p) for p in s.split(".")))
+    return (1, s)
+
+
+def sort_learned_section_list(sections: List[str]) -> List[str]:
+    """与前端 sortSectionTokens 一致：数字节号在前，path token（p…）按字符串排在后。"""
+    return sorted(sections, key=_learned_section_sort_key)
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -32,6 +53,26 @@ def _bar_path(student_id: str, textbook_id: str = "focs") -> str:
     sid = _safe_student_id(student_id)
     tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
     return os.path.join(STUDENT_BAR_DIR, f"{sid}__{tid}.json")
+
+
+def delete_all_file_bars_for_textbook(textbook_id: str) -> int:
+    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FCOS."""
+    tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
+    if tid == "focs":
+        return 0
+    n = 0
+    if not os.path.isdir(STUDENT_BAR_DIR):
+        return 0
+    suffix = f"__{tid}.json"
+    for name in os.listdir(STUDENT_BAR_DIR):
+        if not name.endswith(suffix):
+            continue
+        try:
+            os.remove(os.path.join(STUDENT_BAR_DIR, name))
+            n += 1
+        except OSError:
+            pass
+    return n
 
 
 def _empty_bar(student_id: str, textbook_id: str = "focs") -> Dict[str, Any]:
@@ -119,21 +160,24 @@ def save_bar_mongo(user_email: str, bar: Dict[str, Any], textbook_id: str = "foc
 
 
 def _load_tree_token_map_from_raw(raw: Dict[str, Any]) -> Dict[str, str]:
-    """Map section token (e.g. 5, 5.1, 5.1.1) -> canonical tree title."""
+    """Map section token（如 5.1）或 path token（p…）-> 目录标题。"""
     if not raw:
         return {}
     mapping: Dict[str, str] = {}
 
-    def walk(obj: Dict[str, Any]) -> None:
+    def walk(obj: Dict[str, Any], path_prefix: str) -> None:
         for k, v in obj.items():
             if k == "_range" or not isinstance(v, dict):
                 continue
+            path = f"{path_prefix}/{k}" if path_prefix else k
             first = k.split()[0] if k.split() else ""
             if re.match(r"^\d+(?:\.\d+)*$", first):
                 mapping[first] = k
-            walk(v)
+            else:
+                mapping[_path_section_token(path)] = k
+            walk(v, path)
 
-    walk(raw)
+    walk(raw, "")
     return mapping
 
 
@@ -201,26 +245,29 @@ def _apply_learned_through_chapter_n(
             tok = str(ch)
             if tok in valid_tokens:
                 learned.add(tok)
-    bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+    bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
     bar["current_section"] = str(n)
 
 
 def _ordered_section_tokens_preorder_from_raw(raw: Dict[str, Any]) -> List[str]:
-    """教材树前序遍历的节号列表（与目录顺序一致）。"""
+    """教材树前序遍历的 token 列表（节号或 path token，与 _load_tree_token_map_from_raw 一致）。"""
     if not raw:
         return []
     out: List[str] = []
 
-    def walk(obj: Dict[str, Any]) -> None:
+    def walk(obj: Dict[str, Any], path_prefix: str) -> None:
         for k, v in obj.items():
             if k == "_range" or not isinstance(v, dict):
                 continue
+            path = f"{path_prefix}/{k}" if path_prefix else k
             first = k.split()[0] if k.split() else ""
             if re.match(r"^\d+(?:\.\d+)*$", first):
                 out.append(first)
-            walk(v)
+            else:
+                out.append(_path_section_token(path))
+            walk(v, path)
 
-    walk(raw)
+    walk(raw, "")
     return out
 
 
@@ -266,7 +313,7 @@ def _apply_learned_through_subsection(
     for t in ordered[start : end + 1]:
         if t in valid_tokens:
             learned.add(t)
-    bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+    bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
     bar["current_section"] = target_token
 
 
@@ -411,7 +458,7 @@ def update_bar_from_message(
         learned = set(bar.get("learned_sections") or [])
         for t in tokens:
             learned.add(t)
-        bar["learned_sections"] = sorted(learned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["learned_sections"] = sorted(learned, key=_learned_section_sort_key)
 
     # Update current section.
     if tokens and _contains_any(msg, current_kw):
@@ -422,7 +469,7 @@ def update_bar_from_message(
         planned = set(bar.get("planned_sections") or [])
         for t in tokens:
             planned.add(t)
-        bar["planned_sections"] = sorted(planned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["planned_sections"] = sorted(planned, key=_learned_section_sort_key)
 
     # Confusion tracking: if user says "don't understand", count it on mentioned/current section.
     if _contains_any(msg_lower, confusion_kw):
@@ -506,7 +553,7 @@ def update_bar_from_message_on_bar(
         learned_set = set(bar.get("learned_sections") or [])
         for t in tokens:
             learned_set.add(t)
-        bar["learned_sections"] = sorted(learned_set, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["learned_sections"] = sorted(learned_set, key=_learned_section_sort_key)
 
     if tokens and _contains_any(msg, current_kw):
         bar["current_section"] = tokens[-1]
@@ -515,7 +562,7 @@ def update_bar_from_message_on_bar(
         planned = set(bar.get("planned_sections") or [])
         for t in tokens:
             planned.add(t)
-        bar["planned_sections"] = sorted(planned, key=lambda x: tuple(int(p) for p in x.split(".")))
+        bar["planned_sections"] = sorted(planned, key=_learned_section_sort_key)
 
     if _contains_any(msg_lower, confusion_kw):
         confusion_counts = bar.get("confusion_counts") or {}

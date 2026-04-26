@@ -1,0 +1,232 @@
+/* Auto Grader — visual language aligned with Learning Mode (teal / mint, DM Sans) */
+
+.autograder-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 14px 28px;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.autograder-page-inner {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.autograder-hero {
+  text-align: center;
+  padding: 4px 8px 0;
+}
+
+.autograder-hero-title {
+  margin: 0 0 6px;
+  font-size: clamp(1.45rem, 3.2vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f766e;
+  line-height: 1.2;
+}
+
+.autograder-hero-sub {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.45;
+  max-width: 36em;
+  margin-inline: auto;
+}
+
+.autograder-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  box-shadow: 0 4px 24px -6px rgba(15, 118, 110, 0.12), 0 12px 40px -16px rgba(15, 23, 42, 0.08);
+  padding: 22px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.autograder-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+}
+
+.autograder-panel-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.autograder-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.autograder-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.autograder-file-choose-btn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid #99f6e4;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  color: #0f766e;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.autograder-file-choose-btn:hover {
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.autograder-file-choose-btn:focus-visible {
+  outline: 2px solid #2dd4bf;
+  outline-offset: 2px;
+}
+
+.autograder-file-status {
+  font-size: 0.84rem;
+  color: #64748b;
+  line-height: 1.4;
+  max-width: 100%;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.autograder-file-status--picked {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.autograder-submit {
+  align-self: stretch;
+  margin-top: 2px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 55%, #115e59 100%);
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.28);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.autograder-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.35);
+}
+
+.autograder-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.autograder-submit:focus-visible {
+  outline: 2px solid #5eead4;
+  outline-offset: 3px;
+}
+
+.autograder-error-text {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.autograder-result {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 2px;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  box-shadow: 0 4px 20px -8px rgba(15, 118, 110, 0.15);
+}
+
+.autograder-result h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.autograder-result-meta {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.autograder-score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.autograder-score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #d1fae5;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.autograder-score-item strong {
+  color: #0f766e;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.autograder-total-score {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(45, 212, 191, 0.35);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #115e59;
+}

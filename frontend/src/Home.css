@@ -188,6 +188,25 @@
   min-width: min(100%, 220px);
 }
 
+.home-btn--signin {
+  color: #0d9488;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid rgba(13, 148, 136, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.75rem 1.8rem;
+}
+
+.home-btn--signin:hover {
+  color: #0f766e;
+  background: #f0fdfa;
+  border-color: #5eead4;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px -4px rgba(13, 148, 136, 0.22);
+}
+
 .home-btn--google {
   display: inline-flex;
   align-items: center;

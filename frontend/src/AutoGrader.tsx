@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { apiUrl } from "./api";
+import "./AutoGrader.css";
 
 type ScoreMode = "absolute" | "percentage" | "manual_review";
 
@@ -111,7 +112,6 @@ export default function AutoGrader() {
               {questionFile ? questionFile.name : "No file chosen"}
             </span>
           </div>
-        </div>
 
         <div className="autograder-upload-block">
           <label className="autograder-upload-label">Answer file</label>
@@ -180,7 +180,35 @@ export default function AutoGrader() {
             </p>
           )}
         </div>
-      )}
+
+        {result ? (
+          <section className="autograder-result" aria-labelledby="autograder-result-heading">
+            <h3 id="autograder-result-heading">Grading results</h3>
+            <p className="autograder-result-meta">Sub-questions detected: {result.pair_count}</p>
+
+            <div className="autograder-score-list">
+              {sortedScores.map(([qid, item]) => {
+                const display =
+                  item.mode === "absolute" && item.max_score != null
+                    ? `${item.score}/${item.max_score}`
+                    : `${item.score}%`;
+                return (
+                  <div className="autograder-score-item" key={qid}>
+                    <span>Q{qid}</span>
+                    <strong>{display}</strong>
+                  </div>
+                );
+              })}
+            </div>
+
+            {result.all_absolute && result.total_score != null && result.total_max_score != null ? (
+              <p className="autograder-total-score">
+                Total score: {result.total_score}/{result.total_max_score}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+      </div>
     </div>
   );
 }
