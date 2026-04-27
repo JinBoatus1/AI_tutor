@@ -774,18 +774,6 @@ export default function LearningModel() {
           </p>
         ) : null}
 
-        {matchedSection ? (
-          <div className="match-box">
-            <h4>🔍 Topic: {matchedSection.topic}</h4>
-            <h5>Chapter: {matchedSection.chapter}</h5>
-            <ul>
-              {matchedSection.key_points.map((kp: string, i: number) => (
-                <li key={i}>• {kp}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
         {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
           <div className="reference-page-box reference-page-sidebar">
               {referenceSectionPages?.length ? (

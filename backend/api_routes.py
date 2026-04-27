@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
@@ -332,6 +333,19 @@ def _force_one_sentence(answer: str) -> str:
     if m:
         return m.group(1).strip()
     return s
+
+
+@router.get("/api/version")
+async def api_version():
+    """
+    Deploy probe for Render (or any host): returns build identifiers if available.
+    - Render sets RENDER_GIT_COMMIT for the deployed revision.
+    """
+    return {
+        "render_git_commit": (os.getenv("RENDER_GIT_COMMIT") or "").strip() or None,
+        "service_name": (os.getenv("RENDER_SERVICE_NAME") or "").strip() or None,
+        "utc_epoch": int(time.time()),
+    }
 
 
 @router.post("/api/chat")
