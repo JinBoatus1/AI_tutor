@@ -316,12 +316,60 @@ def _is_simple_definition_question(message: str) -> bool:
     return False
 
 
+def _force_one_sentence(answer: str) -> str:
+    """
+    Best-effort postprocess to enforce a single-sentence reply.
+    Keeps the first non-empty line and truncates at the first sentence-ending punctuation if present.
+    """
+    s = (answer or "").strip()
+    if not s:
+        return ""
+    # Collapse newlines to spaces; keep first line priority.
+    s = " ".join(x.strip() for x in s.splitlines() if x.strip())
+    s = re.sub(r"\s+", " ", s).strip()
+    # Truncate at first sentence end if it exists.
+    m = re.search(r"^(.+?[\.!?。！？])\s", s)
+    if m:
+        return m.group(1).strip()
+    return s
+
+
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(None)):
     print("[Chat] request received", flush=True)
     has_prior_user_messages = any((m.get("sender") == "user") for m in (chat_message.history or []))
     student_id = chat_message.student_id or "default_student"
     user_email = verify_token(authorization)
+
+    # TOP PRIORITY: simple definition questions must be answered in ONE sentence
+    # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
+    if _is_simple_definition_question(chat_message.message):
+        tid = (chat_message.textbook_id or "focs").strip() or "focs"
+        if not user_email and tid.startswith("user_"):
+            tid = "focs"
+        with lr.request_book(tid, user_email):
+            _book_label = (
+                "FOCS (Mathematics for Computer Science)"
+                if tid == "focs"
+                else "the textbook the student selected"
+            )
+            system_content = (
+                f"You are an AI math tutor for {_book_label}. "
+                "The student asked a SIMPLE definition/meaning question. "
+                "Reply with EXACTLY ONE sentence, concise textbook-style. "
+                "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
+                "Return ONE sentence only."
+            )
+            resp = create_chat_completion(
+                model="gpt-5.2",
+                messages=[
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": chat_message.message},
+                ],
+                temperature=0.0,
+            )
+            raw = resp.choices[0].message.content or ""
+            return {"reply": _force_one_sentence(raw)}
 
     combined_images: List[str] = list(chat_message.images_b64 or [])
     if chat_message.pdf_b64:
