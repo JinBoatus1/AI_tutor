@@ -2,12 +2,16 @@ import { useMemo, useRef, useState } from "react";
 import { apiUrl } from "./api";
 import "./AutoGrader.css";
 
-type ScoreMode = "absolute" | "percentage";
+type ScoreMode = "absolute" | "percentage" | "manual_review";
 
 type ScoreItem = {
-  score: number;
+  score: number | null;
   mode: ScoreMode;
   max_score?: number | null;
+  manual_review?: boolean;
+  reason?: string | null;
+  question_text?: string | null;
+  answer_text?: string | null;
 };
 
 type GradeResponse = {
@@ -82,74 +86,99 @@ export default function AutoGrader() {
   };
 
   return (
-    <div className="autograder-page">
-      <div className="autograder-page-inner">
-        <header className="autograder-hero">
-          <h1 className="autograder-hero-title">Auto Grader</h1>
-          <p className="autograder-hero-sub">
-            Upload question and answer PDFs or images. Matches the Learning Mode look and feel. Sub-questions are
-            detected and scored automatically.
-          </p>
-        </header>
+    <div className="page-container">
+      <h1 className="page-title">Auto Grader</h1>
 
-        <div className="autograder-card">
-          <div className="autograder-panel">
-            <span className="autograder-panel-label">Question file</span>
-            <div className="autograder-file-row">
-              <input
-                ref={questionInputRef}
-                className="autograder-file-input-hidden"
-                type="file"
-                accept=".pdf,image/*"
-                aria-label="Upload question file"
-                onChange={(e) => setQuestionFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                className="autograder-file-choose-btn"
-                onClick={() => questionInputRef.current?.click()}
-              >
-                Choose question
-              </button>
-              <span
-                className={`autograder-file-status${questionFile ? " autograder-file-status--picked" : ""}`}
-              >
-                {questionFile ? questionFile.name : "No file chosen"}
-              </span>
-            </div>
+      <div className="card">
+        <div className="autograder-upload-block">
+          <label className="autograder-upload-label">Question file</label>
+          <div className="autograder-file-row">
+            <input
+              ref={questionInputRef}
+              className="autograder-file-input-hidden"
+              type="file"
+              accept=".pdf,image/*"
+              aria-label="Upload question file"
+              onChange={(e) => setQuestionFile(e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              className="autograder-file-choose-btn"
+              onClick={() => questionInputRef.current?.click()}
+            >
+              Choose question
+            </button>
+            <span className="autograder-file-status">
+              {questionFile ? questionFile.name : "No file chosen"}
+            </span>
           </div>
 
-          <div className="autograder-panel">
-            <span className="autograder-panel-label">Answer file</span>
-            <div className="autograder-file-row">
-              <input
-                ref={answerInputRef}
-                className="autograder-file-input-hidden"
-                type="file"
-                accept=".pdf,image/*"
-                aria-label="Upload answer file"
-                onChange={(e) => setAnswerFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                className="autograder-file-choose-btn"
-                onClick={() => answerInputRef.current?.click()}
-              >
-                Choose answer
-              </button>
-              <span
-                className={`autograder-file-status${answerFile ? " autograder-file-status--picked" : ""}`}
-              >
-                {answerFile ? answerFile.name : "No file chosen"}
-              </span>
-            </div>
+        <div className="autograder-upload-block">
+          <label className="autograder-upload-label">Answer file</label>
+          <div className="autograder-file-row">
+            <input
+              ref={answerInputRef}
+              className="autograder-file-input-hidden"
+              type="file"
+              accept=".pdf,image/*"
+              aria-label="Upload answer file"
+              onChange={(e) => setAnswerFile(e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              className="autograder-file-choose-btn"
+              onClick={() => answerInputRef.current?.click()}
+            >
+              Choose answer
+            </button>
+            <span className="autograder-file-status">
+              {answerFile ? answerFile.name : "No file chosen"}
+            </span>
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={handleSubmit} disabled={grading}>
+          {grading ? "Grading..." : "Start grading"}
+        </button>
+
+        {error && <p className="autograder-error-text">{error}</p>}
+      </div>
+
+      {result && (
+        <div className="result-box">
+          <h3>Grading results</h3>
+          <p>paper_id: {result.paper_id}</p>
+          <p>Detected sub-questions: {result.pair_count}</p>
+
+          <div className="autograder-score-list">
+            {sortedScores.map(([qid, item]) => {
+              if (item.manual_review || item.mode === "manual_review") {
+                return (
+                  <div className="autograder-score-item" key={qid}>
+                    <span>Q{qid}</span>
+                    <strong>Manual review</strong>
+                    {item.reason ? <small>{item.reason}</small> : null}
+                  </div>
+                );
+              }
+              const display =
+                item.mode === "absolute" && item.max_score != null
+                  ? `${item.score ?? 0}/${item.max_score}`
+                  : `${item.score ?? 0}%`;
+              return (
+                <div className="autograder-score-item" key={qid}>
+                  <span>Q{qid}</span>
+                  <strong>{display}</strong>
+                </div>
+              );
+            })}
           </div>
 
-          <button type="button" className="autograder-submit" onClick={handleSubmit} disabled={grading}>
-            {grading ? "Grading…" : "Start grading"}
-          </button>
-
-          {error ? <p className="autograder-error-text">{error}</p> : null}
+          {result.all_absolute && result.total_score != null && result.total_max_score != null && (
+            <p className="autograder-total-score">
+              Total score: {result.total_score}/{result.total_max_score}
+            </p>
+          )}
         </div>
 
         {result ? (

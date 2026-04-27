@@ -24,52 +24,53 @@ from .models import (
     PaperQuestionAnswerPairs,
     QuestionAnswerPdfPair,
 )
+from .recognizer import QuestionAnswerRecognizer
 from .question_splitter import DocumentSplitter, QuestionDetector, QuestionSplitter
 
 
 class AutoGraderBase(ABC):
     @abstractmethod
     async def submit_job(self, request: AutoGradeJobSubmitRequest) -> AutoGradeJobSubmitResponse:
-        """提交一批评分任务。"""
+        """Submit a batch of grading tasks."""
 
     @abstractmethod
     async def get_job_status(self, job_id: str) -> AutoGradeJobStatusResponse:
-        """查询任务状态。"""
+        """Check the status of a job."""
 
     @abstractmethod
     async def get_job_results(self, job_id: str) -> AutoGradeJobResultsResponse:
-        """获取任务中的所有试卷结果。"""
+        """Fetch all paper results for a job."""
 
 
 class SchedulerBase(ABC):
     @abstractmethod
     async def enqueue(self, request: AutoGradeJobSubmitRequest) -> str:
-        """把批量评分请求放入队列。"""
+        """Enqueue a batch grading request."""
 
     @abstractmethod
     async def cancel(self, job_id: str) -> None:
-        """取消一个尚未完成的任务。"""
+        """Cancel a job that has not finished yet."""
 
 
 class EvaluatorBase(ABC):
     @abstractmethod
     async def evaluate(self, task: GradeTaskItem) -> EvaluationResult:
-        """对单份试卷做一个维度或一个模型的评分。"""
+        """Evaluate one paper with a single criterion or model."""
 
 
 class AggregatorBase(ABC):
     @abstractmethod
     def aggregate(self, paper_id: str, results: list[EvaluationResult]) -> AutoGradeResult:
-        """聚合多个评估器的结果，产出最终分数。"""
+        """Aggregate multiple evaluator outputs into a final score."""
 
 
 class WorkerPoolBase(ABC):
     @abstractmethod
     async def submit(self, task: GradeTaskItem) -> AutoGradePaperResult:
-        """提交单份试卷到 worker 执行。"""
+        """Submit one paper to a worker for execution."""
 
 
-# TODO: 后续在 concrete 模块中实现调度器、worker 和聚合器。
+# TODO: Implement the scheduler, worker pool, and aggregator in a concrete module later.
 
 
 class AutoGraderEntry:
@@ -79,6 +80,7 @@ class AutoGraderEntry:
         self._papers: dict[str, PaperQuestionAnswerPairs] = {}
         self._scores: dict[str, dict[str, dict[str, Any]]] = {}
         self._paper_temp_dirs: dict[str, Path] = {}
+        self._recognizer = QuestionAnswerRecognizer()
 
     @staticmethod
     def _load_document_bytes(source_path: str | Path) -> bytes:
@@ -181,36 +183,85 @@ class AutoGraderEntry:
         return record
 
     async def score_paper(self, paper_id: str) -> dict[str, dict[str, Any]]:
-        """Score each paired question once with a single LLM call and return a question->score map."""
+        """Recognize each pair first, then score only the pairs that are clear enough to grade."""
         paper = self._papers.get(paper_id)
         if paper is None or not paper.pairs:
             self._scores[paper_id] = {}
             return {}
 
+        inspections = await self._recognizer.inspect_pairs(paper.pairs)
+        inspect_by_label = {
+            self._normalize_pair_label(label): data
+            for label, data in inspections.items()
+        }
+
+        scored_pairs: list[tuple[QuestionAnswerPdfPair, dict[str, Any]]] = []
+        scores: dict[str, dict[str, Any]] = {}
+
+        for pair in paper.pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            inspection = inspect_by_label.get(label)
+            if not inspection:
+                scores[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": "Recognition output was missing for this pair",
+                }
+                continue
+
+            if not inspection.get("can_grade", False):
+                scores[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": inspection.get("reason") or "The pair is not clear enough for automatic grading",
+                    "question_text": inspection.get("question_text"),
+                    "answer_text": inspection.get("answer_text"),
+                }
+                continue
+
+            scored_pairs.append((pair, inspection))
+
+        if not scored_pairs:
+            self._scores[paper_id] = scores
+            return scores
+
         system_msg = (
-            "You are grading an exam. For each question-answer pair, first inspect the question and answer to determine the maximum points for that question. "
+            "You are grading an exam. The recognized question_text and answer_text are the primary inputs. Use the page images only to verify unclear OCR or layout details. "
+            "For each question-answer pair, first inspect the recognized text and determine the maximum points for that question. "
             "If the max points are explicit or can be inferred from the question/rubric, score with that absolute max and return score plus max_score. "
-            "If the max points are not found, return a percentage score from 0 to 100 and set mode to percentage. "
+            "If the recognized text is too noisy, incomplete, contradictory, or otherwise not trustworthy, mark the pair for manual review instead of guessing a score. "
+            "If the max points are not found but the pair is still clear enough to grade, return a percentage score from 0 to 100 and set mode to percentage. "
             "Return ONLY valid JSON. Use the shape: {\"scores\": {\"5\": {\"score\": 12, \"max_score\": 16, \"mode\": \"absolute\"}, \"6\": {\"score\": 86, \"mode\": \"percentage\"}}}."
         )
         user_parts: list[dict[str, Any]] = [
             {
                 "type": "text",
                 "text": (
-                    "You will receive several question-answer pairs. For each pair, read the question and the answer carefully. "
+                    "You will receive several question-answer pairs. For each pair, read the transcribed question and answer text carefully; use the page images only to resolve OCR mistakes or layout ambiguity. "
                     "Determine the full score for that question if it is visible or inferable from the paper. "
                     "If the full score is visible/inferable, return an absolute score and max_score. "
+                    "If the text is not trustworthy enough to score, return manual_review metadata instead of guessing. "
                     "Otherwise return a percentage score and set mode to percentage. "
                     "Return only a JSON object mapping the question label to a score object."
                 ),
             }
         ]
 
-        for pair in paper.pairs:
+        for pair, inspection in scored_pairs:
             label = self._normalize_pair_label(pair.question_label)
+            question_text = (inspection.get("question_text") or "").strip()
+            answer_text = (inspection.get("answer_text") or "").strip()
             user_parts.append({"type": "text", "text": f"QUESTION {label}"})
+            if question_text:
+                user_parts.append({"type": "text", "text": f"Recognized question text: {question_text}"})
             user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
             user_parts.append({"type": "text", "text": f"ANSWER {label}"})
+            if answer_text:
+                user_parts.append({"type": "text", "text": f"Recognized answer text: {answer_text}"})
             user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.answer_pdf)}"}})
 
         resp = create_chat_completion(
@@ -222,7 +273,18 @@ class AutoGraderEntry:
             temperature=0.0,
         )
         raw_text = resp.choices[0].message.content or ""
-        scores = self._parse_score_map(raw_text)
+        scored_map = self._parse_score_map(raw_text)
+        for pair, _inspection in scored_pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            if label not in scored_map:
+                scored_map[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": "The scorer did not return a result for this pair",
+                }
+        scores.update(scored_map)
         self._scores[paper_id] = scores
         return scores
 

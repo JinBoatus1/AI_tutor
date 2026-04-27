@@ -7,7 +7,7 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field
 
 
-ScoreMode = Literal["absolute", "percentage"]
+ScoreMode = Literal["absolute", "percentage", "manual_review"]
 
 
 class AutoGraderScoreItem(BaseModel):
@@ -15,11 +15,16 @@ class AutoGraderScoreItem(BaseModel):
 
     - mode=absolute: score/max_score are absolute points for the question.
     - mode=percentage: score is 0-100 percentage, max_score is None.
+    - mode=manual_review: the question should be reviewed by a human and is not scored automatically.
     """
 
-    score: float = Field(description="Score value (absolute points or percentage)")
-    mode: ScoreMode = Field(description="Scoring mode: absolute or percentage")
+    score: float | None = Field(default=None, description="Score value (absolute points or percentage)")
+    mode: ScoreMode = Field(description="Scoring mode: absolute, percentage, or manual_review")
     max_score: float | None = Field(default=None, description="Question full marks when mode=absolute")
+    manual_review: bool = Field(default=False, description="Whether this question must be reviewed manually")
+    reason: str | None = Field(default=None, description="Why the question was skipped or manually reviewed")
+    question_text: str | None = Field(default=None, description="Transcribed question text from the recognition stage")
+    answer_text: str | None = Field(default=None, description="Transcribed answer text from the recognition stage")
 
 
 class AutoGraderGradeRequest(BaseModel):

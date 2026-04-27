@@ -25,7 +25,7 @@ class MemoryRecord(TypedDict):
 
 
 class Memory(Protocol):
-    """对外承诺 read/write/delete"""
+    """Public contract for read/write/delete operations."""
 
     def write(self, address: str, content: str) -> int:
         ...
@@ -39,7 +39,7 @@ class Memory(Protocol):
 
 def open_memory(root: Union[str, Path], book_id: str):
     """
-    工厂函数：未来可替换存储后端而不改上层代码。
+    Factory function: lets us swap the storage backend later without changing upper layers.
     """
-    from .stores.jsonl_store import JsonlMemoryStore  # 延迟导入避免循环依赖
+    from .stores.jsonl_store import JsonlMemoryStore  # Lazy import to avoid circular dependencies
     return JsonlMemoryStore(root=root, book_id=book_id)
