@@ -731,7 +731,7 @@ export default function LearningModel() {
               aria-label="Current textbook section"
             >
               <span className="left-panel-topic-bar-title">
-                📖 Textbook: {dataMatchedTopic.name}
+                Textbook: {dataMatchedTopic.name}
               </span>
               <span className="left-panel-topic-bar-sep" aria-hidden="true">
                 ·
@@ -777,7 +777,7 @@ export default function LearningModel() {
         {matchedSection ? (
           <div className="match-box">
             <h4>🔍 Topic: {matchedSection.topic}</h4>
-            <h5>📘 Chapter: {matchedSection.chapter}</h5>
+            <h5>Chapter: {matchedSection.chapter}</h5>
             <ul>
               {matchedSection.key_points.map((kp: string, i: number) => (
                 <li key={i}>• {kp}</li>

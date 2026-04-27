@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import "./Home.css";
+import IridescenceBackground from "./components/IridescenceBackground";
 
 export default function Home() {
   const { user, loading, setShowSignIn } = useAuth();
 
   return (
     <div className="home-page">
-      <div className="home-page-bg" aria-hidden />
+      <div className="home-page-bg" aria-hidden>
+        <IridescenceBackground color={[0.95, 1, 0.98]} speed={0.85} amplitude={0.12} />
+      </div>
 
       <section className="home-hero" aria-labelledby="home-headline">
         <p className="home-eyebrow">AI Tutor</p>

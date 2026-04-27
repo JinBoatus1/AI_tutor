@@ -245,6 +245,77 @@ def _should_compute_confidence(
     return True
 
 
+def _is_simple_definition_question(message: str) -> bool:
+    """
+    Heuristic: short definitional questions should get a one-sentence textbook-style answer.
+
+    Examples:
+    - "what is induction", "wat is induction", "define induction", "definition of induction"
+    - "induction 是什么", "归纳法是什么", "给出…的定义"
+    """
+    if not message or not isinstance(message, str):
+        return False
+    s = message.strip()
+    if not s:
+        return False
+    # Too long usually implies a real problem / multi-part request.
+    if len(s) > 120:
+        return False
+
+    low = s.lower()
+
+    # Avoid triggering on tasks that clearly ask for proofs/solutions/examples.
+    non_simple_signals = [
+        "prove",
+        "show that",
+        "derive",
+        "calculate",
+        "solve",
+        "evaluate",
+        "compute",
+        "example",
+        "examples",
+        "exercise",
+        "problem",
+        "homework",
+        "证明",
+        "推导",
+        "计算",
+        "求解",
+        "例",
+        "举例",
+        "习题",
+        "题",
+    ]
+    if any(k in low for k in non_simple_signals):
+        return False
+
+    # Common definitional patterns (English + Chinese). Keep broad but safe.
+    definitional_patterns = [
+        r"^\s*what\s+is\s+.+\??\s*$",
+        r"^\s*wat\s+is\s+.+\??\s*$",
+        r"^\s*define\s+.+\??\s*$",
+        r"^\s*definition\s+of\s+.+\??\s*$",
+        r"^\s*meaning\s+of\s+.+\??\s*$",
+        r".+\s*(?:is\s+what)\s*\??\s*$",
+        r".+\s*是什么\s*\??\s*$",
+        r".+\s*的定义\s*(?:是|是什么)?\s*\??\s*$",
+        r"^\s*定义\s*.+\s*$",
+        r".+\s*含义\s*(?:是|是什么)?\s*\??\s*$",
+        r".+\s*什么意思\s*\??\s*$",
+        r".+\s*指什么\s*\??\s*$",
+    ]
+    if any(re.search(p, low, flags=re.IGNORECASE) for p in definitional_patterns):
+        return True
+
+    # Very short noun-phrase queries like "induction?" or "归纳法？" are often definitions.
+    compact = re.sub(r"[\s\?\!\.\,\;\:\(\)\[\]\{\}\"\']", "", low)
+    if 1 <= len(compact) <= 18 and re.fullmatch(r"[a-z0-9_\-\u4e00-\u9fff]+", compact):
+        return True
+
+    return False
+
+
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(None)):
     print("[Chat] request received", flush=True)
@@ -305,7 +376,15 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "
             "Use concise bullet points and keep each turn focused on one clear next action."
         )
-        if not has_prior_user_messages:
+        is_simple_def = _is_simple_definition_question(chat_message.message)
+        if is_simple_def:
+            system_content += (
+                "\n\nThe student question is a simple definition-style question. "
+                "Answer with ONE concise textbook-style sentence. "
+                "Do NOT be verbose: no step-by-step expansion, no long prose, no extra examples, and no follow-up questions unless the student asks."
+            )
+
+        if not has_prior_user_messages and not is_simple_def:
             system_content += (
                 "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these three required intake questions in one place:\n"
                 "1) Are they learning a NEW topic or REVIEWING for exam/quiz?\n"
