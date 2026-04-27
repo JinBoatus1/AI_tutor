@@ -371,17 +371,20 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             if tid == "focs"
             else "the textbook the student selected (outline + PDF pages)"
         )
+        is_simple_def = _is_simple_definition_question(chat_message.message)
         system_content = (
             f"You are an AI math tutor for {_book_label}. Explain clearly and step-by-step, and always ground guidance in the textbook tree/reference below. "
             "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "
             "Use concise bullet points and keep each turn focused on one clear next action."
         )
-        is_simple_def = _is_simple_definition_question(chat_message.message)
         if is_simple_def:
-            system_content += (
-                "\n\nThe student question is a simple definition-style question. "
-                "Answer with ONE concise textbook-style sentence. "
-                "Do NOT be verbose: no step-by-step expansion, no long prose, no extra examples, and no follow-up questions unless the student asks."
+            # Hard override: keep answers extremely short and avoid 'plan/intake' patterns.
+            system_content = (
+                f"You are an AI math tutor for {_book_label}. "
+                "The student asked a SIMPLE definition/meaning question. "
+                "Answer in EXACTLY ONE sentence, textbook-style, grounded in the textbook reference when available. "
+                "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
+                "Return ONE sentence only."
             )
 
         if not has_prior_user_messages and not is_simple_def:
@@ -408,8 +411,8 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "Task 4: Targeted gap-filling drills and recap\n"
                 "\nAlways map chapters/sections to the textbook tree names exactly. If student wording is vague, propose 2-4 closest options from the tree and ask them to choose."
             )
-        # Hidden per-student progress bar from tree structure.
-        if not chat_message.silent:
+        # Hidden per-student progress bar from tree structure (skip for one-sentence definition replies).
+        if not chat_message.silent and not is_simple_def:
             try:
                 if user_email:
                     bar = sbs.load_bar_mongo(user_email, tid)
@@ -425,7 +428,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
         is_subsection_request = bool(section_hint and "." in section_hint and section_info)
 
-        if is_subsection_request:
+        if is_subsection_request and not is_simple_def:
             start_book, end_book, section_name = section_info
             start_pdf = start_book + lr.effective_pdf_page_offset()
             end_pdf = end_book + lr.effective_pdf_page_offset()
@@ -443,7 +446,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                         "--- End of reference ---\n\n"
                         "Use the above to explain this section. Point to the right-hand pages when relevant."
                     )
-        else:
+        elif not is_simple_def:
             chapter_for_tree = (section_hint.split(".")[0] if section_hint and "." in section_hint else section_hint) or lr.extract_chapter_from_message(chat_message.message)
             chapter_tree = lr.get_focs_chapter_tree(chapter_filter=chapter_for_tree)
             if chapter_tree:
@@ -481,7 +484,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
 
         mem: Any = None
         enable_memory_tool = False
-        if _MEMORY_AVAILABLE and memory_addr:
+        if _MEMORY_AVAILABLE and memory_addr and not is_simple_def:
             try:
                 mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
                 st_sum, sum_recs = mem.read(f"{memory_addr}/__summary__")
@@ -505,7 +508,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             except Exception as e:
                 print(f"[Memory] read for prompt failed ({memory_addr}): {e}")
 
-        if chat_message.pdf_b64:
+        if chat_message.pdf_b64 and not is_simple_def:
             system_content += (
                 "\n\nThe student attached a PDF file. Their message may include up to "
                 f"{MAX_USER_PDF_PAGES_RENDER} rendered page images from that PDF in order, after any separate photos."
@@ -513,9 +516,11 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
 
         # 1) Tutor answer（当前轮可带图片，走 vision）
         messages: List[dict[str, Any]] = [{"role": "system", "content": system_content}]
-        for msg in chat_message.history:
-            role = "assistant" if msg["sender"] == "ai" else "user"
-            messages.append({"role": role, "content": msg["text"]})
+        # For simple definition questions, ignore prior history to prevent long plan/intake outputs.
+        if not is_simple_def:
+            for msg in chat_message.history:
+                role = "assistant" if msg["sender"] == "ai" else "user"
+                messages.append({"role": role, "content": msg["text"]})
         # 最后一条 user：无图则纯文本，有图则 content 为多 part（text + image_url）
         if not combined_images:
             messages.append({"role": "user", "content": chat_message.message})
