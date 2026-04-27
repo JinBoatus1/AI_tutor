@@ -53,7 +53,7 @@ html, body, #root {
 .app-container .nav-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 0;
   margin-right: 20px;
   text-decoration: none;
   flex-shrink: 0;

@@ -87,12 +87,6 @@ function App() {
         )}
         <nav className="navbar" aria-label="Main navigation">
           <Link to="/" className="nav-brand">
-            <span className="nav-brand-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-              </svg>
-            </span>
             <span className="nav-brand-text">AI Tutor</span>
           </Link>
           <div className="nav-buttons">
