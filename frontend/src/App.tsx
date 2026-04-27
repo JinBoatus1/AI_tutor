@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import { API_BASE, apiBlockedByMixedContent } from "./apiBase";
 import Home from "./Home";
 import AutoGrader from "./AutoGrader";
@@ -8,8 +8,43 @@ import MyLearningBar from "./MyLearningBar";
 import UserProfile from "./UserProfile";
 import SignInModal from "./SignInModal";
 import { useAuth } from "./context/AuthContext";
+import GooeyNav from "./components/GooeyNav";
 
 import "./App.css";
+
+function AppNavButtons() {
+  const { user, loading, setShowSignIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const items = [
+    { label: "Home", key: "/", onSelect: () => navigate("/") },
+    { label: "Auto Grader", key: "/autograder", onSelect: () => navigate("/autograder") },
+    { label: "Learning Mode", key: "/learning", onSelect: () => navigate("/learning") },
+    {
+      label: "My profile",
+      key: "/profile",
+      onSelect: () => {
+        if (!user && !loading) {
+          setShowSignIn(true);
+          return;
+        }
+        navigate("/profile");
+      },
+    },
+  ];
+
+  const activeKey =
+    location.pathname.startsWith("/autograder")
+      ? "/autograder"
+      : location.pathname.startsWith("/learning")
+        ? "/learning"
+        : location.pathname.startsWith("/profile")
+          ? "/profile"
+          : "/";
+
+  return <GooeyNav items={items} activeKey={activeKey} />;
+}
 
 function App() {
   const showDeployWarning = apiBlockedByMixedContent();
@@ -61,15 +96,7 @@ function App() {
             <span className="nav-brand-text">AI Tutor</span>
           </Link>
           <div className="nav-buttons">
-            <Link to="/" className="btn-nav">Home</Link>
-            <Link to="/autograder" className="btn-nav">Auto Grader</Link>
-            <Link to="/learning" className="btn-nav btn-nav--learning">Learning Mode</Link>
-            <Link to="/profile" className="btn-nav" onClick={(e) => {
-              if (!user && !loading) {
-                e.preventDefault();
-                setShowSignIn(true);
-              }
-            }}>My profile</Link>
+            <AppNavButtons />
           </div>
           <div className="nav-auth">
             {loading ? null : user ? (
