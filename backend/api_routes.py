@@ -641,7 +641,18 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 start_book, end_book, name = section_info
                 start_pdf = start_book + lr.effective_pdf_page_offset()
                 end_pdf = end_book + lr.effective_pdf_page_offset()
-                result["matched_topic"] = {"name": name, "start": start_pdf, "end": end_pdf}
+                # Return BOTH book-page numbers (from outline) and PDF page numbers (after offset).
+                # Frontend should display book pages to match the outline tree.
+                result["matched_topic"] = {
+                    "name": name,
+                    "start_book": start_book,
+                    "end_book": end_book,
+                    "start_pdf": start_pdf,
+                    "end_pdf": end_pdf,
+                    # Back-compat: keep existing keys as PDF pages (legacy UI used these).
+                    "start": start_pdf,
+                    "end": end_pdf,
+                }
                 _pdf = lr.get_effective_pdf_bytes()
                 if _pdf:
                     pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
@@ -666,6 +677,11 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             end_pdf = matched_topic["end"] + lr.effective_pdf_page_offset()
             result["matched_topic"] = {
                 "name": matched_topic["name"],
+                "start_book": matched_topic["start"],
+                "end_book": matched_topic["end"],
+                "start_pdf": start_pdf,
+                "end_pdf": end_pdf,
+                # Back-compat
                 "start": start_pdf,
                 "end": end_pdf,
             }
@@ -883,14 +899,37 @@ async def render_textbook_pages(
         start_pdf = sb + off
         end_pdf = eb + off
         if not pdf:
-            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+            return {
+                "pages_b64": [],
+                "matched_topic": {
+                    "name": name,
+                    "start_book": sb,
+                    "end_book": eb,
+                    "start_pdf": start_pdf,
+                    "end_pdf": end_pdf,
+                    # Back-compat
+                    "start": start_pdf,
+                    "end": end_pdf,
+                },
+            }
 
         try:
             doc = fitz.open(stream=pdf, filetype="pdf")
             doc_len = len(doc)
             doc.close()
         except Exception:
-            return {"pages_b64": [], "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf}}
+            return {
+                "pages_b64": [],
+                "matched_topic": {
+                    "name": name,
+                    "start_book": sb,
+                    "end_book": eb,
+                    "start_pdf": start_pdf,
+                    "end_pdf": end_pdf,
+                    "start": start_pdf,
+                    "end": end_pdf,
+                },
+            }
 
         start_pdf = max(1, min(start_pdf, doc_len))
         end_pdf = max(start_pdf, min(end_pdf, doc_len))
@@ -900,7 +939,15 @@ async def render_textbook_pages(
         pages_b64 = lr.render_pdf_page_range_to_base64(pdf, start_pdf, end_pdf)
         return {
             "pages_b64": pages_b64,
-            "matched_topic": {"name": name, "start": start_pdf, "end": end_pdf},
+            "matched_topic": {
+                "name": name,
+                "start_book": sb,
+                "end_book": eb,
+                "start_pdf": start_pdf,
+                "end_pdf": end_pdf,
+                "start": start_pdf,
+                "end": end_pdf,
+            },
         }
 
 

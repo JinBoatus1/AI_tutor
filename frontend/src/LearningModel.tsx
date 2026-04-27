@@ -64,8 +64,8 @@ export default function LearningModel() {
   const [matchedSection, setMatchedSection] = useState<any>(null);
   const [dataMatchedTopic, setDataMatchedTopic] = useState<{
     name: string;
-    start: number;
-    end: number;
+    startBook: number;
+    endBook: number;
   } | null>(null);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
@@ -154,7 +154,13 @@ export default function LearningModel() {
         const data = (await parseJson(resp)) as {
           detail?: string;
           pages_b64?: string[];
-          matched_topic?: { name: string; start: number; end: number };
+          matched_topic?: {
+            name: string;
+            start_book?: number;
+            end_book?: number;
+            start?: number;
+            end?: number;
+          };
         };
 
         if (resp.ok) {
@@ -162,10 +168,12 @@ export default function LearningModel() {
           if (b64.length) {
             setReferenceSectionPages(b64.map((x) => `data:image/png;base64,${x}`));
             if (data.matched_topic) {
+              const sb = data.matched_topic.start_book ?? data.matched_topic.start ?? detail.startBook;
+              const eb = data.matched_topic.end_book ?? data.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
                 name: data.matched_topic.name,
-                start: data.matched_topic.start,
-                end: data.matched_topic.end,
+                startBook: sb,
+                endBook: eb,
               });
             }
           } else {
@@ -194,7 +202,13 @@ export default function LearningModel() {
           const cData = (await parseJson(cResp)) as {
             detail?: string;
             reference_section_pages_b64?: string[];
-            matched_topic?: { name: string; start: number; end: number };
+            matched_topic?: {
+              name: string;
+              start_book?: number;
+              end_book?: number;
+              start?: number;
+              end?: number;
+            };
           };
           if (!cResp.ok) {
             setOutlinePreviewError(
@@ -209,10 +223,12 @@ export default function LearningModel() {
             setReferencePageSnippets(null);
             setReferencePageImage(null);
             if (cData.matched_topic) {
+              const sb = cData.matched_topic.start_book ?? cData.matched_topic.start ?? detail.startBook;
+              const eb = cData.matched_topic.end_book ?? cData.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
                 name: cData.matched_topic.name,
-                start: cData.matched_topic.start,
-                end: cData.matched_topic.end,
+                startBook: sb,
+                endBook: eb,
               });
             }
             setOutlinePreviewError(null);
@@ -514,10 +530,12 @@ export default function LearningModel() {
       const conf = typeof data.confidence === "number" ? data.confidence : null;
 
       if (data.matched_topic) {
+        const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
+        const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
         setDataMatchedTopic({
           name: data.matched_topic.name,
-          start: data.matched_topic.start,
-          end: data.matched_topic.end,
+          startBook: sb,
+          endBook: eb,
         });
       } else {
         setDataMatchedTopic(null);
@@ -737,7 +755,7 @@ export default function LearningModel() {
                 ·
               </span>
               <span className="left-panel-topic-bar-pages">
-                Pages {dataMatchedTopic.start}–{dataMatchedTopic.end}
+                Pages {dataMatchedTopic.startBook}–{dataMatchedTopic.endBook}
               </span>
             </div>
             <button
