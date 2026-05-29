@@ -46,14 +46,15 @@ function AppNavButtons() {
   return <GooeyNav items={items} activeKey={activeKey} />;
 }
 
-function App() {
+function AppShell() {
   const showDeployWarning = apiBlockedByMixedContent();
   const { user, loading, logout, setShowSignIn } = useAuth();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
 
   return (
-    <Router>
-      <div className="app-container">
+      <div className={`app-container${isHomePage ? " app-container--home" : ""}`}>
         {showDeployWarning ? (
           <div className="deploy-config-banner" role="alert">
             <p>
@@ -85,6 +86,7 @@ function App() {
             </div>
           </div>
         )}
+        {!isHomePage ? (
         <nav className="navbar" aria-label="Main navigation">
           <Link to="/" className="nav-brand">
             <span className="nav-brand-text">AI Tutor</span>
@@ -115,6 +117,7 @@ function App() {
             )}
           </div>
         </nav>
+        ) : null}
 
         <div className="content">
           <Routes>
@@ -128,6 +131,13 @@ function App() {
 
         <SignInModal />
       </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppShell />
     </Router>
   );
 }

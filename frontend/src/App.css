@@ -17,6 +17,13 @@ html, body, #root {
   background: transparent;
 }
 
+/* Home: no top navbar — navigation only via hero card links */
+.app-container--home .content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .deploy-config-banner {
   flex-shrink: 0;
   padding: 10px 14px;

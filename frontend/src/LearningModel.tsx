@@ -26,20 +26,32 @@ import { getSectionNote, sectionTokenFromTitle } from "./utils/sectionNotes";
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
+const DEFAULT_TEXTBOOK_SPLIT_PCT = 67;
 /** Drag split past this → chat collapses to the right edge. */
 const CHAT_COLLAPSE_THRESHOLD_PCT = 88;
 
 const CHAT_PANEL_WIDTH_KEY = "ai_tutor_learning_textbook_split_pct";
 const CHAT_COLLAPSED_KEY = "ai_tutor_learning_chat_collapsed";
 
+function resolveTextbookSplitRestore(width: number): number {
+  if (
+    Number.isFinite(width) &&
+    width >= TEXTBOOK_PANEL_MIN_PCT &&
+    width < CHAT_COLLAPSE_THRESHOLD_PCT
+  ) {
+    return width;
+  }
+  return DEFAULT_TEXTBOOK_SPLIT_PCT;
+}
+
 function readStoredTextbookSplitPct(): number {
   try {
     const raw = localStorage.getItem(CHAT_PANEL_WIDTH_KEY);
     const v = raw ? parseFloat(raw) : NaN;
-    if (!Number.isFinite(v)) return 67;
-    return Math.min(CHAT_COLLAPSE_THRESHOLD_PCT - 1, Math.max(TEXTBOOK_PANEL_MIN_PCT, v));
+    if (!Number.isFinite(v)) return DEFAULT_TEXTBOOK_SPLIT_PCT;
+    return resolveTextbookSplitRestore(v);
   } catch {
-    return 67;
+    return DEFAULT_TEXTBOOK_SPLIT_PCT;
   }
 }
 
@@ -62,18 +74,32 @@ const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
 const LEARNING_BAR_MIN_PX = 200;
 const LEARNING_BAR_MAX_PX = 560;
 const LEARNING_BAR_DEFAULT_PX = 280;
+/** Drag narrower than this → panel collapses to the left edge. */
+const LEARNING_BAR_COLLAPSE_THRESHOLD_PX = 160;
+const LEARNING_BAR_DRAG_FLOOR_PX = 80;
 
 const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct";
 const NOTE_SPLIT_DEFAULT = 78;
 const NOTE_SPLIT_MIN = 30;
 const NOTE_SPLIT_MAX = 92;
 
+function resolveLearningBarRestoreWidth(width: number): number {
+  if (
+    Number.isFinite(width) &&
+    width >= LEARNING_BAR_MIN_PX &&
+    width <= LEARNING_BAR_MAX_PX
+  ) {
+    return width;
+  }
+  return LEARNING_BAR_DEFAULT_PX;
+}
+
 function readLearningBarWidthPx(): number {
   try {
     const raw = localStorage.getItem(LEARNING_BAR_WIDTH_KEY);
     const v = raw ? parseInt(raw, 10) : NaN;
     if (!Number.isFinite(v)) return LEARNING_BAR_DEFAULT_PX;
-    return Math.min(LEARNING_BAR_MAX_PX, Math.max(LEARNING_BAR_MIN_PX, v));
+    return resolveLearningBarRestoreWidth(v);
   } catch {
     return LEARNING_BAR_DEFAULT_PX;
   }
@@ -134,8 +160,10 @@ export default function LearningModel() {
   }, []);
 
   const expandChatPanel = useCallback(() => {
+    const restored = resolveTextbookSplitRestore(lastExpandedSplitRef.current);
+    lastExpandedSplitRef.current = restored;
     persistChatCollapsed(false);
-    setRightPanelWidth(lastExpandedSplitRef.current);
+    setRightPanelWidth(restored);
   }, [persistChatCollapsed]);
 
   const applyTextbookSplitPct = useCallback((width: number) => {
@@ -329,6 +357,7 @@ export default function LearningModel() {
 
   const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
   const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
+  const lastExpandedLearningBarWidthRef = useRef(readLearningBarWidthPx());
   const learningBarDragRef = useRef<{ x: number; width: number } | null>(null);
   const learningBarWidthRef = useRef(learningBarWidthPx);
   learningBarWidthRef.current = learningBarWidthPx;
@@ -343,28 +372,58 @@ export default function LearningModel() {
     }
   }, []);
 
+  const expandLearningBar = useCallback(() => {
+    const restored = resolveLearningBarRestoreWidth(lastExpandedLearningBarWidthRef.current);
+    lastExpandedLearningBarWidthRef.current = restored;
+    persistLearningBarCollapsed(false);
+    setLearningBarWidthPx(restored);
+    learningBarWidthRef.current = restored;
+    try {
+      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(restored));
+    } catch {
+      /* ignore */
+    }
+  }, [persistLearningBarCollapsed]);
+
   const handleLearningBarResizeMove = useCallback((e: MouseEvent) => {
     const start = learningBarDragRef.current;
     if (!start) return;
     const dx = e.clientX - start.x;
     const next = Math.min(
       LEARNING_BAR_MAX_PX,
-      Math.max(LEARNING_BAR_MIN_PX, start.width + dx)
+      Math.max(LEARNING_BAR_DRAG_FLOOR_PX, start.width + dx)
     );
     learningBarWidthRef.current = next;
     setLearningBarWidthPx(next);
+    if (next >= LEARNING_BAR_MIN_PX) {
+      lastExpandedLearningBarWidthRef.current = next;
+    }
   }, []);
 
   const handleLearningBarResizeEnd = useCallback(() => {
+    const start = learningBarDragRef.current;
+    const finalW = learningBarWidthRef.current;
     learningBarDragRef.current = null;
     window.removeEventListener("mousemove", handleLearningBarResizeMove);
     window.removeEventListener("mouseup", handleLearningBarResizeEnd);
+
+    if (finalW < LEARNING_BAR_COLLAPSE_THRESHOLD_PX) {
+      const beforeDrag = start?.width ?? lastExpandedLearningBarWidthRef.current;
+      lastExpandedLearningBarWidthRef.current = resolveLearningBarRestoreWidth(beforeDrag);
+      persistLearningBarCollapsed(true);
+      return;
+    }
+
+    const clamped = Math.max(LEARNING_BAR_MIN_PX, finalW);
+    learningBarWidthRef.current = clamped;
+    setLearningBarWidthPx(clamped);
+    lastExpandedLearningBarWidthRef.current = clamped;
     try {
-      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(learningBarWidthRef.current));
+      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(clamped));
     } catch {
       /* ignore */
     }
-  }, [handleLearningBarResizeMove]);
+  }, [handleLearningBarResizeMove, persistLearningBarCollapsed]);
 
   const handleLearningBarResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -432,11 +491,14 @@ export default function LearningModel() {
   );
 
   const handleResizeEnd = useCallback(() => {
+    const start = resizeStartRef.current;
     resizeStartRef.current = null;
     window.removeEventListener("mousemove", handleResizeMove);
     window.removeEventListener("mouseup", handleResizeEnd);
     setRightPanelWidth((current) => {
       if (current >= CHAT_COLLAPSE_THRESHOLD_PCT) {
+        const beforeDrag = start?.width ?? lastExpandedSplitRef.current;
+        lastExpandedSplitRef.current = resolveTextbookSplitRestore(beforeDrag);
         persistChatCollapsed(true);
       }
       return current;
@@ -872,7 +934,7 @@ export default function LearningModel() {
           <button
             type="button"
             className="learning-bar-reveal-btn"
-            onClick={() => persistLearningBarCollapsed(false)}
+            onClick={expandLearningBar}
             title="Show learning progress"
             aria-label="Show learning progress"
           >
@@ -895,7 +957,12 @@ export default function LearningModel() {
                 <button
                   type="button"
                   className="learning-bar-hide-btn"
-                  onClick={() => persistLearningBarCollapsed(true)}
+                  onClick={() => {
+                    lastExpandedLearningBarWidthRef.current = resolveLearningBarRestoreWidth(
+                      learningBarWidthRef.current
+                    );
+                    persistLearningBarCollapsed(true);
+                  }}
                   title="Hide learning progress"
                   aria-label="Hide learning progress"
                 >
@@ -908,7 +975,7 @@ export default function LearningModel() {
             <div
               className="resize-handle learning-bar-resize-handle"
               onMouseDown={handleLearningBarResizeStart}
-              title="Drag right to widen, left to narrow"
+              title="Drag right to widen; drag far left to hide"
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize learning progress panel"
