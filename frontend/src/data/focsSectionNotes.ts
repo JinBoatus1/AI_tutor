@@ -27,16 +27,52 @@ export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
       v("proof", "A convincing chain of logical steps from known facts to the statement you claim."),
       v("counterexample", "One concrete instance showing a universal claim “for all …” is false."),
     ],
+    formulas: [],
+  },
+  "1.1": {
+    objectives:
+      "Build a minimal epidemic model: track infected counts day by day and interpret the spread parameter $k$.",
+    vocabulary: [],
     formulas: [
       f(
-        "Discrete spread: each infected person infects $k$ others per step.",
-        "A toy epidemic model: count infected people each day; $k$ controls how fast the outbreak grows."
-      ),
-      f(
-        "To disprove $\\forall x\\, P(x)$, exhibit one $x$ with $\\neg P(x)$.",
-        "You only need a single counterexample—finding one student who did not pass refutes “every student passed.”"
+        "$I_{t+1} = I_t \\cdot k$ (toy discrete spread)",
+        "Core idea for 1.1: each infected person leads to $k$ new infections per step in this simplified model—not a full SIR equation."
       ),
     ],
+  },
+  "1.2": {
+    objectives:
+      "Use bipartite matching to think about speed dating—who can be paired, not a page of formulas.",
+    vocabulary: [],
+    formulas: [],
+  },
+  "1.3": {
+    objectives:
+      "Represent friendship / ad reach with vertices and edges; focus on structure, not new equations.",
+    vocabulary: [],
+    formulas: [],
+  },
+  "1.4": {
+    objectives:
+      "Preview how discrete structures relate to computing—definitions and examples, not formal hardware formulas.",
+    vocabulary: [],
+    formulas: [],
+  },
+  "1.5": {
+    objectives:
+      "Know what counts as a proof and when a single counterexample disproves a “for all” claim.",
+    vocabulary: [],
+    formulas: [
+      f(
+        "To disprove $\\forall x\\, P(x)$, exhibit one $x$ with $\\neg P(x)$.",
+        "The only core rule for this section: one valid counterexample is enough to refute a universal statement."
+      ),
+    ],
+  },
+  "1.6": {
+    objectives: "Apply chapter 1 ideas on the problem set—practice, not new theory.",
+    vocabulary: [],
+    formulas: [],
   },
   "2": {
     objectives:
@@ -50,14 +86,25 @@ export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
       v("axiom", "A starting assumption accepted without proof in a given theory."),
       v("well-ordering principle", "Every nonempty set of natural numbers has a smallest element."),
     ],
+    formulas: [],
+  },
+  "2.1": {
+    objectives: "Define subsets and membership; prove subset facts using element arguments.",
+    vocabulary: [],
     formulas: [
       f(
         "$A \\subseteq B \\iff \\forall x\\,(x \\in A \\Rightarrow x \\in B)$",
-        "Subset means: whenever something is in $A$, it must already be in $B$."
+        "The standard subset definition—use this when a proof reasons element-by-element."
       ),
+    ],
+  },
+  "2.4.1": {
+    objectives: "State the well-ordering principle and use it as an axiom in proofs on $\\mathbb{N}$.",
+    vocabulary: [],
+    formulas: [
       f(
-        "Well-ordering on $\\mathbb{N}$",
-        "Used in proofs that descend to a minimal counterexample—classic in number theory."
+        "Well-ordering: every nonempty $S \\subseteq \\mathbb{N}$ has a least element.",
+        "Core axiom for this subsection; enables minimal-counterexample proofs."
       ),
     ],
   },
