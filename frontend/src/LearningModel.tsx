@@ -19,12 +19,37 @@ import {
   SectionNotePanel,
   useSectionNoteToggle,
 } from "./TextbookSectionNote";
+import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { getSectionNote, sectionTokenFromTitle } from "./utils/sectionNotes";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
 const TEXTBOOK_PANEL_MAX_PCT = 90;
+/** Drag split past this → chat collapses to the right edge. */
+const CHAT_COLLAPSE_THRESHOLD_PCT = 88;
+
+const CHAT_PANEL_WIDTH_KEY = "ai_tutor_learning_textbook_split_pct";
+const CHAT_COLLAPSED_KEY = "ai_tutor_learning_chat_collapsed";
+
+function readStoredTextbookSplitPct(): number {
+  try {
+    const raw = localStorage.getItem(CHAT_PANEL_WIDTH_KEY);
+    const v = raw ? parseFloat(raw) : NaN;
+    if (!Number.isFinite(v)) return 67;
+    return Math.min(CHAT_COLLAPSE_THRESHOLD_PCT - 1, Math.max(TEXTBOOK_PANEL_MIN_PCT, v));
+  } catch {
+    return 67;
+  }
+}
+
+function readChatCollapsed(): boolean {
+  try {
+    return localStorage.getItem(CHAT_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 const WELCOME_MSG =
   "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**: use the **dot** to mark topics learned / not learned; click a **section title** that shows page numbers to open those book pages in the textbook panel.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
@@ -37,6 +62,11 @@ const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
 const LEARNING_BAR_MIN_PX = 200;
 const LEARNING_BAR_MAX_PX = 560;
 const LEARNING_BAR_DEFAULT_PX = 280;
+
+const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct";
+const NOTE_SPLIT_DEFAULT = 78;
+const NOTE_SPLIT_MIN = 30;
+const NOTE_SPLIT_MAX = 92;
 
 function readLearningBarWidthPx(): number {
   try {
@@ -87,9 +117,42 @@ export default function LearningModel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  const [rightPanelWidth, setRightPanelWidth] = useState(67); // ~2/3 textbook, ~1/3 chat
+  const [rightPanelWidth, setRightPanelWidth] = useState(readStoredTextbookSplitPct);
+  const [chatCollapsed, setChatCollapsed] = useState(readChatCollapsed);
+  const lastExpandedSplitRef = useRef(readStoredTextbookSplitPct());
   const layoutRef = useRef<HTMLDivElement>(null);
   const resizeStartRef = useRef<{ x: number; width: number } | null>(null);
+
+  const persistChatCollapsed = useCallback((collapsed: boolean) => {
+    setChatCollapsed(collapsed);
+    try {
+      if (collapsed) localStorage.setItem(CHAT_COLLAPSED_KEY, "1");
+      else localStorage.removeItem(CHAT_COLLAPSED_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const expandChatPanel = useCallback(() => {
+    persistChatCollapsed(false);
+    setRightPanelWidth(lastExpandedSplitRef.current);
+  }, [persistChatCollapsed]);
+
+  const applyTextbookSplitPct = useCallback((width: number) => {
+    const clamped = Math.min(
+      TEXTBOOK_PANEL_MAX_PCT,
+      Math.max(TEXTBOOK_PANEL_MIN_PCT, width)
+    );
+    setRightPanelWidth(clamped);
+    if (clamped < CHAT_COLLAPSE_THRESHOLD_PCT) {
+      lastExpandedSplitRef.current = clamped;
+      try {
+        localStorage.setItem(CHAT_PANEL_WIDTH_KEY, String(clamped));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -357,23 +420,28 @@ export default function LearningModel() {
 
   const showLeftColumn = hasLeftPanelContent && leftPanelOpen;
 
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    const start = resizeStartRef.current;
-    if (!start || !layoutRef.current) return;
-    const rect = layoutRef.current.getBoundingClientRect();
-    const deltaPercent = ((e.clientX - start.x) / rect.width) * 100;
-    const newWidth = Math.min(
-      TEXTBOOK_PANEL_MAX_PCT,
-      Math.max(TEXTBOOK_PANEL_MIN_PCT, start.width + deltaPercent)
-    );
-    setRightPanelWidth(newWidth);
-  }, []);
+  const handleResizeMove = useCallback(
+    (e: MouseEvent) => {
+      const start = resizeStartRef.current;
+      if (!start || !layoutRef.current) return;
+      const rect = layoutRef.current.getBoundingClientRect();
+      const deltaPercent = ((e.clientX - start.x) / rect.width) * 100;
+      applyTextbookSplitPct(start.width + deltaPercent);
+    },
+    [applyTextbookSplitPct]
+  );
 
   const handleResizeEnd = useCallback(() => {
     resizeStartRef.current = null;
     window.removeEventListener("mousemove", handleResizeMove);
     window.removeEventListener("mouseup", handleResizeEnd);
-  }, [handleResizeMove]);
+    setRightPanelWidth((current) => {
+      if (current >= CHAT_COLLAPSE_THRESHOLD_PCT) {
+        persistChatCollapsed(true);
+      }
+      return current;
+    });
+  }, [handleResizeMove, persistChatCollapsed]);
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
@@ -702,6 +770,101 @@ export default function LearningModel() {
 
   const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
 
+  const noteSplitActive = Boolean(
+    sectionNoteToggle.open && activeSectionNote && dataMatchedTopic
+  );
+
+  const noteSplit = useVerticalSplitPct({
+    storageKey: NOTE_SPLIT_STORAGE_KEY,
+    defaultPct: NOTE_SPLIT_DEFAULT,
+    minPct: NOTE_SPLIT_MIN,
+    maxPct: NOTE_SPLIT_MAX,
+  });
+
+  const textbookBody = (
+    <>
+      {outlinePreviewLoading ? (
+        <div className="outline-preview-status" role="status" aria-live="polite">
+          <span className="learning-reply-status-spinner" aria-hidden />
+          <span>Loading book pages…</span>
+        </div>
+      ) : null}
+      {outlinePreviewError ? (
+        <p className="outline-preview-error" role="alert">
+          {outlinePreviewError}
+        </p>
+      ) : null}
+
+      {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
+        <div className="reference-page-box reference-page-sidebar">
+          {referenceSectionPages?.length ? (
+            <>
+              <div className="section-pages-nav">
+                <button
+                  type="button"
+                  disabled={sectionPageIndex <= 0}
+                  onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}
+                  aria-label="Previous page"
+                >
+                  ‹ Prev
+                </button>
+                <span className="section-pages-info">
+                  Page {sectionPageIndex + 1} of {referenceSectionPages.length}
+                </span>
+                <button
+                  type="button"
+                  disabled={sectionPageIndex >= referenceSectionPages.length - 1}
+                  onClick={() =>
+                    setSectionPageIndex((i) =>
+                      Math.min(referenceSectionPages.length - 1, i + 1)
+                    )
+                  }
+                  aria-label="Next page"
+                >
+                  Next ›
+                </button>
+              </div>
+              <img
+                src={referenceSectionPages[sectionPageIndex]}
+                alt={`Section page ${sectionPageIndex + 1}`}
+                className="reference-page-img reference-img-clickable"
+                onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
+                }
+              />
+            </>
+          ) : referencePageSnippets?.length ? (
+            referencePageSnippets.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={`Reference snippet ${i + 1}`}
+                className="reference-page-img reference-snippet reference-img-clickable"
+                onClick={() => setEnlargedImageSrc(src)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
+              />
+            ))
+          ) : referencePageImage ? (
+            <img
+              src={referencePageImage}
+              alt="Reference page"
+              className="reference-page-img reference-img-clickable"
+              onClick={() => setEnlargedImageSrc(referencePageImage)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
+            />
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="learning-page-wrapper">
       {learningBarCollapsed ? (
@@ -765,8 +928,10 @@ export default function LearningModel() {
       {/* LEFT: textbook / reference (when content exists; can collapse) */}
       {showLeftColumn && (
       <div
-        className="right-panel"
-        style={{ flex: `0 0 ${rightPanelWidth}%` }}
+        className={`right-panel${noteSplitActive ? " right-panel--note-split" : ""}`}
+        style={{
+          flex: chatCollapsed ? "1 1 100%" : `0 0 ${rightPanelWidth}%`,
+        }}
       >
         {dataMatchedTopic ? (
           <div className="left-panel-topic-block">
@@ -804,13 +969,6 @@ export default function LearningModel() {
                 </button>
               </div>
             </div>
-            {activeSectionNote ? (
-              <SectionNotePanel
-                note={activeSectionNote}
-                open={sectionNoteToggle.open}
-                panelId={sectionNoteToggle.panelId}
-              />
-            ) : null}
           </div>
         ) : (
           <div className="left-panel-hide-row">
@@ -825,97 +983,45 @@ export default function LearningModel() {
           </div>
         )}
 
-        {outlinePreviewLoading ? (
-          <div className="outline-preview-status" role="status" aria-live="polite">
-            <span className="learning-reply-status-spinner" aria-hidden />
-            <span>Loading book pages…</span>
+        {noteSplitActive && activeSectionNote ? (
+          <div className="textbook-note-split" ref={noteSplit.containerRef}>
+            <div
+              className="textbook-note-pane"
+              style={{ flex: `0 0 ${noteSplit.pct}%` }}
+            >
+              <SectionNotePanel
+                note={activeSectionNote}
+                panelId={sectionNoteToggle.panelId}
+              />
+            </div>
+            <div
+              className="textbook-note-split-handle"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Drag to resize study note and textbook"
+              aria-valuenow={Math.round(noteSplit.pct)}
+              onMouseDown={noteSplit.onResizeStart}
+              title="Drag up or down to resize note vs textbook"
+            >
+              <span className="textbook-note-split-handle-grip" aria-hidden />
+            </div>
+            <div className="textbook-pages-pane">{textbookBody}</div>
           </div>
-        ) : null}
-        {outlinePreviewError ? (
-          <p className="outline-preview-error" role="alert">
-            {outlinePreviewError}
-          </p>
-        ) : null}
-
-        {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
-          <div className="reference-page-box reference-page-sidebar">
-              {referenceSectionPages?.length ? (
-                <>
-                  <div className="section-pages-nav">
-                    <button
-                      type="button"
-                      disabled={sectionPageIndex <= 0}
-                      onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}
-                      aria-label="Previous page"
-                    >
-                      ‹ Prev
-                    </button>
-                    <span className="section-pages-info">
-                      Page {sectionPageIndex + 1} of {referenceSectionPages.length}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={sectionPageIndex >= referenceSectionPages.length - 1}
-                      onClick={() =>
-                        setSectionPageIndex((i) =>
-                          Math.min(referenceSectionPages.length - 1, i + 1)
-                        )
-                      }
-                      aria-label="Next page"
-                    >
-                      Next ›
-                    </button>
-                  </div>
-                  <img
-                    src={referenceSectionPages[sectionPageIndex]}
-                    alt={`Section page ${sectionPageIndex + 1}`}
-                    className="reference-page-img reference-img-clickable"
-                    onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
-                    }
-                  />
-                </>
-              ) : referencePageSnippets?.length ? (
-                referencePageSnippets.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt={`Textbook snippet ${i + 1}`}
-                    className="reference-page-img reference-snippet reference-img-clickable"
-                    onClick={() => setEnlargedImageSrc(src)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
-                  />
-                ))
-              ) : referencePageImage ? (
-                <img
-                  src={referencePageImage}
-                  alt="Textbook reference page"
-                  className="reference-page-img reference-img-clickable"
-                  onClick={() => setEnlargedImageSrc(referencePageImage)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
-                />
-              ) : null}
-          </div>
+        ) : (
+          <div className="textbook-pages-pane textbook-pages-pane--full">{textbookBody}</div>
         )}
       </div>
       )}
 
-      {showLeftColumn && (
+      {showLeftColumn && !chatCollapsed && (
       <div
         className="resize-handle"
         onMouseDown={handleResizeStart}
-        title="Drag to resize textbook panel"
+        title="Drag to resize; drag far right to hide chat"
       />
       )}
 
-      {/* RIGHT: chat (Ctrl+V to paste screenshots) */}
+      {(!showLeftColumn || !chatCollapsed) && (
       <div
         className="chat-panel"
         aria-label="Learning Mode"
@@ -1155,6 +1261,31 @@ export default function LearningModel() {
           </div>
         </div>
       </div>
+      )}
+
+      {showLeftColumn && chatCollapsed && (
+        <div className="chat-panel-root chat-panel-root--collapsed">
+          <button
+            type="button"
+            className="chat-panel-reveal-btn"
+            onClick={expandChatPanel}
+            title="Show chat"
+            aria-label="Show chat panel"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
     {enlargedImageSrc && (
       <div

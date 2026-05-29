@@ -82,21 +82,10 @@
   max-width: 12rem;
 }
 
-/* Topic bar + optional study note panel below */
+/* Topic bar (note content lives in resizable split below) */
 .left-panel-topic-block {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  margin: 0 0 10px;
-}
-
-.left-panel-topic-block .left-panel-section-note {
-  margin-top: -1px;
-  border-radius: 0 0 8px 8px;
-}
-
-.left-panel-topic-block:has(.left-panel-note-btn--open) .left-panel-topic-bar {
-  border-radius: 8px 8px 0 0;
+  margin: 0 0 8px;
 }
 
 /* Current section title + page range; Note and Hide on the right */
@@ -144,45 +133,228 @@
   color: #115e59;
 }
 
-.left-panel-section-note {
-  padding: 10px 12px 12px;
-  background: #f0fdfa;
-  border: 1px solid #99f6e4;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: #134e4a;
-  max-height: min(40vh, 280px);
-  overflow-y: auto;
+.right-panel--note-split {
+  overflow: hidden;
 }
 
-.left-panel-section-note-block + .left-panel-section-note-block {
+.textbook-note-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 6px;
+}
+
+.textbook-note-pane {
+  min-height: 120px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.textbook-note-split-handle {
+  flex-shrink: 0;
+  height: 10px;
+  margin: 0 4px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.textbook-note-split-handle:hover {
+  background: linear-gradient(180deg, #ccfbf1 0%, #99f6e4 100%);
+  border-color: #2dd4bf;
+}
+
+.textbook-note-split-handle-grip {
+  width: 36px;
+  height: 3px;
+  border-radius: 999px;
+  background: #64748b;
+  box-shadow: 0 3px 0 #64748b, 0 -3px 0 #64748b;
+}
+
+.textbook-note-split-handle:hover .textbook-note-split-handle-grip {
+  background: #0f766e;
+  box-shadow: 0 3px 0 #0f766e, 0 -3px 0 #0f766e;
+}
+
+.textbook-pages-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.textbook-pages-pane--full {
+  flex: 1;
+  min-height: 0;
+}
+
+.textbook-pages-pane .reference-page-sidebar {
+  flex: 1;
+}
+
+.left-panel-section-note {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 14px;
+  background: linear-gradient(165deg, #f8fffe 0%, #ecfdf5 45%, #f0f9ff 100%);
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #134e4a;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 16px rgba(15, 118, 110, 0.08);
+}
+
+.section-note-card {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(153, 246, 228, 0.65);
+  box-shadow: 0 1px 3px rgba(15, 118, 110, 0.06);
+}
+
+.section-note-card + .section-note-card {
   margin-top: 10px;
 }
 
+.section-note-card--goals {
+  border-left: 3px solid #0d9488;
+}
+
+.section-note-card--vocab {
+  border-left: 3px solid #0284c7;
+}
+
+.section-note-card--formulas {
+  border-left: 3px solid #7c3aed;
+}
+
+.section-note-card-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0f766e;
+  background: linear-gradient(145deg, #ffffff, #ccfbf1);
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 118, 110, 0.1);
+}
+
+.section-note-card--vocab .section-note-card-icon {
+  color: #0369a1;
+  background: linear-gradient(145deg, #ffffff, #e0f2fe);
+  border-color: #7dd3fc;
+}
+
+.section-note-card--formulas .section-note-card-icon {
+  color: #6d28d9;
+  background: linear-gradient(145deg, #ffffff, #ede9fe);
+  border-color: #c4b5fd;
+}
+
+.section-note-card-body {
+  min-width: 0;
+  flex: 1;
+}
+
 .left-panel-section-note-heading {
-  margin: 0 0 4px;
-  font-size: 0.72rem;
+  margin: 0 0 6px;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #0f766e;
 }
 
+.section-note-card--vocab .left-panel-section-note-heading {
+  color: #0369a1;
+}
+
+.section-note-card--formulas .left-panel-section-note-heading {
+  color: #6d28d9;
+}
+
 .left-panel-section-note-text {
   margin: 0;
+  color: #1e3a3a;
 }
 
-.left-panel-section-note-list {
+.section-note-vocab-list {
   margin: 0;
-  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.left-panel-section-note-list li {
-  margin: 0.2rem 0;
+.section-note-vocab-row {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
 }
 
-.left-panel-section-note-list--formulas li {
-  list-style: disc;
+.section-note-vocab-term {
+  margin: 0 0 2px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: #0c4a6e;
+}
+
+.section-note-vocab-def {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.section-note-formula-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-note-formula-item {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
+  border: 1px solid #ddd6fe;
+}
+
+.section-note-formula-expr {
+  font-weight: 600;
+  color: #4c1d95;
+  margin-bottom: 4px;
+}
+
+.section-note-formula-explain {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #5b21b6;
+  opacity: 0.92;
 }
 
 .left-panel-topic-bar-text {
@@ -276,6 +448,55 @@
 }
 .resize-handle:hover {
   background: #0d9488;
+}
+
+/* Collapsed chat (right edge) — drag split far right to hide; click tab to restore */
+.chat-panel-root--collapsed {
+  flex-shrink: 0;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #cbd5e1;
+  background: #eef2f7;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  overflow: hidden;
+}
+
+.chat-panel-reveal-btn {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: #e8edf4;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.chat-panel-reveal-btn:hover {
+  color: #0f766e;
+  background: #d8f5f0;
+}
+
+.chat-panel-reveal-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.45);
+}
+
+.chat-panel-reveal-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Learning progress column (left of Conversations) — hide, drag to resize wider/narrower */
@@ -392,6 +613,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   background: #fff;
+}
+
+.right-panel.right-panel--note-split {
+  overflow: hidden;
 }
 
 /* Learning Mode: restart / new question (styled button row) */

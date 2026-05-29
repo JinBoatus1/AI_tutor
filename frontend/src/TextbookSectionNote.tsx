@@ -10,7 +10,7 @@ export function useSectionNoteToggle(sectionLabel: string) {
   useEffect(() => {
     if (prevLabelRef.current !== sectionLabel) {
       prevLabelRef.current = sectionLabel;
-      setOpen(false);
+      setOpen(true);
     }
   }, [sectionLabel]);
 
@@ -40,41 +40,65 @@ export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButton
 
 type SectionNotePanelProps = {
   note: SectionNote;
-  open: boolean;
   panelId: string;
 };
 
-export function SectionNotePanel({ note, open, panelId }: SectionNotePanelProps) {
-  if (!open) return null;
-
+export function SectionNotePanel({ note, panelId }: SectionNotePanelProps) {
   return (
     <div id={panelId} className="left-panel-section-note" role="region" aria-label="Section study note">
-      <div className="left-panel-section-note-block">
-        <h3 className="left-panel-section-note-heading">What you&apos;ll learn</h3>
-        <p className="left-panel-section-note-text">{note.objectives}</p>
+      <div className="section-note-card section-note-card--goals">
+        <div className="section-note-card-icon" aria-hidden>
+          ◆
+        </div>
+        <div className="section-note-card-body">
+          <h3 className="left-panel-section-note-heading">What you&apos;ll learn</h3>
+          <p className="left-panel-section-note-text">{note.objectives}</p>
+        </div>
       </div>
+
       {note.vocabulary.length > 0 ? (
-        <div className="left-panel-section-note-block">
-          <h3 className="left-panel-section-note-heading">Key vocabulary</h3>
-          <ul className="left-panel-section-note-list">
-            {note.vocabulary.map((term) => (
-              <li key={term}>
-                <MathText>{term}</MathText>
-              </li>
-            ))}
-          </ul>
+        <div className="section-note-card section-note-card--vocab">
+          <div className="section-note-card-icon" aria-hidden>
+            Aa
+          </div>
+          <div className="section-note-card-body">
+            <h3 className="left-panel-section-note-heading">Key vocabulary</h3>
+            <dl className="section-note-vocab-list">
+              {note.vocabulary.map((item) => (
+                <div key={item.term} className="section-note-vocab-row">
+                  <dt className="section-note-vocab-term">
+                    <MathText>{item.term}</MathText>
+                  </dt>
+                  <dd className="section-note-vocab-def">
+                    <MathText>{item.definition}</MathText>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       ) : null}
+
       {note.formulas.length > 0 ? (
-        <div className="left-panel-section-note-block">
-          <h3 className="left-panel-section-note-heading">Important formulas</h3>
-          <ul className="left-panel-section-note-list left-panel-section-note-list--formulas">
-            {note.formulas.map((f) => (
-              <li key={f}>
-                <MathText>{f}</MathText>
-              </li>
-            ))}
-          </ul>
+        <div className="section-note-card section-note-card--formulas">
+          <div className="section-note-card-icon" aria-hidden>
+            ∑
+          </div>
+          <div className="section-note-card-body">
+            <h3 className="left-panel-section-note-heading">Important formulas</h3>
+            <ul className="section-note-formula-list">
+              {note.formulas.map((item) => (
+                <li key={`${item.expr}:${item.explanation}`} className="section-note-formula-item">
+                  <div className="section-note-formula-expr">
+                    <MathText>{item.expr}</MathText>
+                  </div>
+                  <p className="section-note-formula-explain">
+                    <MathText>{item.explanation}</MathText>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       ) : null}
     </div>

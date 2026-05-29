@@ -1,9 +1,18 @@
-export type SectionNote = {
-  /** What this chapter/section is about (learning goals). */
-  objectives: string;
-  vocabulary: string[];
+export type VocabEntry = {
+  term: string;
+  definition: string;
+};
+
+export type FormulaEntry = {
   /** LaTeX allowed: $...$ inline, $$...$$ block. */
-  formulas: string[];
+  expr: string;
+  explanation: string;
+};
+
+export type SectionNote = {
+  objectives: string;
+  vocabulary: VocabEntry[];
+  formulas: FormulaEntry[];
 };
 
 /** First token in a section title if it looks like 1, 1.1, 24.2, … */
