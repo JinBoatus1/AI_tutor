@@ -21,7 +21,8 @@ import {
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
-import { getSectionNote, sectionTokenFromTitle } from "./utils/sectionNotes";
+import { getSectionNoteWithNewVocab, sectionTokenFromTitle } from "./utils/sectionNotes";
+import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -819,8 +820,9 @@ export default function LearningModel() {
 
   const activeSectionNote = useMemo(() => {
     if (textbookId !== "focs" || !dataMatchedTopic) return null;
-    return getSectionNote(
+    return getSectionNoteWithNewVocab(
       FOCS_SECTION_NOTES,
+      FOCS_SECTION_TOKENS_PREORDER,
       dataMatchedTopic.sectionHint,
       dataMatchedTopic.name
     );
