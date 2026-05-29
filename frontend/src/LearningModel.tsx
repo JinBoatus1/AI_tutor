@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import "./Chat.css";
 import { apiUrl } from "./apiBase";
@@ -14,6 +14,13 @@ import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
 import ChatHistory from "./ChatHistory";
 import LearningBarPanel, { type OutlineSectionPreviewDetail } from "./LearningBarPanel";
+import {
+  SectionNoteButton,
+  SectionNotePanel,
+  useSectionNoteToggle,
+} from "./TextbookSectionNote";
+import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
+import { getSectionNote, sectionTokenFromTitle } from "./utils/sectionNotes";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -66,6 +73,7 @@ export default function LearningModel() {
     name: string;
     startBook: number;
     endBook: number;
+    sectionHint?: string;
   } | null>(null);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
@@ -129,6 +137,7 @@ export default function LearningModel() {
       setReferenceSectionPages(null);
       setSectionPageIndex(0);
       setOutlinePreviewLoading(true);
+      const previewHint = detail.sectionHint.trim() || sectionTokenFromTitle(detail.sectionTitle) || "";
       if (textbookId.startsWith("user_") && !token) {
         setOutlinePreviewLoading(false);
         setOutlinePreviewError("Sign in to view pages for your uploaded textbook.");
@@ -174,6 +183,7 @@ export default function LearningModel() {
                 name: data.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
+                sectionHint: previewHint || sectionTokenFromTitle(data.matched_topic.name) || undefined,
               });
             }
           } else {
@@ -229,6 +239,7 @@ export default function LearningModel() {
                 name: cData.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
+                sectionHint: previewHint || sectionTokenFromTitle(cData.matched_topic.name) || undefined,
               });
             }
             setOutlinePreviewError(null);
@@ -536,6 +547,7 @@ export default function LearningModel() {
           name: data.matched_topic.name,
           startBook: sb,
           endBook: eb,
+          sectionHint: sectionTokenFromTitle(data.matched_topic.name) || undefined,
         });
       } else {
         setDataMatchedTopic(null);
@@ -675,6 +687,21 @@ export default function LearningModel() {
     setRefreshTrigger((n) => n + 1);
   };
 
+  const activeSectionNote = useMemo(() => {
+    if (textbookId !== "focs" || !dataMatchedTopic) return null;
+    return getSectionNote(
+      FOCS_SECTION_NOTES,
+      dataMatchedTopic.sectionHint,
+      dataMatchedTopic.name
+    );
+  }, [textbookId, dataMatchedTopic]);
+
+  const sectionNoteLabel = dataMatchedTopic
+    ? `${dataMatchedTopic.sectionHint ?? ""}:${dataMatchedTopic.name}`
+    : "";
+
+  const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
+
   return (
     <div className="learning-page-wrapper">
       {learningBarCollapsed ? (
@@ -742,30 +769,48 @@ export default function LearningModel() {
         style={{ flex: `0 0 ${rightPanelWidth}%` }}
       >
         {dataMatchedTopic ? (
-          <div className="left-panel-topic-bar">
-            <div
-              className="left-panel-topic-bar-text"
-              role="group"
-              aria-label="Current textbook section"
-            >
-              <span className="left-panel-topic-bar-title">
-                Textbook: {dataMatchedTopic.name}
-              </span>
-              <span className="left-panel-topic-bar-sep" aria-hidden="true">
-                ·
-              </span>
-              <span className="left-panel-topic-bar-pages">
-                Pages {dataMatchedTopic.startBook}–{dataMatchedTopic.endBook}
-              </span>
+          <div className="left-panel-topic-block">
+            <div className="left-panel-topic-bar">
+              <div
+                className="left-panel-topic-bar-text"
+                role="group"
+                aria-label="Current textbook section"
+              >
+                <span className="left-panel-topic-bar-title">
+                  Textbook: {dataMatchedTopic.name}
+                </span>
+                <span className="left-panel-topic-bar-sep" aria-hidden="true">
+                  ·
+                </span>
+                <span className="left-panel-topic-bar-pages">
+                  Pages {dataMatchedTopic.startBook}–{dataMatchedTopic.endBook}
+                </span>
+              </div>
+              <div className="left-panel-topic-bar-actions">
+                {activeSectionNote ? (
+                  <SectionNoteButton
+                    open={sectionNoteToggle.open}
+                    onToggle={() => sectionNoteToggle.setOpen((v) => !v)}
+                    panelId={sectionNoteToggle.panelId}
+                  />
+                ) : null}
+                <button
+                  type="button"
+                  className="left-panel-hide-btn left-panel-hide-btn--in-bar"
+                  onClick={() => setLeftPanelOpen(false)}
+                  title="Hide textbook sidebar"
+                >
+                  Hide
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              className="left-panel-hide-btn left-panel-hide-btn--in-bar"
-              onClick={() => setLeftPanelOpen(false)}
-              title="Hide textbook sidebar"
-            >
-              Hide
-            </button>
+            {activeSectionNote ? (
+              <SectionNotePanel
+                note={activeSectionNote}
+                open={sectionNoteToggle.open}
+                panelId={sectionNoteToggle.panelId}
+              />
+            ) : null}
           </div>
         ) : (
           <div className="left-panel-hide-row">

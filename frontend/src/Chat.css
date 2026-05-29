@@ -82,7 +82,24 @@
   max-width: 12rem;
 }
 
-/* Current section title + page range; Hide on the right */
+/* Topic bar + optional study note panel below */
+.left-panel-topic-block {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 10px;
+}
+
+.left-panel-topic-block .left-panel-section-note {
+  margin-top: -1px;
+  border-radius: 0 0 8px 8px;
+}
+
+.left-panel-topic-block:has(.left-panel-note-btn--open) .left-panel-topic-bar {
+  border-radius: 8px 8px 0 0;
+}
+
+/* Current section title + page range; Note and Hide on the right */
 .left-panel-topic-bar {
   flex-shrink: 0;
   display: flex;
@@ -92,8 +109,80 @@
   background: #e9f6ff;
   padding: 10px 12px;
   border-radius: 8px;
-  margin: 0 0 10px;
   border: 1px solid #bae6fd;
+}
+
+.left-panel-topic-bar-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.left-panel-note-btn {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f766e;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.left-panel-note-btn:hover {
+  border-color: #5eead4;
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.left-panel-note-btn--open {
+  background: #ccfbf1;
+  border-color: #2dd4bf;
+  color: #115e59;
+}
+
+.left-panel-section-note {
+  padding: 10px 12px 12px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #134e4a;
+  max-height: min(40vh, 280px);
+  overflow-y: auto;
+}
+
+.left-panel-section-note-block + .left-panel-section-note-block {
+  margin-top: 10px;
+}
+
+.left-panel-section-note-heading {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.left-panel-section-note-text {
+  margin: 0;
+}
+
+.left-panel-section-note-list {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.left-panel-section-note-list li {
+  margin: 0.2rem 0;
+}
+
+.left-panel-section-note-list--formulas li {
+  list-style: disc;
 }
 
 .left-panel-topic-bar-text {
