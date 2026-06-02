@@ -13,15 +13,18 @@ html, body, #root {
   height: 100vh;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: transparent;
 }
 
-/* Home: no top navbar — navigation only via hero card links */
-.app-container--home .content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+/* main column to the right of the global sidebar */
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .deploy-config-banner {
