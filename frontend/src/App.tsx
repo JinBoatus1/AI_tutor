@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { API_BASE, apiBlockedByMixedContent } from "./apiBase";
 import Home from "./Home";
 import AutoGrader from "./AutoGrader";
@@ -16,12 +16,14 @@ function AppShell() {
   const showDeployWarning = apiBlockedByMixedContent();
   const { user, loading, setShowSignIn } = useAuth();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container${isHome ? " app-container--home" : ""}`}>
+      {!isHome && <Sidebar />}
       <div className="app-main">
-        {showDeployWarning ? (
+        {!isHome && showDeployWarning ? (
           <div className="deploy-config-banner" role="alert">
             <p>
               <strong>Mixed content blocked:</strong> This site is served over HTTPS, but the configured
@@ -30,7 +32,7 @@ function AppShell() {
             </p>
           </div>
         ) : null}
-        {!loading && !user && !bannerDismissed && (
+        {!isHome && !loading && !user && !bannerDismissed && (
           <div className="auth-prompt">
             <div className="auth-prompt-inner">
               <div className="auth-prompt-content">
