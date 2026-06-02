@@ -98,6 +98,40 @@
 
 .sb-empty { font-size: 0.82rem; color: rgba(148, 163, 184, 0.55); padding: 8px 12px; }
 
+/* history list */
+.sb-section--hist.is-open .sb-section-body { max-height: 56vh; overflow-y: auto; padding-left: 0; }
+.sb-section--hist .sb-section-body { scrollbar-width: thin; scrollbar-color: rgba(94, 234, 212, 0.25) transparent; }
+.sb-section--hist .sb-section-body::-webkit-scrollbar { width: 6px; }
+.sb-section--hist .sb-section-body::-webkit-scrollbar-thumb { background: rgba(94, 234, 212, 0.2); border-radius: 999px; }
+.sb-hist { display: flex; flex-direction: column; gap: 1px; padding: 2px 2px 4px; }
+.sb-newchat {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 6px; cursor: pointer;
+  padding: 9px 11px; border-radius: 9px; background: rgba(94, 234, 212, 0.1); border: 1px solid rgba(94, 234, 212, 0.2);
+  color: var(--tealb); font-family: "DM Sans", sans-serif; font-size: 0.86rem; font-weight: 600; transition: background 0.15s;
+}
+.sb-newchat:hover { background: rgba(94, 234, 212, 0.17); }
+.sb-newchat svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.sb-hist-group { margin-top: 6px; }
+.sb-hist-label {
+  font-family: "DM Mono", monospace; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(148, 163, 184, 0.5); padding: 4px 11px 5px;
+}
+.sb-hist-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: 8px; cursor: pointer;
+  color: rgba(203, 213, 225, 0.72); transition: background 0.13s, color 0.13s;
+}
+.sb-hist-item:hover { background: rgba(255, 255, 255, 0.06); color: #f1f5f9; }
+.sb-hist-item.is-active { background: rgba(94, 234, 212, 0.1); color: var(--tealb); }
+.sb-hist-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; }
+.sb-hist-time { flex: 0 0 auto; font-size: 0.68rem; color: rgba(148, 163, 184, 0.5); font-family: "DM Mono", monospace; }
+.sb-hist-del {
+  flex: 0 0 auto; width: 22px; height: 22px; display: grid; place-items: center; border: 0; background: transparent;
+  color: rgba(148, 163, 184, 0.6); border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity 0.13s, color 0.13s, background 0.13s;
+}
+.sb-hist-item:hover .sb-hist-del { opacity: 1; }
+.sb-hist-del:hover { background: rgba(244, 63, 94, 0.16); color: #fb7185; }
+.sb-hist-del svg { width: 15px; height: 15px; }
+
 /* footer */
 .sb-footer { flex-shrink: 0; padding: 12px; border-top: 1px solid rgba(94, 234, 212, 0.08); }
 .sb-user { display: flex; align-items: center; gap: 10px; }

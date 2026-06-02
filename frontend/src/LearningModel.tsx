@@ -12,7 +12,7 @@ import {
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
-import ChatHistory from "./ChatHistory";
+import { useSessionBridge } from "./context/SessionBridge";
 import LearningBarPanel, { type OutlineSectionPreviewDetail } from "./LearningBarPanel";
 import {
   SectionNoteButton,
@@ -117,9 +117,35 @@ function readLearningBarCollapsed(): boolean {
 export default function LearningModel() {
   const location = useLocation();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Bridge Learning Mode's session state to the global sidebar History.
+  const bridge = useSessionBridge();
+  const sessionApiRef = useRef<{ load: (sid: string) => void; newChat: () => void }>({ load: () => {}, newChat: () => {} });
+  const pendingSelectRef = useRef<string | null>(null);
+  useEffect(() => { bridge.publishActive(sessionId); }, [sessionId, bridge]);
+  useEffect(() => { bridge.publishRefresh(refreshTrigger); }, [refreshTrigger, bridge]);
+  useEffect(
+    () => bridge.attach({ select: (sid) => sessionApiRef.current.load(sid), newChat: () => sessionApiRef.current.newChat() }),
+    [bridge]
+  );
+  useEffect(() => {
+    const p = bridge.takePending();
+    if (p?.kind === "new") sessionApiRef.current.newChat();
+    else if (p?.kind === "select") pendingSelectRef.current = p.sid;
+    // run once on mount; applies a request made from the sidebar on another page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (token && pendingSelectRef.current) {
+      const sid = pendingSelectRef.current;
+      pendingSelectRef.current = null;
+      sessionApiRef.current.load(sid);
+    }
+  }, [token]);
+
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
   const { curriculumTree, setCurriculumTree } = useCurriculum();
@@ -818,6 +844,9 @@ export default function LearningModel() {
     setRefreshTrigger((n) => n + 1);
   };
 
+  // keep the bridge wrappers pointing at the latest closures
+  sessionApiRef.current = { load: loadSession, newChat: handleNewChat };
+
   const activeSectionNote = useMemo(() => {
     if (textbookId !== "focs" || !dataMatchedTopic) return null;
     return getSectionNoteWithNewVocab(
@@ -984,14 +1013,6 @@ export default function LearningModel() {
             />
           </div>
         </div>
-      )}
-      {user && (
-        <ChatHistory
-          activeSessionId={sessionId}
-          onSelectSession={loadSession}
-          onNewChat={handleNewChat}
-          refreshTrigger={refreshTrigger}
-        />
       )}
     <div className="learning-layout" ref={layoutRef}>
       {/* LEFT: textbook / reference (when content exists; can collapse) */}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import SidebarHistory from "./SidebarHistory";
 import "./Sidebar.css";
 
 /* ---- inline icons (no icon dependency) ---- */
@@ -50,7 +51,6 @@ const I = {
 type Tab = { key: string; label: string; icon: ReactNode; path: string; gated?: boolean };
 
 const TABS: Tab[] = [
-  { key: "/", label: "Home", icon: I.home, path: "/" },
   { key: "/learning", label: "Learning Mode", icon: I.learning, path: "/learning" },
   { key: "/autograder", label: "Auto Grader", icon: I.grader, path: "/autograder" },
   { key: "/profile", label: "My profile", icon: I.profile, path: "/profile", gated: true },
@@ -70,7 +70,7 @@ export default function Sidebar() {
 
   const [collapsed, setCollapsed] = useState<boolean>(() => localStorage.getItem("sidebar-collapsed") === "1");
   const [openProgress, setOpenProgress] = useState(true);
-  const [openHistory, setOpenHistory] = useState(false);
+  const [openHistory, setOpenHistory] = useState(true);
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -149,14 +149,14 @@ export default function Sidebar() {
         </div>
 
         {/* History (our "recent") */}
-        <div className={`sb-section${openHistory ? " is-open" : ""}`}>
+        <div className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}>
           <button className="sb-section-head" onClick={() => setOpenHistory((o) => !o)}>
             <span className="sb-link-ic">{I.history}</span>
             <span className="sb-link-label">History</span>
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
-            <div className="sb-empty">{user ? "No recent chats yet." : "Sign in to keep your chat history."}</div>
+            {user ? <SidebarHistory /> : <div className="sb-empty">Sign in to keep your chat history.</div>}
           </div>
         </div>
       </div>
