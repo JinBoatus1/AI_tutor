@@ -34,7 +34,7 @@ export default function Grades() {
     <div className="gr-page">
       <header className="gr-head">
         <div>
-          <h1 className="gr-title">My Course</h1>
+          <h1 className="gr-title">Grades</h1>
           {phase === "ready" && (
             <p className="gr-sub">
               {course.name}
@@ -259,9 +259,6 @@ function GoalSeek({ course }: { course: Course }) {
           ))}
         </ul>
       )}
-      <p className="gr-note">
-        Exam weights can be conditional (lowest counts less). <span className="gr-hand">RogerHub can't do this ✦</span>
-      </p>
     </section>
   );
 }

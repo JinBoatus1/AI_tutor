@@ -60,7 +60,7 @@ type Tab = { key: string; label: string; icon: ReactNode; path: string; gated?: 
 
 const TABS: Tab[] = [
   { key: "/learning", label: "Learning Mode", icon: I.learning, path: "/learning" },
-  { key: "/grades", label: "My Course", icon: I.course, path: "/grades" },
+  { key: "/grades", label: "Grades", icon: I.course, path: "/grades" },
   { key: "/autograder", label: "Auto Grader", icon: I.grader, path: "/autograder" },
   { key: "/profile", label: "My profile", icon: I.profile, path: "/profile", gated: true },
 ];

@@ -6,6 +6,13 @@
   color: #0f172a;
 }
 
+/* The app shell (.content) is overflow:hidden to lock chat scroll; let the
+   grades page (and its tall rubric editor) scroll within it. */
+.app-container .content:has(.gr-page) {
+  display: block;
+  overflow-y: auto;
+}
+
 /* ---- header ---- */
 .gr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 .gr-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 34px; line-height: 1.1; color: #0f172a; background: none; -webkit-text-fill-color: #0f172a; }
