@@ -29,6 +29,11 @@ const I = {
       <path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5" /><path d="m9.5 14 1.8 1.8L15 12" />
     </svg>
   ),
+  course: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M21 10v4.5" /><path d="M7 12v3.6c0 1.1 2.2 2.4 5 2.4s5-1.3 5-2.4V12" />
+    </svg>
+  ),
   profile: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
@@ -55,6 +60,7 @@ type Tab = { key: string; label: string; icon: ReactNode; path: string; gated?: 
 
 const TABS: Tab[] = [
   { key: "/learning", label: "Learning Mode", icon: I.learning, path: "/learning" },
+  { key: "/grades", label: "My Course", icon: I.course, path: "/grades" },
   { key: "/autograder", label: "Auto Grader", icon: I.grader, path: "/autograder" },
   { key: "/profile", label: "My profile", icon: I.profile, path: "/profile", gated: true },
 ];
@@ -86,11 +92,13 @@ export default function Sidebar() {
 
   const activeKey = location.pathname.startsWith("/autograder")
     ? "/autograder"
-    : location.pathname.startsWith("/learning")
-      ? "/learning"
-      : location.pathname.startsWith("/profile")
-        ? "/profile"
-        : "/";
+    : location.pathname.startsWith("/grades")
+      ? "/grades"
+      : location.pathname.startsWith("/learning")
+        ? "/learning"
+        : location.pathname.startsWith("/profile")
+          ? "/profile"
+          : "/";
 
   const go = (tab: Tab) => {
     if (tab.gated && !user && !loading) {

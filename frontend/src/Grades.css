@@ -1,0 +1,114 @@
+.gr-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+  font-family: 'DM Sans', sans-serif;
+  color: #0f172a;
+}
+
+.gr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.gr-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 34px;
+  line-height: 1.1;
+  color: #0f172a;
+}
+.gr-sub { color: #64748b; font-size: 15px; margin-top: 4px; }
+.gr-dot { color: #cbd5e1; }
+.gr-mockpill {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f766e;
+  background: #ccfbf1;
+  border: 1px solid #5eead4;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Standing hero — navy -> teal gradient, the app's signature accent */
+.gr-standing {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(140deg, #0c1222 0%, #0a1a2e 45%, #0c2828 100%);
+  border-radius: 20px;
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  box-shadow: 0 16px 44px -20px rgba(13, 148, 136, 0.65);
+}
+.gr-standing-num {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 56px;
+  line-height: 1;
+  color: #5eead4;
+}
+.gr-standing-meta { display: flex; flex-direction: column; gap: 5px; }
+.gr-letter { font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; color: #ffffff; }
+.gr-standing-basis { color: #94a3b8; font-size: 14px; }
+
+.gr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) { .gr-grid { grid-template-columns: 1fr; } }
+
+.gr-card {
+  background: #ffffff;
+  border: 1px solid #e8edf2;
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 6px 22px -16px rgba(15, 23, 42, 0.3);
+}
+.gr-card-h {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 19px;
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.gr-cat { padding: 12px 0; border-bottom: 1px dashed #e8edf2; }
+.gr-cat:last-of-type { border-bottom: none; padding-bottom: 4px; }
+.gr-cat-top { display: flex; justify-content: space-between; align-items: baseline; }
+.gr-cat-name { font-weight: 600; }
+.gr-cat-weight { font-family: 'DM Mono', monospace; color: #0f766e; font-weight: 600; }
+.gr-cat-rule { font-size: 13px; color: #475569; margin-top: 3px; }
+.gr-cat-note { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.gr-cutoffs {
+  margin-top: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.gr-goal-item { color: #0d9488; }
+.gr-goal-list { list-style: none; }
+.gr-goal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 2px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.gr-goal-row:last-child { border-bottom: none; }
+.gr-goal-letter { font-family: 'DM Serif Display', Georgia, serif; font-size: 20px; color: #0f172a; width: 46px; }
+.gr-goal-need { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 600; color: #0d9488; }
+.gr-goal-need em { font-size: 13px; color: #94a3b8; font-style: normal; }
+.gr-goal-locked {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f766e;
+  background: #ccfbf1;
+  padding: 4px 11px;
+  border-radius: 999px;
+}
+.gr-goal-unreach { font-size: 14px; color: #ef4444; }
+.gr-note { margin-top: 14px; font-size: 13px; color: #64748b; line-height: 1.55; }
+.gr-hand { font-family: 'Caveat', cursive; font-size: 20px; color: #0d9488; }

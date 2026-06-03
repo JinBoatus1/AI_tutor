@@ -6,6 +6,7 @@ import AutoGrader from "./AutoGrader";
 import LearningModel from "./LearningModel";
 import MyLearningBar from "./MyLearningBar";
 import UserProfile from "./UserProfile";
+import Grades from "./Grades";
 import SignInModal from "./SignInModal";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "./context/AuthContext";
@@ -62,6 +63,7 @@ function AppShell() {
             <Route path="/learning" element={<LearningModel />} />
             <Route path="/learning-bar" element={<MyLearningBar />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/grades" element={<Grades />} />
           </Routes>
         </div>
 
