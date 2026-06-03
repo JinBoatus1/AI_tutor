@@ -352,7 +352,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #f7f3ea; /* ivory paper to match the /grades Report Card theme */
+  background: transparent; /* blend into the navy sidebar, not an ivory cutout */
+  color: #cdd6e4;
 }
 
 .learning-bar-embed-scroll {
@@ -401,31 +402,44 @@
   font-size: 0.75rem;
 }
 
-/* Editorial "Contents" reskin for the sidebar embed only (the standalone
-   /learning-bar page keeps its own look). Ivory paper + DM Serif title + DM
-   Mono page ranges, matching the /grades Report Card theme. */
+/* The embed lives INSIDE the navy sidebar, so it must read as part of the nav,
+   not an ivory block carved out of it. Dark/transparent panel, light text, teal
+   accents — the same language as the sidebar nav items. (Scoped to
+   .learning-bar-embed; the standalone /learning-bar page keeps its light look.) */
 .learning-bar-embed .my-learning-bar-title {
   font-family: 'DM Serif Display', Georgia, serif;
   font-weight: 400;
-  color: #0c1222;
+  color: #eaf3ef;
 }
-.learning-bar-embed .my-learning-bar-book-link { color: #0d9488; }
-.learning-bar-embed .my-learning-bar-meta { color: #5b6672; }
+.learning-bar-embed .my-learning-bar-book-link { color: #5eead4; }
+.learning-bar-embed .my-learning-bar-book-link:hover { color: #99f6e4; }
+.learning-bar-embed .my-learning-bar-meta { color: #8c98aa; }
+.learning-bar-embed .my-learning-bar-legend { color: #aab4c4; }
 .learning-bar-embed .my-learning-bar-tree {
-  background: #fffdf8;
-  border: 1px solid rgba(28, 37, 48, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   box-shadow: none;
 }
+.learning-bar-embed .my-learning-bar-expand-row { border-bottom-color: rgba(255, 255, 255, 0.1); }
 .learning-bar-embed .my-learning-bar-expand-btn {
-  border-color: rgba(28, 37, 48, 0.18);
-  background: #fffdf8;
-  color: #0f766e;
+  border-color: rgba(94, 234, 212, 0.28);
+  background: rgba(94, 234, 212, 0.08);
+  color: #5eead4;
 }
-.learning-bar-embed .my-learning-bar-expand-btn:hover { background: #f0fdfa; }
-.learning-bar-embed .my-learning-bar-expand-row { border-bottom-color: rgba(28, 37, 48, 0.16); }
-.learning-bar-embed .focs-node__children { border-left-color: rgba(28, 37, 48, 0.14); }
+.learning-bar-embed .my-learning-bar-expand-btn:hover { background: rgba(94, 234, 212, 0.16); }
+.learning-bar-embed .focs-node__row--toggle:hover { background: rgba(255, 255, 255, 0.05); }
+.learning-bar-embed .focs-node__chevron {
+  background: rgba(255, 255, 255, 0.08);
+  color: #aab4c4;
+}
+.learning-bar-embed .focs-node__chevron:hover { background: rgba(255, 255, 255, 0.14); }
+.learning-bar-embed .focs-node__children { border-left-color: rgba(255, 255, 255, 0.12); }
+.learning-bar-embed .focs-node__label--learned { color: #5eead4; }
+.learning-bar-embed .focs-node__label--not { color: #aab4c4; }
+.learning-bar-embed .focs-node__learn-dot { border-color: #5b6b82; }
+.learning-bar-embed .focs-node__learn-dot--on { border-color: #5eead4; background: #14b8a6; }
 .learning-bar-embed .focs-node__range {
   font-family: 'DM Mono', ui-monospace, monospace;
-  color: #5b6672;
+  color: #7c8aa0;
 }
