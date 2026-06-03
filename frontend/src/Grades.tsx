@@ -33,15 +33,12 @@ export default function Grades() {
   return (
     <div className="gr-page">
       <header className="gr-head">
-        <div>
-          <h1 className="gr-title">Grades</h1>
-          {phase === "ready" && (
-            <p className="gr-sub">
-              {course.name}
-              {course.term ? <> <span className="gr-dot">·</span> {course.term}</> : null}
-            </p>
-          )}
-        </div>
+        <h1 className="gr-title">
+          {phase === "ready" ? course.name : "Grades"}
+          {phase === "ready" && course.term ? (
+            <span className="gr-sub"> <span className="gr-dot">·</span> {course.term}</span>
+          ) : null}
+        </h1>
         <div className="gr-head-actions">
           <span className="gr-mockpill">Preview · mock data</span>
           {phase === "ready" && (
@@ -77,10 +74,8 @@ export default function Grades() {
       {phase === "ready" && !editing && (
         <>
           <StandingHero course={course} />
-          <div className="gr-grid">
-            <Gradebook course={course} onChange={setCourse} />
-            <GoalSeek course={course} />
-          </div>
+          <GoalSeek course={course} />
+          <Gradebook course={course} onChange={setCourse} />
         </>
       )}
     </div>
@@ -121,16 +116,26 @@ function Parsing() {
 
 function StandingHero({ course }: { course: Course }) {
   const s = useMemo(() => computeStanding(course), [course]);
+  // Split a trailing +/− off the letter so it can render as a small serif superscript.
+  const letter = s.letter ?? "—";
+  const letterMain = letter.length > 1 ? letter.slice(0, -1) : letter;
+  const letterSup = letter.length > 1 ? letter.slice(-1) : "";
   return (
     <section className="gr-standing" aria-label="Current standing">
       {s.percent == null ? (
-        <div className="gr-standing-empty">Add grades to see your standing</div>
+        <div className="gr-standing-empty">Add grades to see your standing.</div>
       ) : (
         <>
-          <div className="gr-standing-num">{s.percent.toFixed(1)}%</div>
-          <div className="gr-standing-meta">
-            <span className="gr-letter">{s.letter ?? "—"}</span>
-            <span className="gr-standing-basis">on graded work so far</span>
+          <div className="gr-mark">
+            {letterMain}
+            {letterSup && <sup>{letterSup}</sup>}
+          </div>
+          <div className="gr-standing-side">
+            <div className="gr-standing-num">
+              {s.percent.toFixed(1)}<small>%</small>
+            </div>
+            <div className="gr-standing-basis">on graded work so far</div>
+            <span className="gr-seal">● Standing</span>
           </div>
         </>
       )}
@@ -168,7 +173,7 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
 
   return (
     <section className="gr-card gr-gradebook">
-      <h2 className="gr-card-h">Gradebook</h2>
+      <h2 className="gr-sec-label">Gradebook</h2>
       {course.categories.map((cat) => (
         <div className="gr-gb-cat" key={cat.id}>
           <div className="gr-gb-cat-head">
@@ -179,6 +184,8 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
           {cat.items.map((it) => (
             <div className="gr-gb-row" key={it.id}>
               <span className="gr-gb-name">{it.name}</span>
+              <span className="gr-gb-leader" />
+              {it.score == null && <span className="gr-gb-upcoming">upcoming</span>}
               <span className="gr-gb-score">
                 <input
                   className="gr-gb-input"
@@ -191,7 +198,6 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
                 />
                 <span className="gr-gb-max">/ {it.maxScore}</span>
               </span>
-              {it.score == null && <span className="gr-gb-upcoming">upcoming</span>}
             </div>
           ))}
           <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
@@ -221,11 +227,18 @@ function GoalSeek({ course }: { course: Course }) {
       .map((x) => ({ letter: x.letter, res: goalSeek(course, x.letter, sel.cat.name, sel.it.id) }));
   }, [course, sel]);
 
+  // Hero line: the highest letter still reachable by scoring on this item.
+  const reachable = ladder.find((r) => r.res.status === "ok");
+  const allLocked = ladder.length > 0 && ladder.every((r) => r.res.status === "locked");
+  const bestLocked = ladder.find((r) => r.res.status === "locked");
+  const targetLetter = reachable?.letter ?? ladder[0]?.letter ?? "A";
+
   return (
     <section className="gr-card gr-goal" aria-label="What do I need">
-      <div className="gr-goal-head">
-        <h2 className="gr-card-h">What do I need?</h2>
-        {sel && ungraded.length > 0 && (
+      <hr className="gr-rule" />
+      <div className="gr-sec-label">
+        <span>The path to an {targetLetter}</span>
+        {sel && ungraded.length > 1 ? (
           <label className="gr-goal-on">
             on
             <select value={sel.it.id} onChange={(e) => setSelId(e.target.value)} aria-label="Upcoming item">
@@ -236,28 +249,60 @@ function GoalSeek({ course }: { course: Course }) {
               ))}
             </select>
           </label>
-        )}
+        ) : sel ? (
+          <span className="gr-sec-aside">{sel.it.name} remaining</span>
+        ) : null}
       </div>
 
       {!sel ? (
         <p className="gr-goal-done">Everything's graded — your standing above is final.</p>
       ) : (
-        <ul className="gr-goal-list">
-          {ladder.map(({ letter, res }) => (
-            <li className="gr-goal-row" key={letter}>
-              <span className="gr-goal-letter">{letter}</span>
-              {res.status === "ok" ? (
-                <span className="gr-goal-need">
-                  {res.needed!.toFixed(1)} <em>/ {sel.it.maxScore}</em>
+        <>
+          <div className="gr-path">
+            {reachable ? (
+              <>
+                <span className="gr-path-q">You need</span>
+                <span className="gr-path-num">
+                  {reachable.res.needed!.toFixed(1)}
+                  <small> / {sel.it.maxScore}</small>
                 </span>
-              ) : res.status === "locked" ? (
-                <span className="gr-goal-locked">already locked in</span>
-              ) : (
-                <span className="gr-goal-unreach">out of reach</span>
-              )}
-            </li>
-          ))}
-        </ul>
+                <span className="gr-hand">
+                  {reachable.res.needed! <= sel.it.maxScore * 0.7 ? "totally doable ✎" : "you've got this ✎"}
+                </span>
+              </>
+            ) : allLocked ? (
+              <>
+                <span className="gr-path-q">You're already at</span>
+                <span className="gr-path-num">{ladder[0].letter}</span>
+                <span className="gr-hand">locked in ✎</span>
+              </>
+            ) : (
+              <>
+                <span className="gr-path-q">On track for</span>
+                <span className="gr-path-num">{bestLocked?.letter ?? targetLetter}</span>
+                <span className="gr-hand">✎</span>
+              </>
+            )}
+          </div>
+
+          <ul className="gr-goal-list">
+            {ladder.map(({ letter, res }) => (
+              <li className="gr-goal-row" key={letter}>
+                <span className="gr-goal-letter">{letter}</span>
+                <span className="gr-goal-leader" />
+                {res.status === "ok" ? (
+                  <span className="gr-goal-need">
+                    score <b>{res.needed!.toFixed(1)}</b> on {sel.it.name}
+                  </span>
+                ) : res.status === "locked" ? (
+                  <span className="gr-goal-locked">already locked in</span>
+                ) : (
+                  <span className="gr-goal-unreach">out of reach</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
