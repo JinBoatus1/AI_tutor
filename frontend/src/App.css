@@ -165,15 +165,14 @@ html, body, #root {
     margin-bottom: 40px;
 }
 
+/* No global text gradient: it set -webkit-text-fill-color:transparent on EVERY
+   <h1>, overriding each heading's own color and painting them all purple (off
+   the navy/teal design system). Headings now use their own color. */
 h1 {
     color: #2c3e50;
     font-size: 3em;
     font-weight: 700;
     margin-bottom: 10px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .subtitle {

@@ -352,7 +352,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #f1f5f9;
+  background: #f7f3ea; /* ivory paper to match the /grades Report Card theme */
 }
 
 .learning-bar-embed-scroll {
@@ -399,4 +399,33 @@
 .learning-bar-embed .my-learning-bar-expand-btn {
   padding: 5px 10px;
   font-size: 0.75rem;
+}
+
+/* Editorial "Contents" reskin for the sidebar embed only (the standalone
+   /learning-bar page keeps its own look). Ivory paper + DM Serif title + DM
+   Mono page ranges, matching the /grades Report Card theme. */
+.learning-bar-embed .my-learning-bar-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-weight: 400;
+  color: #0c1222;
+}
+.learning-bar-embed .my-learning-bar-book-link { color: #0d9488; }
+.learning-bar-embed .my-learning-bar-meta { color: #5b6672; }
+.learning-bar-embed .my-learning-bar-tree {
+  background: #fffdf8;
+  border: 1px solid rgba(28, 37, 48, 0.16);
+  border-radius: 10px;
+  box-shadow: none;
+}
+.learning-bar-embed .my-learning-bar-expand-btn {
+  border-color: rgba(28, 37, 48, 0.18);
+  background: #fffdf8;
+  color: #0f766e;
+}
+.learning-bar-embed .my-learning-bar-expand-btn:hover { background: #f0fdfa; }
+.learning-bar-embed .my-learning-bar-expand-row { border-bottom-color: rgba(28, 37, 48, 0.16); }
+.learning-bar-embed .focs-node__children { border-left-color: rgba(28, 37, 48, 0.14); }
+.learning-bar-embed .focs-node__range {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  color: #5b6672;
 }
