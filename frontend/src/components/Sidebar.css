@@ -98,6 +98,19 @@
 
 .sb-empty { font-size: 0.82rem; color: rgba(148, 163, 184, 0.55); padding: 8px 12px; }
 
+/* Learning Progress: the real LearningBarPanel on a light "notebook page" inset */
+.sb-section--progress.is-open .sb-section-body { max-height: 62vh; overflow: hidden; padding-left: 0; }
+.sb-progress-embed {
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 10px;
+  border: 1px solid rgba(94, 234, 212, 0.2);
+  overflow: hidden;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* history list */
 .sb-section--hist.is-open .sb-section-body { max-height: 56vh; overflow-y: auto; padding-left: 0; }
 .sb-section--hist .sb-section-body { scrollbar-width: thin; scrollbar-color: rgba(94, 234, 212, 0.25) transparent; }

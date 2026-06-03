@@ -2,6 +2,9 @@ import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import SidebarHistory from "./SidebarHistory";
+import LearningBarPanel, { type OutlineSectionPreviewDetail } from "../LearningBarPanel";
+import { useSessionBridge } from "../context/SessionBridge";
+import { getOrCreateStudentId } from "../utils/studentId";
 import "./Sidebar.css";
 
 /* ---- inline icons (no icon dependency) ---- */
@@ -56,17 +59,18 @@ const TABS: Tab[] = [
   { key: "/profile", label: "My profile", icon: I.profile, path: "/profile", gated: true },
 ];
 
-/* Placeholder learning-progress outline (Step 1 visual; real data wired in a follow-up). */
-const PROGRESS = [
-  { unit: "Logic & Proofs", topics: [{ t: "Propositions", s: "done" }, { t: "Implication & equivalence", s: "done" }, { t: "Proof techniques", s: "active" }] },
-  { unit: "Sets & Relations", topics: [{ t: "Set operations", s: "done" }, { t: "Relations & functions", s: "todo" }] },
-  { unit: "Combinatorics", topics: [{ t: "Counting rules", s: "todo" }, { t: "Binomial theorem", s: "todo" }] },
-] as const;
-
 export default function Sidebar() {
   const { user, loading, logout, setShowSignIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const bridge = useSessionBridge();
+  const [studentId] = useState(() => getOrCreateStudentId());
+  const onLearning = location.pathname.startsWith("/learning");
+
+  const previewSection = (detail: OutlineSectionPreviewDetail) => {
+    bridge.previewSection(detail);
+    if (!onLearning) navigate("/learning");
+  };
 
   const [collapsed, setCollapsed] = useState<boolean>(() => localStorage.getItem("sidebar-collapsed") === "1");
   const [openProgress, setOpenProgress] = useState(true);
@@ -126,25 +130,17 @@ export default function Sidebar() {
 
         <div className="sb-group-label sb-group-label--gap">Study</div>
 
-        {/* Learning Progress (our "syllabus") */}
-        <div className={`sb-section${openProgress ? " is-open" : ""}`}>
+        {/* Learning Progress (was Aquarius's "syllabus") — the real panel, bridged to Learning Mode */}
+        <div className={`sb-section sb-section--progress${openProgress ? " is-open" : ""}`}>
           <button className="sb-section-head" onClick={() => setOpenProgress((o) => !o)}>
             <span className="sb-link-ic">{I.progress}</span>
             <span className="sb-link-label">Learning Progress</span>
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
-            {PROGRESS.map((u) => (
-              <div className="sb-unit" key={u.unit}>
-                <div className="sb-unit-name">{u.unit}</div>
-                {u.topics.map((tp) => (
-                  <div className={`sb-topic sb-topic--${tp.s}`} key={tp.t}>
-                    <span className="sb-dot" />
-                    <span>{tp.t}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
+            <div className="sb-progress-embed">
+              <LearningBarPanel variant="embed" studentId={studentId} onOutlineSectionPreview={previewSection} />
+            </div>
           </div>
         </div>
 
