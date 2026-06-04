@@ -83,9 +83,7 @@ const NOTE_SPLIT_MAX = 92;
 function WelcomeCard() {
   return (
     <section className="lm-welcome">
-      <div className="lm-welcome-who">
-        <span className="lm-welcome-av">∑</span> AI Tutor
-      </div>
+      <div className="lm-welcome-who">AI Tutor</div>
       <h2 className="lm-welcome-lead">Before we begin, three quick things.</h2>
       <ol className="lm-welcome-steps">
         <li>
