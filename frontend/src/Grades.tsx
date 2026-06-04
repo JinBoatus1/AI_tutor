@@ -87,11 +87,9 @@ function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () =
     <section className="gr-firstrun">
       <div className="gr-fr-card">
         <div className="gr-fr-mark">∑</div>
-        <h2 className="gr-fr-title">Set up your course</h2>
         <p className="gr-fr-body">
           Upload your syllabus and AI Tutor pulls out the grading rubric — categories,
-          weights, and letter cutoffs — for you to confirm. Then track your grade and ask
-          "what do I need on the final for an A?"
+          weights, and letter cutoffs — for you to confirm.
         </p>
         <button className="gr-btn-primary gr-fr-cta" onClick={onUpload}>
           Upload syllabus (PDF)
