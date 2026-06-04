@@ -152,36 +152,38 @@
   flex-direction: column;
 }
 
+/* The two panes connect directly; a single thin rule both separates them and is
+   the drag target (no chunky bar). It thickens to teal on hover to show it drags. */
 .textbook-note-split-handle {
   flex-shrink: 0;
-  height: 10px;
-  margin: 0 4px;
+  height: 9px;
+  margin: 0;
   cursor: row-resize;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
-  border: 1px solid #94a3b8;
-  transition: background 0.15s, border-color 0.15s;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  transition: background 0.15s;
 }
 
 .textbook-note-split-handle:hover {
-  background: linear-gradient(180deg, #ccfbf1 0%, #99f6e4 100%);
-  border-color: #2dd4bf;
+  background: rgba(13, 148, 136, 0.07);
 }
 
 .textbook-note-split-handle-grip {
-  width: 36px;
-  height: 3px;
-  border-radius: 999px;
-  background: #64748b;
-  box-shadow: 0 3px 0 #64748b, 0 -3px 0 #64748b;
+  width: 100%;
+  height: 1.5px;
+  border-radius: 0;
+  background: rgba(28, 37, 48, 0.5);
+  box-shadow: none;
+  transition: background 0.15s, height 0.12s;
 }
 
 .textbook-note-split-handle:hover .textbook-note-split-handle-grip {
-  background: #0f766e;
-  box-shadow: 0 3px 0 #0f766e, 0 -3px 0 #0f766e;
+  background: #0d9488;
+  height: 2.5px;
+  box-shadow: none;
 }
 
 .textbook-pages-pane {
@@ -207,15 +209,13 @@
   min-height: 0;
   overflow-y: auto;
   padding: 12px 14px 14px;
-  background: linear-gradient(165deg, #f8fffe 0%, #ecfdf5 45%, #f0f9ff 100%);
-  border: 1px solid #99f6e4;
-  border-radius: 10px;
+  background: #fbf8f0; /* flat ivory panel; connects flush to the divider rule */
+  border: none;
+  border-radius: 0;
   font-size: 0.84rem;
   line-height: 1.5;
-  color: #134e4a;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 4px 16px rgba(15, 118, 110, 0.08);
+  color: #1c2530;
+  box-shadow: none;
 }
 
 .section-note-card {
