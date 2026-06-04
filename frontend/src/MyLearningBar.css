@@ -443,3 +443,13 @@
   font-family: 'DM Mono', ui-monospace, monospace;
   color: #7c8aa0;
 }
+
+/* The sidebar embed is tight on space and gets cramped when open. Drop the
+   verbose instructions (the Learning Mode welcome already explains the dot +
+   section-title interaction) and slim the header chrome so the section tree
+   gets the room. The standalone /learning-bar page keeps the full header. */
+.learning-bar-embed .my-learning-bar-meta { display: none; }
+.learning-bar-embed .my-learning-bar-header { margin-bottom: 8px; }
+.learning-bar-embed .my-learning-bar-legend { margin: 2px 0 9px; }
+.learning-bar-embed .my-learning-bar-expand-row { margin-bottom: 9px; padding-bottom: 9px; }
+.learning-bar-embed .focs-node__row { padding: 4px 6px; margin: 1px 0; }
