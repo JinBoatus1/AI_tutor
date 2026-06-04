@@ -78,6 +78,34 @@ const NOTE_SPLIT_DEFAULT = 40;
 const NOTE_SPLIT_MIN = 22;
 const NOTE_SPLIT_MAX = 92;
 
+/** The Learning Mode first-run greeting, rendered as an editorial card (Report
+ *  Card theme) instead of raw markdown so it doesn't look like a wall of text. */
+function WelcomeCard() {
+  return (
+    <section className="lm-welcome">
+      <div className="lm-welcome-who">
+        <span className="lm-welcome-av">∑</span> AI Tutor
+      </div>
+      <h2 className="lm-welcome-lead">Before we begin, three quick things.</h2>
+      <ol className="lm-welcome-steps">
+        <li>
+          Are you learning <strong>new content</strong>, or reviewing for an exam?
+        </li>
+        <li>
+          On the left, in <strong>Learning progress</strong>: tap the <strong>dot</strong> to mark a
+          topic learned, or click a <strong>section title</strong> with page numbers to open those
+          pages in the textbook panel.
+        </li>
+        <li>Which chapter or section do you want to study now?</li>
+      </ol>
+      <p className="lm-welcome-close">
+        I&apos;ll match the right topic to the textbook tree, then guide you step by step.
+      </p>
+      <div className="lm-welcome-hand">ask me anything ✎</div>
+    </section>
+  );
+}
+
 export default function LearningModel() {
   const location = useLocation();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
@@ -991,23 +1019,27 @@ export default function LearningModel() {
         >
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              <MarkdownMessage
-                className={
-                  m.sender === "user"
-                    ? "markdown-message markdown-message--user"
-                    : "markdown-message"
-                }
-                onPickLine={
-                  m.sender === "ai"
-                    ? (text) => {
-                        setInput(text);
-                        queueMicrotask(() => chatInputRef.current?.focus());
-                      }
-                    : undefined
-                }
-              >
-                {m.text}
-              </MarkdownMessage>
+              {m.sender === "ai" && m.text === WELCOME_MSG ? (
+                <WelcomeCard />
+              ) : (
+                <MarkdownMessage
+                  className={
+                    m.sender === "user"
+                      ? "markdown-message markdown-message--user"
+                      : "markdown-message"
+                  }
+                  onPickLine={
+                    m.sender === "ai"
+                      ? (text) => {
+                          setInput(text);
+                          queueMicrotask(() => chatInputRef.current?.focus());
+                        }
+                      : undefined
+                  }
+                >
+                  {m.text}
+                </MarkdownMessage>
+              )}
               {m.images?.length > 0 && (
                 <div className="msg-user-images">
                   {m.images.map((src: string, j: number) => (

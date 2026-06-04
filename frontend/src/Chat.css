@@ -746,6 +746,44 @@
   margin: 14px 0;
 }
 
+/* Learning Mode welcome — editorial "Report Card" greeting card (WelcomeCard). */
+.lm-welcome { max-width: 640px; }
+.lm-welcome-who {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: #0f766e; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.lm-welcome-av {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  background: linear-gradient(135deg, #0d9488, #5eead4);
+  display: grid; place-items: center; color: #0c1222;
+  font-family: 'DM Serif Display', Georgia, serif; font-size: 13px;
+}
+.lm-welcome-lead {
+  font-family: 'DM Serif Display', Georgia, serif; font-weight: 400;
+  font-size: 23px; line-height: 1.25; color: #0c1222; margin: 0 0 14px;
+}
+.lm-welcome-steps { list-style: none; counter-reset: lmw; margin: 0 0 18px; padding: 0; }
+.lm-welcome-steps > li {
+  counter-increment: lmw; position: relative;
+  padding: 11px 0 11px 2.1em; border-bottom: 1px dotted rgba(28, 37, 48, 0.18);
+  font-size: 15.5px; line-height: 1.55; color: #1c2530;
+}
+.lm-welcome-steps > li:last-child { border-bottom: none; }
+.lm-welcome-steps > li::before {
+  content: counter(lmw); position: absolute; left: 0; top: 11px;
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; color: #0d9488;
+}
+.lm-welcome-steps strong { color: #0c1222; font-weight: 600; }
+.lm-welcome-close {
+  font-family: 'DM Serif Display', Georgia, serif; font-style: italic;
+  font-size: 17px; line-height: 1.45; color: #5b6672; margin: 0;
+}
+.lm-welcome-hand {
+  font-family: 'Caveat', cursive; font-size: 23px; color: #0f766e;
+  transform: rotate(-3deg); display: inline-block; margin-top: 12px;
+}
+
 /* Learning Mode: Markdown inside AI bubbles (GFM + math) */
 .markdown-message {
   font-size: 0.95rem;
