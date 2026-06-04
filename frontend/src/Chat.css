@@ -832,6 +832,40 @@
 .markdown-message li {
   margin: 0.2em 0;
 }
+/* Editorial numbered lists in AI messages (the Learning Mode welcome steps +
+   tutor answers): teal mono number in a soft circular badge, roomy rows, hanging
+   indent — replaces the cramped default 1. 2. 3. (user bubbles keep plain lists). */
+.markdown-message:not(.markdown-message--user) ol {
+  list-style: none;
+  counter-reset: md-ol;
+  padding-left: 0;
+  margin: 0.7em 0;
+}
+.markdown-message:not(.markdown-message--user) ol > li {
+  counter-increment: md-ol;
+  position: relative;
+  padding-left: 2.5em;
+  margin: 0.55em 0;
+  line-height: 1.6;
+}
+.markdown-message:not(.markdown-message--user) ol > li::before {
+  content: counter(md-ol);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  width: 1.7em;
+  height: 1.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: #0f766e;
+  background: #effaf6;
+  border: 1px solid #a5e6d8;
+  border-radius: 999px;
+}
 .markdown-message blockquote {
   margin: 0.5em 0;
   padding: 0.4em 0.85em;
