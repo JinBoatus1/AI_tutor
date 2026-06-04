@@ -896,11 +896,11 @@
 }
 
 .reference-page-box {
-  margin-top: 10px;
-  padding: 8px;
-  background: #f0f4f8;
-  border-radius: 8px;
-  border: 1px solid #e0e6ed;
+  margin-top: 0; /* was 10px: drop the gap above the page-nav banner */
+  padding: 0; /* was 8px: let the sticky banner sit flush at the top edge */
+  background: transparent; /* was #f0f4f8 */
+  border-radius: 0;
+  border: 1px solid rgba(28, 37, 48, 0.08); /* softened from #e0e6ed */
 }
 
 .reference-page-sidebar {
