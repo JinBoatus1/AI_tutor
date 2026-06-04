@@ -70,9 +70,12 @@ const WELCOME_MSG =
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct";
-const NOTE_SPLIT_DEFAULT = 78;
-const NOTE_SPLIT_MIN = 30;
+const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct_v2"; // _v2: reset stale 78% splits
+// pct is the TOP (study-note) pane height. The textbook is the main reference, so
+// default to giving it the majority (note 40% / textbook 60%); 78% buried the book
+// in a ~22% strip you couldn't usefully scroll. Min 22 lets the note shrink to a peek.
+const NOTE_SPLIT_DEFAULT = 40;
+const NOTE_SPLIT_MIN = 22;
 const NOTE_SPLIT_MAX = 92;
 
 export default function LearningModel() {
