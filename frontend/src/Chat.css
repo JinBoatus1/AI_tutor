@@ -689,16 +689,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px 12px 28px;
+  justify-content: flex-end; /* sit just above the input box, not centered */
+  gap: 8px;
+  padding: 20px 12px 10px;
   min-height: 120px;
-  color: rgba(28, 37, 48, 0.22);
+  color: rgba(28, 37, 48, 0.14);
 }
 
 .chat-empty-icon {
-  width: 48px;
-  height: 48px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
 }
 
@@ -706,9 +706,9 @@
   margin: 0;
   font-family: 'DM Serif Display', Georgia, serif;
   font-style: italic;
-  font-size: 1.05rem;
+  font-size: 0.88rem;
   font-weight: 400;
-  color: #5b6672;
+  color: #aab2bb;
   text-align: center;
   max-width: 20rem;
   line-height: 1.5;
