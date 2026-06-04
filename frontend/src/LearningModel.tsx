@@ -20,6 +20,7 @@ import {
   useSectionNoteToggle,
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
+import { useChainedSplitScroll } from "./hooks/useChainedSplitScroll";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
@@ -761,6 +762,14 @@ export default function LearningModel() {
     minPct: NOTE_SPLIT_MIN,
     maxPct: NOTE_SPLIT_MAX,
   });
+  // Note + textbook each scroll on their own; chain at the edges so they also
+  // read as one continuous scroll (both panes stay on screen). See option 2.
+  useChainedSplitScroll(
+    noteSplit.containerRef,
+    ".textbook-note-pane",
+    ".textbook-pages-pane",
+    noteSplitActive
+  );
 
   const textbookBody = (
     <>
