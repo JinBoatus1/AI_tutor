@@ -1,61 +1,30 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { API_BASE, apiBlockedByMixedContent } from "./apiBase";
 import Home from "./Home";
 import AutoGrader from "./AutoGrader";
 import LearningModel from "./LearningModel";
 import MyLearningBar from "./MyLearningBar";
 import UserProfile from "./UserProfile";
+import Grades from "./Grades";
 import SignInModal from "./SignInModal";
+import Sidebar from "./components/Sidebar";
 import { useAuth } from "./context/AuthContext";
-import GooeyNav from "./components/GooeyNav";
 
 import "./App.css";
 
-function AppNavButtons() {
-  const { user, loading, setShowSignIn } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const items = [
-    { label: "Home", key: "/", onSelect: () => navigate("/") },
-    { label: "Auto Grader", key: "/autograder", onSelect: () => navigate("/autograder") },
-    { label: "Learning Mode", key: "/learning", onSelect: () => navigate("/learning") },
-    {
-      label: "My profile",
-      key: "/profile",
-      onSelect: () => {
-        if (!user && !loading) {
-          setShowSignIn(true);
-          return;
-        }
-        navigate("/profile");
-      },
-    },
-  ];
-
-  const activeKey =
-    location.pathname.startsWith("/autograder")
-      ? "/autograder"
-      : location.pathname.startsWith("/learning")
-        ? "/learning"
-        : location.pathname.startsWith("/profile")
-          ? "/profile"
-          : "/";
-
-  return <GooeyNav items={items} activeKey={activeKey} />;
-}
-
 function AppShell() {
   const showDeployWarning = apiBlockedByMixedContent();
-  const { user, loading, logout, setShowSignIn } = useAuth();
+  const { user, loading, setShowSignIn } = useAuth();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const location = useLocation();
-  const isHomePage = location.pathname === "/";
+  const isHome = location.pathname === "/";
 
   return (
-      <div className={`app-container${isHomePage ? " app-container--home" : ""}`}>
-        {showDeployWarning ? (
+    <div className={`app-container${isHome ? " app-container--home" : ""}`}>
+      {!isHome && <Sidebar />}
+      <div className="app-main">
+        {!isHome && showDeployWarning ? (
           <div className="deploy-config-banner" role="alert">
             <p>
               <strong>Mixed content blocked:</strong> This site is served over HTTPS, but the configured
@@ -64,7 +33,7 @@ function AppShell() {
             </p>
           </div>
         ) : null}
-        {!loading && !user && !bannerDismissed && (
+        {!isHome && !loading && !user && !bannerDismissed && (
           <div className="auth-prompt">
             <div className="auth-prompt-inner">
               <div className="auth-prompt-content">
@@ -86,38 +55,6 @@ function AppShell() {
             </div>
           </div>
         )}
-        {!isHomePage ? (
-        <nav className="navbar" aria-label="Main navigation">
-          <Link to="/" className="nav-brand">
-            <span className="nav-brand-text">AI Tutor</span>
-          </Link>
-          <div className="nav-buttons">
-            <AppNavButtons />
-          </div>
-          <div className="nav-auth">
-            {loading ? null : user ? (
-              <div className="nav-user-card">
-                {user.photoURL && (
-                  <div className="nav-avatar-wrap">
-                    <img src={user.photoURL} alt="" className="nav-avatar" referrerPolicy="no-referrer" />
-                  </div>
-                )}
-                <span className="nav-user-name">
-                  {user.isAnonymous ? "Guest" : (user.displayName || user.email)}
-                </span>
-                <button className="nav-signout-btn" onClick={logout}>Sign out</button>
-              </div>
-            ) : (
-              <button className="nav-avatar-empty" onClick={() => setShowSignIn(true)} aria-label="Sign in">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </button>
-            )}
-          </div>
-        </nav>
-        ) : null}
 
         <div className="content">
           <Routes>
@@ -126,11 +63,13 @@ function AppShell() {
             <Route path="/learning" element={<LearningModel />} />
             <Route path="/learning-bar" element={<MyLearningBar />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/grades" element={<Grades />} />
           </Routes>
         </div>
 
         <SignInModal />
       </div>
+    </div>
   );
 }
 

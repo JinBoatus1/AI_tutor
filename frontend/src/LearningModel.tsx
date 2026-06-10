@@ -12,8 +12,8 @@ import {
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
 import { useAuth } from "./context/AuthContext";
-import ChatHistory from "./ChatHistory";
-import LearningBarPanel, { type OutlineSectionPreviewDetail } from "./LearningBarPanel";
+import { useSessionBridge } from "./context/SessionBridge";
+import { type OutlineSectionPreviewDetail } from "./LearningBarPanel";
 import {
   SectionNoteButton,
   SectionNotePanel,
@@ -70,56 +70,81 @@ const WELCOME_MSG =
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-const LEARNING_BAR_WIDTH_KEY = "ai_tutor_learning_bar_width_px";
-const LEARNING_BAR_COLLAPSED_KEY = "ai_tutor_learning_bar_collapsed";
-const LEARNING_BAR_MIN_PX = 200;
-const LEARNING_BAR_MAX_PX = 560;
-const LEARNING_BAR_DEFAULT_PX = 280;
-/** Drag narrower than this → panel collapses to the left edge. */
-const LEARNING_BAR_COLLAPSE_THRESHOLD_PX = 160;
-const LEARNING_BAR_DRAG_FLOOR_PX = 80;
-
-const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct";
-const NOTE_SPLIT_DEFAULT = 78;
-const NOTE_SPLIT_MIN = 30;
+const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct_v2"; // _v2: reset stale 78% splits
+// pct is the TOP (study-note) pane height. The textbook is the main reference, so
+// default to giving it the majority (note 40% / textbook 60%); 78% buried the book
+// in a ~22% strip you couldn't usefully scroll. Min 22 lets the note shrink to a peek.
+const NOTE_SPLIT_DEFAULT = 40;
+const NOTE_SPLIT_MIN = 22;
 const NOTE_SPLIT_MAX = 92;
 
-function resolveLearningBarRestoreWidth(width: number): number {
-  if (
-    Number.isFinite(width) &&
-    width >= LEARNING_BAR_MIN_PX &&
-    width <= LEARNING_BAR_MAX_PX
-  ) {
-    return width;
-  }
-  return LEARNING_BAR_DEFAULT_PX;
-}
-
-function readLearningBarWidthPx(): number {
-  try {
-    const raw = localStorage.getItem(LEARNING_BAR_WIDTH_KEY);
-    const v = raw ? parseInt(raw, 10) : NaN;
-    if (!Number.isFinite(v)) return LEARNING_BAR_DEFAULT_PX;
-    return resolveLearningBarRestoreWidth(v);
-  } catch {
-    return LEARNING_BAR_DEFAULT_PX;
-  }
-}
-
-function readLearningBarCollapsed(): boolean {
-  try {
-    return localStorage.getItem(LEARNING_BAR_COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
+/** The Learning Mode first-run greeting, rendered as an editorial card (Report
+ *  Card theme) instead of raw markdown so it doesn't look like a wall of text. */
+function WelcomeCard() {
+  return (
+    <section className="lm-welcome">
+      <div className="lm-welcome-who">AI Tutor</div>
+      <h2 className="lm-welcome-lead">Before we begin, three quick things.</h2>
+      <ol className="lm-welcome-steps">
+        <li>
+          Are you learning <strong>new content</strong>, or reviewing for an exam?
+        </li>
+        <li>
+          On the left, in <strong>Learning progress</strong>: tap the <strong>dot</strong> to mark a
+          topic learned, or click a <strong>section title</strong> with page numbers to open those
+          pages in the textbook panel.
+        </li>
+        <li>Which chapter or section do you want to study now?</li>
+      </ol>
+      <p className="lm-welcome-close">
+        I&apos;ll match the right topic to the textbook tree, then guide you step by step.
+      </p>
+      <div className="lm-welcome-hand">ask me anything ✎</div>
+    </section>
+  );
 }
 
 export default function LearningModel() {
   const location = useLocation();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Bridge Learning Mode's session state to the global sidebar History.
+  const bridge = useSessionBridge();
+  const sessionApiRef = useRef<{
+    load: (sid: string) => void;
+    newChat: () => void;
+    preview: (d: OutlineSectionPreviewDetail) => void;
+  }>({ load: () => {}, newChat: () => {}, preview: () => {} });
+  const pendingSelectRef = useRef<string | null>(null);
+  useEffect(() => { bridge.publishActive(sessionId); }, [sessionId, bridge]);
+  useEffect(() => { bridge.publishRefresh(refreshTrigger); }, [refreshTrigger, bridge]);
+  useEffect(
+    () => bridge.attach({
+      select: (sid) => sessionApiRef.current.load(sid),
+      newChat: () => sessionApiRef.current.newChat(),
+      previewSection: (d) => sessionApiRef.current.preview(d),
+    }),
+    [bridge]
+  );
+  useEffect(() => {
+    const p = bridge.takePending();
+    if (p?.kind === "new") sessionApiRef.current.newChat();
+    else if (p?.kind === "select") pendingSelectRef.current = p.sid;
+    else if (p?.kind === "preview") sessionApiRef.current.preview(p.detail);
+    // run once on mount; applies a request made from the sidebar on another page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (token && pendingSelectRef.current) {
+      const sid = pendingSelectRef.current;
+      pendingSelectRef.current = null;
+      sessionApiRef.current.load(sid);
+    }
+  }, [token]);
+
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
   const { curriculumTree, setCurriculumTree } = useCurriculum();
@@ -356,93 +381,8 @@ export default function LearningModel() {
     [textbookId, token, studentId]
   );
 
-  const [learningBarCollapsed, setLearningBarCollapsed] = useState(readLearningBarCollapsed);
-  const [learningBarWidthPx, setLearningBarWidthPx] = useState(readLearningBarWidthPx);
-  const lastExpandedLearningBarWidthRef = useRef(readLearningBarWidthPx());
-  const learningBarDragRef = useRef<{ x: number; width: number } | null>(null);
-  const learningBarWidthRef = useRef(learningBarWidthPx);
-  learningBarWidthRef.current = learningBarWidthPx;
-
-  const persistLearningBarCollapsed = useCallback((collapsed: boolean) => {
-    setLearningBarCollapsed(collapsed);
-    try {
-      if (collapsed) localStorage.setItem(LEARNING_BAR_COLLAPSED_KEY, "1");
-      else localStorage.removeItem(LEARNING_BAR_COLLAPSED_KEY);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const expandLearningBar = useCallback(() => {
-    const restored = resolveLearningBarRestoreWidth(lastExpandedLearningBarWidthRef.current);
-    lastExpandedLearningBarWidthRef.current = restored;
-    persistLearningBarCollapsed(false);
-    setLearningBarWidthPx(restored);
-    learningBarWidthRef.current = restored;
-    try {
-      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(restored));
-    } catch {
-      /* ignore */
-    }
-  }, [persistLearningBarCollapsed]);
-
-  const handleLearningBarResizeMove = useCallback((e: MouseEvent) => {
-    const start = learningBarDragRef.current;
-    if (!start) return;
-    const dx = e.clientX - start.x;
-    const next = Math.min(
-      LEARNING_BAR_MAX_PX,
-      Math.max(LEARNING_BAR_DRAG_FLOOR_PX, start.width + dx)
-    );
-    learningBarWidthRef.current = next;
-    setLearningBarWidthPx(next);
-    if (next >= LEARNING_BAR_MIN_PX) {
-      lastExpandedLearningBarWidthRef.current = next;
-    }
-  }, []);
-
-  const handleLearningBarResizeEnd = useCallback(() => {
-    const start = learningBarDragRef.current;
-    const finalW = learningBarWidthRef.current;
-    learningBarDragRef.current = null;
-    window.removeEventListener("mousemove", handleLearningBarResizeMove);
-    window.removeEventListener("mouseup", handleLearningBarResizeEnd);
-
-    if (finalW < LEARNING_BAR_COLLAPSE_THRESHOLD_PX) {
-      const beforeDrag = start?.width ?? lastExpandedLearningBarWidthRef.current;
-      lastExpandedLearningBarWidthRef.current = resolveLearningBarRestoreWidth(beforeDrag);
-      persistLearningBarCollapsed(true);
-      return;
-    }
-
-    const clamped = Math.max(LEARNING_BAR_MIN_PX, finalW);
-    learningBarWidthRef.current = clamped;
-    setLearningBarWidthPx(clamped);
-    lastExpandedLearningBarWidthRef.current = clamped;
-    try {
-      localStorage.setItem(LEARNING_BAR_WIDTH_KEY, String(clamped));
-    } catch {
-      /* ignore */
-    }
-  }, [handleLearningBarResizeMove, persistLearningBarCollapsed]);
-
-  const handleLearningBarResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      learningBarDragRef.current = { x: e.clientX, width: learningBarWidthRef.current };
-      window.addEventListener("mousemove", handleLearningBarResizeMove);
-      window.addEventListener("mouseup", handleLearningBarResizeEnd);
-    },
-    [handleLearningBarResizeMove, handleLearningBarResizeEnd]
-  );
-
-  useEffect(() => {
-    return () => {
-      learningBarDragRef.current = null;
-      window.removeEventListener("mousemove", handleLearningBarResizeMove);
-      window.removeEventListener("mouseup", handleLearningBarResizeEnd);
-    };
-  }, [handleLearningBarResizeMove, handleLearningBarResizeEnd]);
+  // Learning Progress now lives in the global Sidebar (see Sidebar.tsx). The
+  // in-workspace learning-bar column + its resize/collapse machinery were removed.
 
   const hasLeftPanelContent = Boolean(
     dataMatchedTopic ||
@@ -818,6 +758,9 @@ export default function LearningModel() {
     setRefreshTrigger((n) => n + 1);
   };
 
+  // keep the bridge wrappers pointing at the latest closures
+  sessionApiRef.current = { load: loadSession, newChat: handleNewChat, preview: handleOutlineSectionPreview };
+
   const activeSectionNote = useMemo(() => {
     if (textbookId !== "focs" || !dataMatchedTopic) return null;
     return getSectionNoteWithNewVocab(
@@ -931,68 +874,6 @@ export default function LearningModel() {
 
   return (
     <div className="learning-page-wrapper">
-      {learningBarCollapsed ? (
-        <div className="learning-bar-root learning-bar-root--collapsed">
-          <button
-            type="button"
-            className="learning-bar-reveal-btn"
-            onClick={expandLearningBar}
-            title="Show learning progress"
-            aria-label="Show learning progress"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
-      ) : (
-        <div
-          className="learning-bar-column"
-          style={{ width: learningBarWidthPx, flexShrink: 0 }}
-        >
-          <div className="learning-bar-column-body">
-            <LearningBarPanel
-              variant="embed"
-              studentId={studentId}
-              onOutlineSectionPreview={handleOutlineSectionPreview}
-              embedHeaderEnd={
-                <button
-                  type="button"
-                  className="learning-bar-hide-btn"
-                  onClick={() => {
-                    lastExpandedLearningBarWidthRef.current = resolveLearningBarRestoreWidth(
-                      learningBarWidthRef.current
-                    );
-                    persistLearningBarCollapsed(true);
-                  }}
-                  title="Hide learning progress"
-                  aria-label="Hide learning progress"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </button>
-              }
-            />
-            <div
-              className="resize-handle learning-bar-resize-handle"
-              onMouseDown={handleLearningBarResizeStart}
-              title="Drag right to widen; drag far left to hide"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="Resize learning progress panel"
-            />
-          </div>
-        </div>
-      )}
-      {user && (
-        <ChatHistory
-          activeSessionId={sessionId}
-          onSelectSession={loadSession}
-          onNewChat={handleNewChat}
-          refreshTrigger={refreshTrigger}
-        />
-      )}
     <div className="learning-layout" ref={layoutRef}>
       {/* LEFT: textbook / reference (when content exists; can collapse) */}
       {showLeftColumn && (
@@ -1136,23 +1017,27 @@ export default function LearningModel() {
         >
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              <MarkdownMessage
-                className={
-                  m.sender === "user"
-                    ? "markdown-message markdown-message--user"
-                    : "markdown-message"
-                }
-                onPickLine={
-                  m.sender === "ai"
-                    ? (text) => {
-                        setInput(text);
-                        queueMicrotask(() => chatInputRef.current?.focus());
-                      }
-                    : undefined
-                }
-              >
-                {m.text}
-              </MarkdownMessage>
+              {m.sender === "ai" && m.text === WELCOME_MSG ? (
+                <WelcomeCard />
+              ) : (
+                <MarkdownMessage
+                  className={
+                    m.sender === "user"
+                      ? "markdown-message markdown-message--user"
+                      : "markdown-message"
+                  }
+                  onPickLine={
+                    m.sender === "ai"
+                      ? (text) => {
+                          setInput(text);
+                          queueMicrotask(() => chatInputRef.current?.focus());
+                        }
+                      : undefined
+                  }
+                >
+                  {m.text}
+                </MarkdownMessage>
+              )}
               {m.images?.length > 0 && (
                 <div className="msg-user-images">
                   {m.images.map((src: string, j: number) => (

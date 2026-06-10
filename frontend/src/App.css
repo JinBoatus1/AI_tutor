@@ -13,15 +13,18 @@ html, body, #root {
   height: 100vh;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: transparent;
 }
 
-/* Home: no top navbar — navigation only via hero card links */
-.app-container--home .content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+/* main column to the right of the global sidebar */
+.app-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .deploy-config-banner {
@@ -162,15 +165,14 @@ html, body, #root {
     margin-bottom: 40px;
 }
 
+/* No global text gradient: it set -webkit-text-fill-color:transparent on EVERY
+   <h1>, overriding each heading's own color and painting them all purple (off
+   the navy/teal design system). Headings now use their own color. */
 h1 {
     color: #2c3e50;
     font-size: 3em;
     font-weight: 700;
     margin-bottom: 10px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .subtitle {
