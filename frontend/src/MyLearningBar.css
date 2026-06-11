@@ -395,6 +395,15 @@
 
 .learning-bar-embed .focs-node__label {
   font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.learning-bar-embed .focs-node__row {
+  align-items: center;
+  padding: 3px 4px;
+  margin: 1px 0;
 }
 
 .learning-bar-embed .my-learning-bar-expand-btn {
@@ -434,10 +443,10 @@
   color: #aab4c4;
 }
 .learning-bar-embed .focs-node__chevron:hover { background: rgba(255, 255, 255, 0.14); }
-.learning-bar-embed .focs-node__children { border-left-color: rgba(255, 255, 255, 0.12); }
+.learning-bar-embed .focs-node__children { border-left-color: rgba(255, 255, 255, 0.12); padding-left: 10px; }
 .learning-bar-embed .focs-node__label--learned { color: #5eead4; }
 .learning-bar-embed .focs-node__label--not { color: #aab4c4; }
-.learning-bar-embed .focs-node__learn-dot { border-color: #5b6b82; }
+.learning-bar-embed .focs-node__learn-dot { border-color: #5b6b82; margin-top: 0; }
 .learning-bar-embed .focs-node__learn-dot--on { border-color: #5eead4; background: #14b8a6; }
 .learning-bar-embed .focs-node__range {
   font-family: 'DM Mono', ui-monospace, monospace;
@@ -452,4 +461,3 @@
 .learning-bar-embed .my-learning-bar-header { margin-bottom: 8px; }
 .learning-bar-embed .my-learning-bar-legend { margin: 2px 0 9px; }
 .learning-bar-embed .my-learning-bar-expand-row { margin-bottom: 9px; padding-bottom: 9px; }
-.learning-bar-embed .focs-node__row { padding: 4px 6px; margin: 1px 0; }

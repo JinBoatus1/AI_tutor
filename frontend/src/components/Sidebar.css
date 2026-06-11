@@ -1,6 +1,6 @@
 /* Global left sidebar — navy/teal, collapsible. Scoped under .sb */
 .sb {
-  --sb-w: 252px;
+  --sb-w: 336px;
   --sb-w-collapsed: 72px;
   --tealb: #5eead4;
   --teal: #14b8a6;
