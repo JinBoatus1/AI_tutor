@@ -259,11 +259,13 @@ def _is_simple_definition_question(message: str) -> bool:
     s = message.strip()
     if not s:
         return False
+    # Placeholder text when the client sends attachments without a caption.
+    low = s.lower()
+    if low in {"(image)", "(attachments)"} or low.startswith("(pdf:"):
+        return False
     # Too long usually implies a real problem / multi-part request.
     if len(s) > 120:
         return False
-
-    low = s.lower()
 
     # Avoid triggering on tasks that clearly ask for proofs/solutions/examples.
     non_simple_signals = [
@@ -355,9 +357,12 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
     student_id = chat_message.student_id or "default_student"
     user_email = verify_token(authorization)
 
+    has_attachments = bool(chat_message.images_b64) or bool(chat_message.pdf_b64)
+
     # TOP PRIORITY: simple definition questions must be answered in ONE sentence
     # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
-    if _is_simple_definition_question(chat_message.message):
+    # Skip when the user attached images/PDF — those need the vision path below.
+    if _is_simple_definition_question(chat_message.message) and not has_attachments:
         tid = (chat_message.textbook_id or "focs").strip() or "focs"
         if not user_email and tid.startswith("user_"):
             tid = "focs"
@@ -433,7 +438,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             if tid == "focs"
             else "the textbook the student selected (outline + PDF pages)"
         )
-        is_simple_def = _is_simple_definition_question(chat_message.message)
+        is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
         system_content = (
             f"You are an AI math tutor for {_book_label}. Explain clearly and step-by-step, and always ground guidance in the textbook tree/reference below. "
             "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "

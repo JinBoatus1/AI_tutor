@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import "./Grades.css";
 import { computeStanding, goalSeek, type Course } from "./grades/mockEngine";
 import { demoCourse, emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
+import { loadSavedCourse, saveCourse } from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
 
 /**
@@ -15,19 +16,44 @@ type Phase = "firstrun" | "parsing" | "confirming" | "ready";
 
 export default function Grades() {
   const [phase, setPhase] = useState<Phase>("ready");
-  const [course, setCourse] = useState<Course>(demoCourse());
+  const [course, setCourse] = useState<Course>(() => loadSavedCourse() ?? demoCourse());
   const [editing, setEditing] = useState(false);
+  const courseBeforeEdit = useRef<Course | null>(null);
+
+  const updateCourse = (next: Course) => {
+    setCourse(next);
+    saveCourse(next);
+  };
+
+  const openEdit = () => {
+    courseBeforeEdit.current = course;
+    setEditing(true);
+  };
 
   const startParse = () => {
     setPhase("parsing");
     fakeParseSyllabus().then((c) => {
-      setCourse(c);
+      updateCourse(c);
       setPhase("confirming");
     });
   };
   const startManual = () => {
-    setCourse(emptyManualCourse());
+    updateCourse(emptyManualCourse());
     setPhase("confirming");
+  };
+
+  const finishRubricEdit = (final: Course) => {
+    updateCourse(final);
+    courseBeforeEdit.current = null;
+    setEditing(false);
+    setPhase("ready");
+  };
+
+  const cancelRubricEdit = () => {
+    if (courseBeforeEdit.current) updateCourse(courseBeforeEdit.current);
+    courseBeforeEdit.current = null;
+    setEditing(false);
+    setPhase("ready");
   };
 
   return (
@@ -43,7 +69,7 @@ export default function Grades() {
           <span className="gr-mockpill">Preview · mock data</span>
           {phase === "ready" && (
             <>
-              <button className="gr-btn-ghost" onClick={() => setEditing(true)}>
+              <button className="gr-btn-ghost" onClick={openEdit}>
                 ⚙ Edit rubric
               </button>
               <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
@@ -60,22 +86,16 @@ export default function Grades() {
         <RubricEditor
           course={course}
           parsed={phase === "confirming"}
-          onChange={setCourse}
-          onConfirm={() => {
-            setEditing(false);
-            setPhase("ready");
-          }}
-          onCancel={() => {
-            setEditing(false);
-            setPhase("ready");
-          }}
+          onChange={updateCourse}
+          onConfirm={finishRubricEdit}
+          onCancel={cancelRubricEdit}
         />
       )}
       {phase === "ready" && !editing && (
         <>
           <StandingHero course={course} />
           <GoalSeek course={course} />
-          <Gradebook course={course} onChange={setCourse} />
+          <Gradebook course={course} onChange={updateCourse} />
         </>
       )}
     </div>

@@ -33,19 +33,28 @@ export default function RubricEditor({
   course: Course;
   parsed: boolean; // true when this is a fresh syllabus parse to confirm
   onChange: (c: Course) => void;
-  onConfirm: () => void;
+  onConfirm: (c: Course) => void;
   onCancel: () => void;
 }) {
   const [c, setC] = useState<Course>(course);
-  const push = (next: Course) => {
-    setC(next);
-    onChange(next);
+  const push = (updater: Course | ((prev: Course) => Course)) => {
+    setC((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      onChange(next);
+      return next;
+    });
   };
   const setCat = (i: number, patch: Partial<Category>) =>
-    push({ ...c, categories: c.categories.map((cat, j) => (j === i ? { ...cat, ...patch } : cat)) });
+    push((prev) => ({
+      ...prev,
+      categories: prev.categories.map((cat, j) => (j === i ? { ...cat, ...patch } : cat)),
+    }));
   const setRule = (i: number, rule: Rule) => setCat(i, { rule });
   const setCutoff = (i: number, patch: Partial<Cutoff>) =>
-    push({ ...c, cutoffs: c.cutoffs.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+    push((prev) => ({
+      ...prev,
+      cutoffs: prev.cutoffs.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+    }));
 
   const sum = weightsSum(c);
   const sumOk = Math.abs(sum - 100) < 0.01;
@@ -176,7 +185,7 @@ export default function RubricEditor({
         <button className="gr-btn-ghost" onClick={onCancel}>
           Cancel
         </button>
-        <button className="gr-btn-primary" onClick={onConfirm}>
+        <button className="gr-btn-primary" onClick={() => onConfirm(c)}>
           {parsed ? "Confirm rubric" : "Save"}
         </button>
       </div>

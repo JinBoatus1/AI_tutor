@@ -544,6 +544,12 @@ export default function LearningModel() {
       (hasImages ? "(image)" : "") ||
       "(attachments)";
 
+    const apiMessage =
+      userText ||
+      (hasPdf ? `Please help with the attached PDF: ${pdfSnapshot!.name}` : "") ||
+      (hasImages ? "Please read the attached image(s) and help with this math problem or exercise step by step." : "") ||
+      "(attachments)";
+
     addUserMessage(displayMessage, hasImages ? [...attachedImages] : undefined);
     setInput("");
     setAttachedImages([]);
@@ -582,7 +588,7 @@ export default function LearningModel() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          message: displayMessage,
+          message: apiMessage,
           history: messages,
           images_b64: imagesB64,
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,

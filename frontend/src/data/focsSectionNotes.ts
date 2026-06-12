@@ -31,12 +31,16 @@ export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
   },
   "1.1": {
     objectives:
-      "Build a minimal epidemic model: track infected counts day by day and interpret the spread parameter $k$.",
-    vocabulary: [],
+      "Model epidemic spread on a grid: each person is infected or not; each day, you become infected if at least two neighbors were infected yesterday—then ask who ultimately gets infected and why modeling assumptions matter.",
+    vocabulary: [
+      v("discrete process", "Time moves in whole steps (days); each person is in one of finitely many states (here, infected or not)."),
+      v("modeling assumption", "A deliberate simplification (grid layout, 2-neighbor rule) chosen before analyzing what happens next."),
+      v("neighbor (grid)", "Another person in a square that shares a side with yours—not diagonal."),
+    ],
     formulas: [
       f(
-        "$I_{t+1} = I_t \\cdot k$ (toy discrete spread)",
-        "Core idea for 1.1: each infected person leads to $k$ new infections per step in this simplified model—not a full SIR equation."
+        "2-neighbor infection rule",
+        "If at least two of your side-adjacent neighbors are infected today, you are infected tomorrow. The book calls this a 2-contact threshold on a grid—not $I_{t+1}=I_t\\cdot k$."
       ),
     ],
   },
