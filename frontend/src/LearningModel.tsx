@@ -1035,7 +1035,7 @@ export default function LearningModel() {
                     <span className="book-page-highlight-arrow" aria-hidden>
                       ↳
                     </span>
-                    <span className="book-page-highlight-label">书中此处 · {bookHighlight}</span>
+                    <span className="book-page-highlight-label">In the book · {bookHighlight}</span>
                   </div>
                 ) : null}
                 <img

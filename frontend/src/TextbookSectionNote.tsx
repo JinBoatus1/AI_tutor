@@ -77,8 +77,8 @@ function ExpandableNoteEntry({
 
   const askQuestion = (suffix = "") => {
     const q = suffix
-      ? `什么是「${termPlain}」？${suffix}`
-      : `什么是「${termPlain}」？请用本节内容解释并给一个简短示例。`;
+      ? `What is "${termPlain}"? ${suffix}`
+      : `What is "${termPlain}"? Explain using this section and give a short example.`;
     actions.onAskChat(q);
   };
 
@@ -94,7 +94,7 @@ function ExpandableNoteEntry({
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? "收起" : "示例 / 追问"}
+          {open ? "Collapse" : "Example / Ask"}
         </button>
       </div>
       <p className="section-note-entry-def">
@@ -117,26 +117,26 @@ function ExpandableNoteEntry({
                   className="section-note-entry-book"
                   onClick={() => actions.onJumpToBook(entry.book!, entry.exampleRef ?? termPlain)}
                 >
-                  在书中查看 ↗
+                  See in textbook ↗
                 </button>
               ) : null}
               <button
                 type="button"
                 className="section-note-entry-ask"
-                onClick={() => askQuestion("请再举一个例子或帮我加深理解。")}
+                onClick={() => askQuestion("Please give another example or help me understand more deeply.")}
               >
-                继续追问 AI
+                Ask AI to follow up
               </button>
             </>
           ) : (
             <>
-              <p className="section-note-entry-empty">本书暂未策展此词条的示例。</p>
+              <p className="section-note-entry-empty">No curated example for this term in the book yet.</p>
               <button
                 type="button"
                 className="section-note-entry-ask section-note-entry-ask--primary"
                 onClick={() => askQuestion()}
               >
-                向 AI 提问：什么是「{termPlain}」？
+                Ask AI: What is &ldquo;{termPlain}&rdquo;?
               </button>
             </>
           )}
