@@ -320,45 +320,6 @@ def _is_simple_definition_question(message: str) -> bool:
     return False
 
 
-def _is_direct_teaching_question(message: str, client_section_hint: Optional[str] = None) -> bool:
-    """
-    Concrete teaching Q&A (vocab panel, “what is X in this section”, follow-ups).
-    Skip intake + chapter-tree section picker; answer in place.
-    """
-    if client_section_hint and str(client_section_hint).strip():
-        return True
-    if not message or not isinstance(message, str):
-        return False
-    s = message.strip()
-    low = s.lower()
-
-    direct_signals = [
-        "用本节",
-        "本节内容",
-        "this section",
-        "using this section",
-        "explain using",
-        "give a short example",
-        "简短示例",
-        "请再举",
-        "help me understand",
-        "entender mejor",
-        "ejemplo breve",
-        "explica con esta sección",
-    ]
-    if any(k in low for k in direct_signals):
-        return True
-    if re.search(r"什么是[「『\"'].+[」』\"']", s):
-        return True
-    if re.search(r'what is ["\'].+["\']', low):
-        return True
-    if re.search(r"qué es [\"'].+[\"']", low):
-        return True
-    if re.search(r"¿qué es [\"'].+[\"']", low):
-        return True
-    return False
-
-
 def _force_one_sentence(answer: str) -> str:
     """
     Best-effort postprocess to enforce a single-sentence reply.
@@ -480,14 +441,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         )
         is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
         client_section_hint = (chat_message.section_hint or "").strip() or None
-        is_direct = _is_direct_teaching_question(chat_message.message, client_section_hint)
-        system_content = (
-            f"You are an AI math tutor for {_book_label}. Explain clearly and step-by-step, and always ground guidance in the textbook tree/reference below. "
-            "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "
-            "Use concise bullet points and keep each turn focused on one clear next action."
-        )
         if is_simple_def:
-            # Hard override: keep answers extremely short and avoid 'plan/intake' patterns.
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
                 "The student asked a SIMPLE definition/meaning question. "
@@ -495,37 +449,14 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
                 "Return ONE sentence only."
             )
-        elif is_direct:
+        else:
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
-                "The student asked a specific question about the current topic or vocabulary. "
-                "Answer directly: explain clearly, use the textbook reference below, and include a short example when they asked for one. "
-                "Do NOT list other sections, do NOT ask them to pick a section, and do NOT repeat session intake questions."
-            )
-
-        if not has_prior_user_messages and not is_simple_def and not is_direct:
-            system_content += (
-                "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these three required intake questions in one place:\n"
-                "1) Are they learning a NEW topic or REVIEWING for exam/quiz?\n"
-                "2) Where are they now (chapter/section already learned)?\n"
-                "3) Which chapter(s)/section(s) do they want to study now?\n"
-                "Do not teach yet in this first reply; only collect the above info.\n"
-                "\nAfter intake is answered, design a task list and execute tasks one by one in chat.\n"
-                "Use exactly this style:\n"
-                "- Study Plan (Task 1..N)\n"
-                "- Current Task (only one task in progress)\n"
-                "- Checkpoint question before moving to next task\n"
-                "\nTask template for NEW topic:\n"
-                "Task 1: Big picture of the selected topic/section\n"
-                "Task 2: Core formulas/definitions/proof templates\n"
-                "Task 3: Guided worked example\n"
-                "Task 4: Student practice with hints and feedback\n"
-                "\nTask template for REVIEW:\n"
-                "Task 1: Pick representative original-style textbook problems\n"
-                "Task 2: Ask what the student cannot solve\n"
-                "Task 3: Retrieve related formulas/definitions/proof templates\n"
-                "Task 4: Targeted gap-filling drills and recap\n"
-                "\nAlways map chapters/sections to the textbook tree names exactly. If student wording is vague, propose 2-4 closest options from the tree and ask them to choose."
+                "Answer the student's question directly: explain clearly step-by-step, use the textbook reference below when available, "
+                "and include a short worked example when it helps. "
+                "Never list optional sections, never ask the student to pick a section/chapter, "
+                "never run a pre-study quiz or intake questionnaire, and never output a multi-step 'Study Plan' unless they explicitly ask for one. "
+                "If chat history contains old section menus or intake prompts, ignore them and answer the latest student question directly."
             )
         # Hidden per-student progress bar from tree structure (skip for one-sentence definition replies).
         if not chat_message.silent and not is_simple_def:
@@ -542,15 +473,14 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 print(f"[StudentBar] update failed: {e}")
         section_hint = client_section_hint or lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
-        is_subsection_request = bool(section_hint and "." in section_hint and section_info)
 
-        if (is_subsection_request or is_direct) and not is_simple_def and section_info:
+        if section_info and not is_simple_def:
             start_book, end_book, section_name = section_info
             start_pdf = start_book + lr.effective_pdf_page_offset()
             end_pdf = end_book + lr.effective_pdf_page_offset()
             system_content += (
-                f"\n\nThe student has already chosen section: {section_name}. "
-                "Do NOT show the section list or ask them to pick again. Use the reference below to walk them through this section's key formulas and definitions."
+                f"\n\nThe student is working in section: {section_name}. "
+                "Use the reference below to answer their question; do not redirect them to pick another section."
             )
             _pdf = lr.get_effective_pdf_bytes()
             if _pdf:
@@ -560,40 +490,36 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                         f"\n\n--- Reference from textbook ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
                         f"{page_context[:12000]}\n"
                         "--- End of reference ---\n\n"
-                        "Use the above to explain this section. Point to the right-hand pages when relevant."
+                        "Use the above to explain. Point to the right-hand pages when relevant."
                     )
-        elif not is_simple_def and not is_direct and not has_prior_user_messages:
-            chapter_for_tree = (section_hint.split(".")[0] if section_hint and "." in section_hint else section_hint) or lr.extract_chapter_from_message(chat_message.message)
-            chapter_tree = lr.get_focs_chapter_tree(chapter_filter=chapter_for_tree)
-            if chapter_tree:
-                if chapter_for_tree:
-                    system_content += (
-                        "\n\n--- Sections of the chapter they asked for (list only these in your reply) ---\n"
-                        + chapter_tree
-                        + "\n--- End ---\n"
-                        "In your reply: list ONLY the sections above, then ask exactly one of two options (no goals like 'understand the idea' or 'practice problems'): "
-                        "either pick one section to dive into, OR get a quick summary of the whole topic first and then pick what they don't understand."
-                    )
-                else:
-                    system_content += (
-                        "\n\n--- Textbook chapter tree ---\n"
-                        + chapter_tree
-                        + "\n--- End of chapter tree ---\n"
-                        "In your reply: list the sections above, then ask either pick one section, OR get a quick summary of the whole topic first and then pick what they don't understand. Do NOT ask about goals (understand the idea, proof template, practice problems)."
-                    )
-        if page_context and matched_topic and not is_subsection_request:
-            s = matched_topic["start"] + lr.effective_pdf_page_offset()
-            e = matched_topic["end"] + lr.effective_pdf_page_offset()
-            system_content += (
-                f"\n\n--- Reference from textbook (topic: {matched_topic['name']}, PDF pages {s}-{e}) ---\n"
-                f"{page_context[:12000]}\n"
-                "--- End of reference ---\n\n"
-                "Use the above to walk the student through key formulas, definitions, and proof templates. Point to the right-hand snippets when they appear."
+        if matched_topic and not is_simple_def:
+            mt_name = matched_topic.get("name") or ""
+            open_name = section_info[2] if section_info else ""
+            already_has_open_section = bool(
+                open_name and mt_name and (open_name == mt_name or open_name.startswith(mt_name.split()[0]))
             )
+            if not already_has_open_section:
+                s = matched_topic["start"] + lr.effective_pdf_page_offset()
+                e = matched_topic["end"] + lr.effective_pdf_page_offset()
+                _pdf = lr.get_effective_pdf_bytes()
+                mt_context = ""
+                if _pdf:
+                    mt_context = lr.extract_pdf_pages_text(_pdf, s, e)
+                if mt_context:
+                    system_content += (
+                        f"\n\n--- Reference from textbook (topic: {mt_name}, PDF pages {s}-{e}) ---\n"
+                        f"{mt_context[:12000]}\n"
+                        "--- End of reference ---\n\n"
+                        "Use the above to answer the question directly."
+                    )
+                    if not page_context:
+                        page_context = mt_context
 
         # 与写入 memory 时相同的 subtopic 地址：优先小节名，否则 LLM 匹配的 topic 名
         memory_addr: Optional[str] = None
-        if section_hint and section_info:
+        if matched_topic and section_info and (matched_topic.get("name") or "") != section_info[2]:
+            memory_addr = lr.topic_name_to_memory_address(matched_topic["name"])
+        elif section_hint and section_info:
             memory_addr = lr.topic_name_to_memory_address(section_info[2])
         elif matched_topic:
             memory_addr = lr.topic_name_to_memory_address(matched_topic["name"])
