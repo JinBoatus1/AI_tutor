@@ -552,6 +552,9 @@ export default function LearningModel() {
             student_id: studentId,
             session_id: sessionId,
             textbook_id: textbookId,
+            section_hint:
+              dataMatchedTopic?.sectionHint ??
+              (dataMatchedTopic?.name ? sectionTokenFromTitle(dataMatchedTopic.name) : null),
           }),
           signal: controller.signal,
         });
@@ -641,6 +644,7 @@ export default function LearningModel() {
       setRefreshTrigger,
       chatLanguageSuffix,
       t,
+      dataMatchedTopic,
     ]
   );
 
@@ -763,6 +767,9 @@ export default function LearningModel() {
           student_id: studentId,
           session_id: sessionId,
           textbook_id: textbookId,
+          section_hint:
+            dataMatchedTopic?.sectionHint ??
+            (dataMatchedTopic?.name ? sectionTokenFromTitle(dataMatchedTopic.name) : null),
         }),
         signal: controller.signal,
       });

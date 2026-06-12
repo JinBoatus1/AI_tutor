@@ -151,6 +151,7 @@ class ChatMessage(BaseModel):
     student_id: Optional[str] = None
     session_id: Optional[str] = None
     textbook_id: Optional[str] = None  # "focs" 或 "user_<id>"（后者需登录且为本人教材）
+    section_hint: Optional[str] = None  # 前端当前打开的小节（如 9.1）；有则直接答疑，不再列可选小节
     silent: bool = False  # 不写会话/Memory/进度条；用于仅拉书页的降级请求
 
 
@@ -319,6 +320,45 @@ def _is_simple_definition_question(message: str) -> bool:
     return False
 
 
+def _is_direct_teaching_question(message: str, client_section_hint: Optional[str] = None) -> bool:
+    """
+    Concrete teaching Q&A (vocab panel, “what is X in this section”, follow-ups).
+    Skip intake + chapter-tree section picker; answer in place.
+    """
+    if client_section_hint and str(client_section_hint).strip():
+        return True
+    if not message or not isinstance(message, str):
+        return False
+    s = message.strip()
+    low = s.lower()
+
+    direct_signals = [
+        "用本节",
+        "本节内容",
+        "this section",
+        "using this section",
+        "explain using",
+        "give a short example",
+        "简短示例",
+        "请再举",
+        "help me understand",
+        "entender mejor",
+        "ejemplo breve",
+        "explica con esta sección",
+    ]
+    if any(k in low for k in direct_signals):
+        return True
+    if re.search(r"什么是[「『\"'].+[」』\"']", s):
+        return True
+    if re.search(r'what is ["\'].+["\']', low):
+        return True
+    if re.search(r"qué es [\"'].+[\"']", low):
+        return True
+    if re.search(r"¿qué es [\"'].+[\"']", low):
+        return True
+    return False
+
+
 def _force_one_sentence(answer: str) -> str:
     """
     Best-effort postprocess to enforce a single-sentence reply.
@@ -439,6 +479,8 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             else "the textbook the student selected (outline + PDF pages)"
         )
         is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
+        client_section_hint = (chat_message.section_hint or "").strip() or None
+        is_direct = _is_direct_teaching_question(chat_message.message, client_section_hint)
         system_content = (
             f"You are an AI math tutor for {_book_label}. Explain clearly and step-by-step, and always ground guidance in the textbook tree/reference below. "
             "Before giving teaching content, first complete a short study intake and learning-plan design with the student. "
@@ -453,8 +495,15 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
                 "Return ONE sentence only."
             )
+        elif is_direct:
+            system_content = (
+                f"You are an AI math tutor for {_book_label}. "
+                "The student asked a specific question about the current topic or vocabulary. "
+                "Answer directly: explain clearly, use the textbook reference below, and include a short example when they asked for one. "
+                "Do NOT list other sections, do NOT ask them to pick a section, and do NOT repeat session intake questions."
+            )
 
-        if not has_prior_user_messages and not is_simple_def:
+        if not has_prior_user_messages and not is_simple_def and not is_direct:
             system_content += (
                 "\n\nThis is the beginning of a new learning session. In this first tutor reply, ask the student these three required intake questions in one place:\n"
                 "1) Are they learning a NEW topic or REVIEWING for exam/quiz?\n"
@@ -491,11 +540,11 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 system_content += sbs.build_bar_prompt(bar, user_email)
             except Exception as e:
                 print(f"[StudentBar] update failed: {e}")
-        section_hint = lr.extract_section_from_message(chat_message.message)
+        section_hint = client_section_hint or lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
         is_subsection_request = bool(section_hint and "." in section_hint and section_info)
 
-        if is_subsection_request and not is_simple_def:
+        if (is_subsection_request or is_direct) and not is_simple_def and section_info:
             start_book, end_book, section_name = section_info
             start_pdf = start_book + lr.effective_pdf_page_offset()
             end_pdf = end_book + lr.effective_pdf_page_offset()
@@ -513,7 +562,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                         "--- End of reference ---\n\n"
                         "Use the above to explain this section. Point to the right-hand pages when relevant."
                     )
-        elif not is_simple_def:
+        elif not is_simple_def and not is_direct and not has_prior_user_messages:
             chapter_for_tree = (section_hint.split(".")[0] if section_hint and "." in section_hint else section_hint) or lr.extract_chapter_from_message(chat_message.message)
             chapter_tree = lr.get_focs_chapter_tree(chapter_filter=chapter_for_tree)
             if chapter_tree:
