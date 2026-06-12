@@ -25,6 +25,7 @@ import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 import { useLocale } from "./i18n/LocaleContext";
+import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -66,45 +67,31 @@ function readChatCollapsed(): boolean {
   }
 }
 
-const WELCOME_MSG =
-  "1) Are you learning new content or reviewing for an exam?\n2) On the left, in **Learning progress**: use the **dot** to mark topics learned / not learned; click a **section title** that shows page numbers to open those book pages in the textbook panel.\n3) Which chapter(s) or section(s) do you want to study now?\n\nI will match the right topic using the textbook tree structure, then guide you step by step through tasks.";
+/** The Learning Mode first-run greeting — rendered as WelcomeCard (localized). */
+function WelcomeCard() {
+  const { t } = useLocale();
+  return (
+    <section className="lm-welcome">
+      <div className="lm-welcome-who">{t("learning.welcomeWho")}</div>
+      <h2 className="lm-welcome-lead">{t("learning.welcomeLead")}</h2>
+      <ol className="lm-welcome-steps">
+        <li>{t("learning.welcomeStep1")}</li>
+        <li>{t("learning.welcomeStep2")}</li>
+        <li>{t("learning.welcomeStep3")}</li>
+      </ol>
+      <p className="lm-welcome-close">{t("learning.welcomeClose")}</p>
+      <div className="lm-welcome-hand">{t("learning.welcomeHand")}</div>
+    </section>
+  );
+}
 
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct_v2"; // _v2: reset stale 78% splits
-// pct is the TOP (study-note) pane height. The textbook is the main reference, so
-// default to giving it the majority (note 40% / textbook 60%); 78% buried the book
-// in a ~22% strip you couldn't usefully scroll. Min 22 lets the note shrink to a peek.
+const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct_v2";
 const NOTE_SPLIT_DEFAULT = 40;
 const NOTE_SPLIT_MIN = 22;
 const NOTE_SPLIT_MAX = 92;
-
-/** The Learning Mode first-run greeting, rendered as an editorial card (Report
- *  Card theme) instead of raw markdown so it doesn't look like a wall of text. */
-function WelcomeCard() {
-  return (
-    <section className="lm-welcome">
-      <div className="lm-welcome-who">AI Tutor</div>
-      <h2 className="lm-welcome-lead">Before we begin, three quick things.</h2>
-      <ol className="lm-welcome-steps">
-        <li>
-          Are you learning <strong>new content</strong>, or reviewing for an exam?
-        </li>
-        <li>
-          On the left, in <strong>Learning progress</strong>: tap the <strong>dot</strong> to mark a
-          topic learned, or click a <strong>section title</strong> with page numbers to open those
-          pages in the textbook panel.
-        </li>
-        <li>Which chapter or section do you want to study now?</li>
-      </ol>
-      <p className="lm-welcome-close">
-        I&apos;ll match the right topic to the textbook tree, then guide you step by step.
-      </p>
-      <div className="lm-welcome-hand">ask me anything ✎</div>
-    </section>
-  );
-}
 
 export default function LearningModel() {
   const location = useLocation();
@@ -149,7 +136,7 @@ export default function LearningModel() {
   }, [token]);
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG }]);
+  const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
   const { curriculumTree, setCurriculumTree } = useCurriculum();
   const [textbookId, setTextbookId] = useState(() => readSelectedTextbookId());
 
@@ -264,7 +251,7 @@ export default function LearningModel() {
       const previewHint = detail.sectionHint.trim() || sectionTokenFromTitle(detail.sectionTitle) || "";
       if (textbookId.startsWith("user_") && !token) {
         setOutlinePreviewLoading(false);
-        setOutlinePreviewError("Sign in to view pages for your uploaded textbook.");
+        setOutlinePreviewError(t("learning.errSignInTextbook"));
         return;
       }
       const parseJson = async (r: Response) => {
@@ -313,9 +300,7 @@ export default function LearningModel() {
           } else {
             setReferenceSectionPages(null);
             setDataMatchedTopic(null);
-            setOutlinePreviewError(
-              "No PDF pages were rendered (missing PDF on the server or invalid page range)."
-            );
+            setOutlinePreviewError(t("learning.errNoPages"));
           }
         } else if (resp.status === 404 && detail.sectionHint.trim()) {
           const hint = detail.sectionHint.trim();
@@ -346,7 +331,7 @@ export default function LearningModel() {
           };
           if (!cResp.ok) {
             setOutlinePreviewError(
-              typeof cData?.detail === "string" ? cData.detail : "Could not load book pages."
+              typeof cData?.detail === "string" ? cData.detail : t("learning.errLoadPages")
             );
             return;
           }
@@ -370,22 +355,20 @@ export default function LearningModel() {
           } else {
             setReferenceSectionPages(null);
             setDataMatchedTopic(null);
-            setOutlinePreviewError(
-              "Could not load pages for this section. Try asking in chat with the section number (e.g. 8.1), or deploy the latest API (includes /api/textbook_pages)."
-            );
+            setOutlinePreviewError(t("learning.errLoadSection"));
           }
         } else {
           setOutlinePreviewError(
-            typeof data?.detail === "string" ? data.detail : "Could not load book pages."
+            typeof data?.detail === "string" ? data.detail : t("learning.errLoadPages")
           );
         }
       } catch {
-        setOutlinePreviewError("Could not reach the server while loading pages.");
+        setOutlinePreviewError(t("learning.errServerPages"));
       } finally {
         setOutlinePreviewLoading(false);
       }
     },
-    [textbookId, token, studentId]
+    [textbookId, token, studentId, t]
   );
 
   // Learning Progress now lives in the global Sidebar (see Sidebar.tsx). The
@@ -466,7 +449,7 @@ export default function LearningModel() {
   /** Screen/window capture: grab one frame and attach. */
   const handleScreenshot = useCallback(async () => {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      alert('This browser does not support screen capture. Use "Choose image" or paste a screenshot (Ctrl+V).');
+      alert(t("learning.errNoCapture"));
       return;
     }
     try {
@@ -496,10 +479,10 @@ export default function LearningModel() {
     } catch (err) {
       if ((err as Error).name !== "NotAllowedError") {
         console.error("Screenshot failed:", err);
-        alert('Screenshot failed. Try again, or use "Choose image" / paste (Ctrl+V).');
+        alert(t("learning.errScreenshot"));
       }
     }
-  }, []);
+  }, [t]);
 
   /** On paste, attach images from the clipboard if present. */
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -639,9 +622,9 @@ export default function LearningModel() {
       } catch (err) {
         if (timeoutId) clearTimeout(timeoutId);
         if ((err as Error).name === "AbortError") {
-          addAIMessage("Request timed out (~2 min). Check that the backend is running, or try again later.");
+          addAIMessage(t("learning.errTimeout"));
         } else {
-          addAIMessage("Request failed—could not reach the backend. Make sure the API server is running.");
+          addAIMessage(t("learning.errBackend"));
         }
       } finally {
         setIsAwaitingReply(false);
@@ -657,6 +640,7 @@ export default function LearningModel() {
       setSessionId,
       setRefreshTrigger,
       chatLanguageSuffix,
+      t,
     ]
   );
 
@@ -731,7 +715,7 @@ export default function LearningModel() {
     const apiMessage =
       userText ||
       (hasPdf ? `Please help with the attached PDF: ${pdfSnapshot!.name}` : "") ||
-      (hasImages ? "Please read the attached image(s) and help with this math problem or exercise step by step." : "") ||
+      (hasImages ? t("learning.imagePrompt") : "") ||
       "(attachments)";
 
     addUserMessage(displayMessage, hasImages ? [...attachedImages] : undefined);
@@ -796,7 +780,7 @@ export default function LearningModel() {
         addAIMessage(`Backend error: ${detail}`);
         return;
       }
-      if (!data) { addAIMessage("Empty response from backend."); return; }
+      if (!data) { addAIMessage(t("learning.errEmptyResponse")); return; }
 
       const reply = data.reply || "[Empty reply]";
       const conf = typeof data.confidence === "number" ? data.confidence : null;
@@ -849,9 +833,9 @@ export default function LearningModel() {
     } catch (err) {
       if (timeoutId) clearTimeout(timeoutId);
       if ((err as Error).name === "AbortError") {
-        addAIMessage("Request timed out (~2 min). Check that the backend is running, or try again later.");
+        addAIMessage(t("learning.errTimeout"));
       } else {
-        addAIMessage("Request failed—could not reach the backend. Make sure the API server is running.");
+        addAIMessage(t("learning.errBackend"));
       }
     } finally {
       setIsAwaitingReply(false);
@@ -901,7 +885,7 @@ export default function LearningModel() {
   const hasUserMessage = messages.some((m) => m.sender === "user");
 
   const reset = () => {
-    setMessages([{ sender: "ai", text: WELCOME_MSG }]);
+    setMessages([{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
     setSessionId(null);
     setMatchedSection(null);
     setDataMatchedTopic(null);
@@ -928,7 +912,7 @@ export default function LearningModel() {
         sender: m.sender,
         text: m.text,
       }));
-      setMessages(msgs.length > 0 ? msgs : [{ sender: "ai", text: WELCOME_MSG }]);
+      setMessages(msgs.length > 0 ? msgs : [{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
       setSessionId(sid);
       setMatchedSection(null);
       setDataMatchedTopic(null);
@@ -991,7 +975,7 @@ export default function LearningModel() {
       {outlinePreviewLoading ? (
         <div className="outline-preview-status" role="status" aria-live="polite">
           <span className="learning-reply-status-spinner" aria-hidden />
-          <span>Loading book pages…</span>
+          <span>{t("learning.loadingPages")}</span>
         </div>
       ) : null}
       {outlinePreviewError ? (
@@ -1009,12 +993,15 @@ export default function LearningModel() {
                   type="button"
                   disabled={sectionPageIndex <= 0}
                   onClick={() => setSectionPageIndex((i) => Math.max(0, i - 1))}
-                  aria-label="Previous page"
+                  aria-label={t("learning.prevPage")}
                 >
-                  ‹ Prev
+                  {t("learning.prev")}
                 </button>
                 <span className="section-pages-info">
-                  Page {sectionPageIndex + 1} of {referenceSectionPages.length}
+                  {t("learning.pageOf", {
+                    current: String(sectionPageIndex + 1),
+                    total: String(referenceSectionPages.length),
+                  })}
                 </span>
                 <button
                   type="button"
@@ -1024,9 +1011,9 @@ export default function LearningModel() {
                       Math.min(referenceSectionPages.length - 1, i + 1)
                     )
                   }
-                  aria-label="Next page"
+                  aria-label={t("learning.nextPage")}
                 >
-                  Next ›
+                  {t("learning.next")}
                 </button>
               </div>
               <div
@@ -1100,16 +1087,19 @@ export default function LearningModel() {
               <div
                 className="left-panel-topic-bar-text"
                 role="group"
-                aria-label="Current textbook section"
+                aria-label={t("learning.currentSection")}
               >
                 <span className="left-panel-topic-bar-title">
-                  Textbook: {dataMatchedTopic.name}
+                  {t("learning.textbook")} {dataMatchedTopic.name}
                 </span>
                 <span className="left-panel-topic-bar-sep" aria-hidden="true">
                   ·
                 </span>
                 <span className="left-panel-topic-bar-pages">
-                  Pages {dataMatchedTopic.startBook}–{dataMatchedTopic.endBook}
+                  {t("learning.pages", {
+                    start: String(dataMatchedTopic.startBook),
+                    end: String(dataMatchedTopic.endBook),
+                  })}
                 </span>
               </div>
               <div className="left-panel-topic-bar-actions">
@@ -1124,9 +1114,9 @@ export default function LearningModel() {
                   type="button"
                   className="left-panel-hide-btn left-panel-hide-btn--in-bar"
                   onClick={() => setLeftPanelOpen(false)}
-                  title="Hide textbook sidebar"
+                  title={t("learning.hideSidebar")}
                 >
-                  Hide
+                  {t("learning.hide")}
                 </button>
               </div>
             </div>
@@ -1137,9 +1127,9 @@ export default function LearningModel() {
               type="button"
               className="left-panel-hide-btn"
               onClick={() => setLeftPanelOpen(false)}
-              title="Hide textbook sidebar"
+              title={t("learning.hideSidebar")}
             >
-              Hide
+              {t("learning.hide")}
             </button>
           </div>
         )}
@@ -1160,10 +1150,10 @@ export default function LearningModel() {
               className="textbook-note-split-handle"
               role="separator"
               aria-orientation="horizontal"
-              aria-label="Drag to resize study note and textbook"
+              aria-label={t("learning.resizeNote")}
               aria-valuenow={Math.round(noteSplit.pct)}
               onMouseDown={noteSplit.onResizeStart}
-              title="Drag up or down to resize note vs textbook"
+              title={t("learning.resizeNoteTitle")}
             >
               <span className="textbook-note-split-handle-grip" aria-hidden />
             </div>
@@ -1179,14 +1169,14 @@ export default function LearningModel() {
       <div
         className="resize-handle"
         onMouseDown={handleResizeStart}
-        title="Drag to resize; drag far right to hide chat"
+        title={t("learning.resizeChat")}
       />
       )}
 
       {(!showLeftColumn || !chatCollapsed) && (
       <div
         className="chat-panel"
-        aria-label="Learning Mode"
+        aria-label={t("learning.panelLabel")}
         style={
           showLeftColumn
             ? { flex: `1 1 ${100 - rightPanelWidth}%`, minWidth: 0 }
@@ -1201,7 +1191,7 @@ export default function LearningModel() {
               className="btn-show-textbook-panel"
               onClick={() => setLeftPanelOpen(true)}
             >
-              Show textbook sidebar
+              {t("learning.showSidebar")}
             </button>
           </div>
         )}
@@ -1217,7 +1207,7 @@ export default function LearningModel() {
           <div className="learning-reply-status" role="status" aria-live="polite">
             <span className="learning-reply-status-spinner" aria-hidden />
             <span className="learning-reply-status-text">
-              Looking up the textbook and loading page images…
+              {t("learning.lookingUp")}
             </span>
           </div>
         )}
@@ -1229,7 +1219,7 @@ export default function LearningModel() {
         >
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              {m.sender === "ai" && m.text === WELCOME_MSG ? (
+              {m.sender === "ai" && m.text === WELCOME_MSG_SENTINEL ? (
                 <WelcomeCard />
               ) : (
                 <MarkdownMessage
@@ -1282,7 +1272,7 @@ export default function LearningModel() {
                   d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
                 />
               </svg>
-              <p className="chat-empty-text">Type a math question below to get started</p>
+              <p className="chat-empty-text">{t("learning.emptyHint")}</p>
             </div>
           )}
         </div>
@@ -1300,7 +1290,7 @@ export default function LearningModel() {
                   type="button"
                   className="attached-img-remove"
                   onClick={() => setPdfAttachment(null)}
-                  aria-label="Remove PDF"
+                  aria-label={t("learning.removePdf")}
                 >
                   ×
                 </button>
@@ -1313,7 +1303,7 @@ export default function LearningModel() {
                   type="button"
                   className="attached-img-remove"
                   onClick={() => setAttachedImages((prev) => prev.filter((_, j) => j !== i))}
-                  aria-label="Remove image"
+                  aria-label={t("learning.removeImage")}
                 >
                   ×
                 </button>
@@ -1339,7 +1329,7 @@ export default function LearningModel() {
                 file.name.toLowerCase().endsWith(".pdf");
               if (isPdf) {
                 if (file.size > MAX_PDF_UPLOAD_BYTES) {
-                  alert(`PDF too large (max ${MAX_PDF_UPLOAD_BYTES / (1024 * 1024)} MB).`);
+                  alert(t("learning.pdfTooLarge", { max: String(MAX_PDF_UPLOAD_BYTES / (1024 * 1024)) }));
                   return;
                 }
                 const reader = new FileReader();
@@ -1367,8 +1357,8 @@ export default function LearningModel() {
               type="button"
               className="input-icon-btn"
               onClick={() => fileInputRef.current?.click()}
-              title="Choose image or PDF"
-              aria-label="Choose image or PDF"
+              title={t("learning.chooseFile")}
+              aria-label={t("learning.chooseFile")}
             >
               <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />
@@ -1380,8 +1370,8 @@ export default function LearningModel() {
               type="button"
               className="input-icon-btn"
               onClick={handleScreenshot}
-              title="Screenshot (pick window or screen)"
-              aria-label="Screenshot"
+              title={t("learning.screenshotTitle")}
+              aria-label={t("learning.screenshot")}
             >
               <svg className="input-icon-svg" viewBox="0 0 24 24" aria-hidden>
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.75" />
@@ -1408,8 +1398,8 @@ export default function LearningModel() {
               type="button"
               className="learning-send-btn"
               onClick={handleSend}
-              title="Send"
-              aria-label="Send"
+              title={t("learning.send")}
+              aria-label={t("learning.send")}
               disabled={isAwaitingReply}
             >
               <svg className="learning-send-icon" viewBox="0 0 24 24" aria-hidden>
@@ -1435,8 +1425,8 @@ export default function LearningModel() {
             type="button"
             className="chat-panel-reveal-btn"
             onClick={expandChatPanel}
-            title="Show chat"
-            aria-label="Show chat panel"
+            title={t("learning.showChat")}
+            aria-label={t("learning.showChatPanel")}
           >
             <svg
               viewBox="0 0 24 24"

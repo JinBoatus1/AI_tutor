@@ -4,6 +4,7 @@ import { computeStanding, goalSeek, type Course } from "./grades/mockEngine";
 import { demoCourse, emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
 import { loadSavedCourse, saveCourse } from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
+import { useLocale } from "./i18n/LocaleContext";
 
 /**
  * /grades — "My Course" (Lane D, mock-backed).
@@ -15,6 +16,7 @@ import RubricEditor from "./grades/RubricEditor";
 type Phase = "firstrun" | "parsing" | "confirming" | "ready";
 
 export default function Grades() {
+  const { t } = useLocale();
   const [phase, setPhase] = useState<Phase>("ready");
   const [course, setCourse] = useState<Course>(() => loadSavedCourse() ?? demoCourse());
   const [editing, setEditing] = useState(false);
@@ -60,20 +62,20 @@ export default function Grades() {
     <div className="gr-page">
       <header className="gr-head">
         <h1 className="gr-title">
-          {phase === "ready" ? course.name : "Grades"}
+          {phase === "ready" ? course.name : t("grades.title")}
           {phase === "ready" && course.term ? (
             <span className="gr-sub"> <span className="gr-dot">·</span> {course.term}</span>
           ) : null}
         </h1>
         <div className="gr-head-actions">
-          <span className="gr-mockpill">Preview · mock data</span>
+          <span className="gr-mockpill">{t("grades.previewMock")}</span>
           {phase === "ready" && (
             <>
               <button className="gr-btn-ghost" onClick={openEdit}>
-                ⚙ Edit rubric
+                ⚙ {t("grades.editRubric")}
               </button>
               <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
-                + New course
+                {t("grades.newCourse")}
               </button>
             </>
           )}
@@ -103,19 +105,17 @@ export default function Grades() {
 }
 
 function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () => void }) {
+  const { t } = useLocale();
   return (
     <section className="gr-firstrun">
       <div className="gr-fr-card">
         <div className="gr-fr-mark">∑</div>
-        <p className="gr-fr-body">
-          Upload your syllabus and AI Tutor pulls out the grading rubric — categories,
-          weights, and letter cutoffs — for you to confirm.
-        </p>
+        <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
         <button className="gr-btn-primary gr-fr-cta" onClick={onUpload}>
-          Upload syllabus (PDF)
+          {t("grades.uploadSyllabus")}
         </button>
         <button className="gr-linkbtn" onClick={onManual}>
-          or enter the rubric manually
+          {t("grades.enterManually")}
         </button>
       </div>
     </section>
@@ -123,25 +123,27 @@ function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () =
 }
 
 function Parsing() {
+  const { t } = useLocale();
   return (
     <section className="gr-parsing">
       <div className="gr-spinner" aria-hidden />
-      <p className="gr-parsing-text">Reading your syllabus…</p>
-      <p className="gr-parsing-sub">Pulling out categories, weights, and cutoffs.</p>
+      <p className="gr-parsing-text">{t("grades.parsing")}</p>
+      <p className="gr-parsing-sub">{t("grades.parsingSub")}</p>
     </section>
   );
 }
 
 function StandingHero({ course }: { course: Course }) {
+  const { t } = useLocale();
   const s = useMemo(() => computeStanding(course), [course]);
   // Split a trailing +/− off the letter so it can render as a small serif superscript.
   const letter = s.letter ?? "—";
   const letterMain = letter.length > 1 ? letter.slice(0, -1) : letter;
   const letterSup = letter.length > 1 ? letter.slice(-1) : "";
   return (
-    <section className="gr-standing" aria-label="Current standing">
+    <section className="gr-standing" aria-label={t("grades.standing")}>
       {s.percent == null ? (
-        <div className="gr-standing-empty">Add grades to see your standing.</div>
+        <div className="gr-standing-empty">{t("grades.standingEmpty")}</div>
       ) : (
         <>
           <div className="gr-mark">
@@ -152,8 +154,8 @@ function StandingHero({ course }: { course: Course }) {
             <div className="gr-standing-num">
               {s.percent.toFixed(1)}<small>%</small>
             </div>
-            <div className="gr-standing-basis">on graded work so far</div>
-            <span className="gr-seal">● Standing</span>
+            <div className="gr-standing-basis">{t("grades.onGradedSoFar")}</div>
+            <span className="gr-seal">● {t("grades.standing")}</span>
           </div>
         </>
       )}
@@ -162,6 +164,7 @@ function StandingHero({ course }: { course: Course }) {
 }
 
 function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course) => void }) {
+  const { t } = useLocale();
   const setScore = (catId: string, itemId: string, raw: string) => {
     const score = raw.trim() === "" ? null : Number(raw);
     onChange({
@@ -191,19 +194,19 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
 
   return (
     <section className="gr-card gr-gradebook">
-      <h2 className="gr-sec-label">Gradebook</h2>
+      <h2 className="gr-sec-label">{t("grades.gradebook")}</h2>
       {course.categories.map((cat) => (
         <div className="gr-gb-cat" key={cat.id}>
           <div className="gr-gb-cat-head">
             <span className="gr-gb-cat-name">{cat.name}</span>
             <span className="gr-gb-cat-weight">{cat.weight}%</span>
           </div>
-          {cat.items.length === 0 && <div className="gr-gb-empty">No items yet.</div>}
+          {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
           {cat.items.map((it) => (
             <div className="gr-gb-row" key={it.id}>
               <span className="gr-gb-name">{it.name}</span>
               <span className="gr-gb-leader" />
-              {it.score == null && <span className="gr-gb-upcoming">upcoming</span>}
+              {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
               <span className="gr-gb-score">
                 <input
                   className="gr-gb-input"
@@ -219,7 +222,7 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
             </div>
           ))}
           <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
-            + add grade
+            {t("grades.addGrade")}
           </button>
         </div>
       ))}
@@ -228,6 +231,7 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
 }
 
 function GoalSeek({ course }: { course: Course }) {
+  const { t } = useLocale();
   const ungraded = useMemo(
     () =>
       course.categories.flatMap((cat) =>
@@ -252,13 +256,13 @@ function GoalSeek({ course }: { course: Course }) {
   const targetLetter = reachable?.letter ?? ladder[0]?.letter ?? "A";
 
   return (
-    <section className="gr-card gr-goal" aria-label="What do I need">
+    <section className="gr-card gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
       <hr className="gr-rule" />
       <div className="gr-sec-label">
-        <span>The path to an {targetLetter}</span>
+        <span>{t("grades.pathTo", { letter: targetLetter })}</span>
         {sel && ungraded.length > 1 ? (
           <label className="gr-goal-on">
-            on
+            {t("grades.on")}
             <select value={sel.it.id} onChange={(e) => setSelId(e.target.value)} aria-label="Upcoming item">
               {ungraded.map((u) => (
                 <option key={u.it.id} value={u.it.id}>
@@ -268,35 +272,37 @@ function GoalSeek({ course }: { course: Course }) {
             </select>
           </label>
         ) : sel ? (
-          <span className="gr-sec-aside">{sel.it.name} remaining</span>
+          <span className="gr-sec-aside">
+            {sel.it.name} {t("grades.remaining")}
+          </span>
         ) : null}
       </div>
 
       {!sel ? (
-        <p className="gr-goal-done">Everything's graded — your standing above is final.</p>
+        <p className="gr-goal-done">{t("grades.allGraded")}</p>
       ) : (
         <>
           <div className="gr-path">
             {reachable ? (
               <>
-                <span className="gr-path-q">You need</span>
+                <span className="gr-path-q">{t("grades.youNeed")}</span>
                 <span className="gr-path-num">
                   {reachable.res.needed!.toFixed(1)}
                   <small> / {sel.it.maxScore}</small>
                 </span>
                 <span className="gr-hand">
-                  {reachable.res.needed! <= sel.it.maxScore * 0.7 ? "totally doable ✎" : "you've got this ✎"}
+                  {reachable.res.needed! <= sel.it.maxScore * 0.7 ? t("grades.totallyDoable") : t("grades.youGotThis")}
                 </span>
               </>
             ) : allLocked ? (
               <>
-                <span className="gr-path-q">You're already at</span>
+                <span className="gr-path-q">{t("grades.alreadyAt")}</span>
                 <span className="gr-path-num">{ladder[0].letter}</span>
-                <span className="gr-hand">locked in ✎</span>
+                <span className="gr-hand">{t("grades.lockedIn")}</span>
               </>
             ) : (
               <>
-                <span className="gr-path-q">On track for</span>
+                <span className="gr-path-q">{t("grades.onTrackFor")}</span>
                 <span className="gr-path-num">{bestLocked?.letter ?? targetLetter}</span>
                 <span className="gr-hand">✎</span>
               </>
@@ -310,12 +316,12 @@ function GoalSeek({ course }: { course: Course }) {
                 <span className="gr-goal-leader" />
                 {res.status === "ok" ? (
                   <span className="gr-goal-need">
-                    score <b>{res.needed!.toFixed(1)}</b> on {sel.it.name}
+                    {t("grades.scoreOn", { score: res.needed!.toFixed(1), item: sel.it.name })}
                   </span>
                 ) : res.status === "locked" ? (
-                  <span className="gr-goal-locked">already locked in</span>
+                  <span className="gr-goal-locked">{t("grades.alreadyLockedIn")}</span>
                 ) : (
-                  <span className="gr-goal-unreach">out of reach</span>
+                  <span className="gr-goal-unreach">{t("grades.outOfReach")}</span>
                 )}
               </li>
             ))}

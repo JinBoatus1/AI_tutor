@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSessionBridge } from "../context/SessionBridge";
 import { apiUrl } from "../apiBase";
+import { useLocale } from "../i18n/LocaleContext";
+import type { MessageKey } from "../i18n/messages";
 
 interface Session {
   id: string;
@@ -11,16 +13,27 @@ interface Session {
   updated_at: string;
 }
 
-function groupByDate(sessions: Session[]) {
+const BUCKET_KEYS: MessageKey[] = [
+  "sidebar.today",
+  "sidebar.yesterday",
+  "sidebar.thisWeek",
+  "sidebar.thisMonth",
+  "sidebar.earlier",
+];
+
+function groupByDate(sessions: Session[], t: (key: MessageKey) => string) {
   const now = new Date();
   const sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(sod); yesterday.setDate(yesterday.getDate() - 1);
-  const weekAgo = new Date(sod); weekAgo.setDate(weekAgo.getDate() - 7);
-  const monthAgo = new Date(sod); monthAgo.setDate(monthAgo.getDate() - 30);
-  const buckets: { label: string; items: Session[] }[] = [
-    { label: "Today", items: [] }, { label: "Yesterday", items: [] },
-    { label: "This Week", items: [] }, { label: "This Month", items: [] }, { label: "Earlier", items: [] },
-  ];
+  const yesterday = new Date(sod);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(sod);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(sod);
+  monthAgo.setDate(monthAgo.getDate() - 30);
+  const buckets: { label: string; items: Session[] }[] = BUCKET_KEYS.map((key) => ({
+    label: t(key),
+    items: [],
+  }));
   for (const s of sessions) {
     const d = new Date(s.updated_at);
     if (d >= sod) buckets[0].items.push(s);
@@ -32,9 +45,9 @@ function groupByDate(sessions: Session[]) {
   return buckets.filter((b) => b.items.length > 0);
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (key: MessageKey) => string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
+  if (mins < 1) return t("sidebar.justNow");
   if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
@@ -44,6 +57,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function SidebarHistory() {
+  const { t } = useLocale();
   const { token } = useAuth();
   const bridge = useSessionBridge();
   const navigate = useNavigate();
@@ -89,7 +103,7 @@ export default function SidebarHistory() {
     }
   };
 
-  const groups = useMemo(() => groupByDate(sessions), [sessions]);
+  const groups = useMemo(() => groupByDate(sessions, t), [sessions, t]);
 
   return (
     <div className="sb-hist">
@@ -97,11 +111,11 @@ export default function SidebarHistory() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
           <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        <span>New chat</span>
+        <span>{t("sidebar.newChat")}</span>
       </button>
 
       {groups.length === 0 ? (
-        <div className="sb-empty">No recent chats yet.</div>
+        <div className="sb-empty">{t("sidebar.noChats")}</div>
       ) : (
         groups.map((g) => (
           <div className="sb-hist-group" key={g.label}>
@@ -117,8 +131,13 @@ export default function SidebarHistory() {
                 title={s.title}
               >
                 <span className="sb-hist-title">{s.title}</span>
-                <span className="sb-hist-time">{timeAgo(s.updated_at)}</span>
-                <button className="sb-hist-del" onClick={(e) => remove(e, s.id)} title="Delete" aria-label="Delete conversation">
+                <span className="sb-hist-time">{timeAgo(s.updated_at, t)}</span>
+                <button
+                  className="sb-hist-del"
+                  onClick={(e) => remove(e, s.id)}
+                  title={t("sidebar.deleteChat")}
+                  aria-label={t("sidebar.deleteChat")}
+                >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                   </svg>

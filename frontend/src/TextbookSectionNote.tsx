@@ -30,6 +30,7 @@ type SectionNoteButtonProps = {
 };
 
 export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButtonProps) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -37,9 +38,9 @@ export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButton
       onClick={onToggle}
       aria-expanded={open}
       aria-controls={panelId}
-      title="Chapter study note: goals, vocabulary, key formulas"
+      title={t("note.buttonTitle")}
     >
-      Note
+      {t("note.button")}
     </button>
   );
 }

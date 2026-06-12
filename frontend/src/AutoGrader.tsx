@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { apiUrl } from "./api";
+import { useLocale } from "./i18n/LocaleContext";
 import "./AutoGrader.css";
 
 type ScoreMode = "absolute" | "percentage";
@@ -21,6 +22,7 @@ type GradeResponse = {
 };
 
 export default function AutoGrader() {
+  const { t } = useLocale();
   const [questionFile, setQuestionFile] = useState<File | null>(null);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const questionInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +51,7 @@ export default function AutoGrader() {
     setError("");
     setResult(null);
     if (!questionFile || !answerFile) {
-      setError("Please upload both a question file and an answer file.");
+      setError(t("autograder.errBothFiles"));
       return;
     }
 
@@ -68,14 +70,14 @@ export default function AutoGrader() {
 
       const data = await resp.json();
       if (!resp.ok) {
-        const detail = data?.detail || data?.error || "Backend request failed.";
-        setError(`Backend error: ${detail}`);
+        const detail = data?.detail || data?.error || t("learning.errBackendGeneric");
+        setError(t("autograder.errBackend", { detail: String(detail) }));
         return;
       }
       setResult(data as GradeResponse);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Network error";
-      setError(`Request failed: ${message}`);
+      setError(t("autograder.errRequest", { message }));
     } finally {
       setGrading(false);
     }
@@ -85,23 +87,20 @@ export default function AutoGrader() {
     <div className="autograder-page">
       <div className="autograder-page-inner">
         <header className="autograder-hero">
-          <h1 className="autograder-hero-title">Auto Grader</h1>
-          <p className="autograder-hero-sub">
-            Upload question and answer PDFs or images. Matches the Learning Mode look and feel. Sub-questions are
-            detected and scored automatically.
-          </p>
+          <h1 className="autograder-hero-title">{t("autograder.title")}</h1>
+          <p className="autograder-hero-sub">{t("autograder.subtitle")}</p>
         </header>
 
         <div className="autograder-card">
           <div className="autograder-panel">
-            <span className="autograder-panel-label">Question file</span>
+            <span className="autograder-panel-label">{t("autograder.questionFile")}</span>
             <div className="autograder-file-row">
               <input
                 ref={questionInputRef}
                 className="autograder-file-input-hidden"
                 type="file"
                 accept=".pdf,image/*"
-                aria-label="Upload question file"
+                aria-label={t("autograder.uploadQuestion")}
                 onChange={(e) => setQuestionFile(e.target.files?.[0] ?? null)}
               />
               <button
@@ -109,25 +108,25 @@ export default function AutoGrader() {
                 className="autograder-file-choose-btn"
                 onClick={() => questionInputRef.current?.click()}
               >
-                Choose question
+                {t("autograder.chooseQuestion")}
               </button>
               <span
                 className={`autograder-file-status${questionFile ? " autograder-file-status--picked" : ""}`}
               >
-                {questionFile ? questionFile.name : "No file chosen"}
+                {questionFile ? questionFile.name : t("autograder.noFile")}
               </span>
             </div>
           </div>
 
           <div className="autograder-panel">
-            <span className="autograder-panel-label">Answer file</span>
+            <span className="autograder-panel-label">{t("autograder.answerFile")}</span>
             <div className="autograder-file-row">
               <input
                 ref={answerInputRef}
                 className="autograder-file-input-hidden"
                 type="file"
                 accept=".pdf,image/*"
-                aria-label="Upload answer file"
+                aria-label={t("autograder.uploadAnswer")}
                 onChange={(e) => setAnswerFile(e.target.files?.[0] ?? null)}
               />
               <button
@@ -135,18 +134,18 @@ export default function AutoGrader() {
                 className="autograder-file-choose-btn"
                 onClick={() => answerInputRef.current?.click()}
               >
-                Choose answer
+                {t("autograder.chooseAnswer")}
               </button>
               <span
                 className={`autograder-file-status${answerFile ? " autograder-file-status--picked" : ""}`}
               >
-                {answerFile ? answerFile.name : "No file chosen"}
+                {answerFile ? answerFile.name : t("autograder.noFile")}
               </span>
             </div>
           </div>
 
           <button type="button" className="autograder-submit" onClick={handleSubmit} disabled={grading}>
-            {grading ? "Grading…" : "Start grading"}
+            {grading ? t("autograder.grading") : t("autograder.start")}
           </button>
 
           {error ? <p className="autograder-error-text">{error}</p> : null}
@@ -154,8 +153,10 @@ export default function AutoGrader() {
 
         {result ? (
           <section className="autograder-result" aria-labelledby="autograder-result-heading">
-            <h3 id="autograder-result-heading">Grading results</h3>
-            <p className="autograder-result-meta">Sub-questions detected: {result.pair_count}</p>
+            <h3 id="autograder-result-heading">{t("autograder.results")}</h3>
+            <p className="autograder-result-meta">
+              {t("autograder.pairsDetected", { count: String(result.pair_count) })}
+            </p>
 
             <div className="autograder-score-list">
               {sortedScores.map(([qid, item]) => {
@@ -174,7 +175,10 @@ export default function AutoGrader() {
 
             {result.all_absolute && result.total_score != null && result.total_max_score != null ? (
               <p className="autograder-total-score">
-                Total score: {result.total_score}/{result.total_max_score}
+                {t("autograder.totalScore", {
+                  score: String(result.total_score),
+                  max: String(result.total_max_score),
+                })}
               </p>
             ) : null}
           </section>
@@ -183,6 +187,3 @@ export default function AutoGrader() {
     </div>
   );
 }
-
-
-

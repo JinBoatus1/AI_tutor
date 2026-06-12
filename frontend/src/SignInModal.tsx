@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
 import type { AuthMethod } from "./context/AuthContext";
+import { useLocale } from "./i18n/LocaleContext";
 import "./SignInModal.css";
 
 function GoogleIcon() {
@@ -35,6 +36,7 @@ function AnonymousIcon() {
 type View = "main" | "email";
 
 export default function SignInModal() {
+  const { t } = useLocale();
   const { showSignIn, setShowSignIn, loginWithProvider, loginWithEmail } = useAuth();
   const [view, setView] = useState<View>("main");
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export default function SignInModal() {
     try {
       await loginWithProvider(method);
     } catch (e: any) {
-      setError(e?.message || "Sign-in failed");
+      setError(e?.message || t("signin.failed"));
     } finally {
       setBusy(false);
     }
@@ -82,13 +84,13 @@ export default function SignInModal() {
     } catch (err: any) {
       const code = err?.code || "";
       if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
-        setError("Invalid email or password");
+        setError(t("signin.invalidCredentials"));
       } else if (code === "auth/email-already-in-use") {
-        setError("This email is already registered. Try signing in instead.");
+        setError(t("signin.emailInUse"));
       } else if (code === "auth/weak-password") {
-        setError("Password must be at least 6 characters");
+        setError(t("signin.weakPassword"));
       } else {
-        setError(err?.message || "Sign-in failed");
+        setError(err?.message || t("signin.failed"));
       }
     } finally {
       setBusy(false);
@@ -115,13 +117,13 @@ export default function SignInModal() {
               </svg>
             </div>
             <h3 className="signin-brand-title">AI Tutor</h3>
-            <p className="signin-brand-tagline">Personalized math learning, powered by AI</p>
+            <p className="signin-brand-tagline">{t("signin.tagline")}</p>
           </div>
         </div>
 
         {/* Form panel */}
         <div className="signin-form-panel">
-          <button className="signin-close" onClick={close} aria-label="Close">
+          <button className="signin-close" onClick={close} aria-label={t("signin.close")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -129,10 +131,10 @@ export default function SignInModal() {
 
           <div className="signin-header">
             <h2 className="signin-title">
-              {view === "main" ? "Welcome" : isSignUp ? "Create account" : "Email sign-in"}
+              {view === "main" ? t("signin.welcome") : isSignUp ? t("signin.createAccount") : t("signin.emailSignIn")}
             </h2>
             <p className="signin-subtitle">
-              {view === "main" ? "Sign in to save your progress" : "Save your progress and chat history"}
+              {view === "main" ? t("signin.subtitleMain") : t("signin.subtitleEmail")}
             </p>
           </div>
 
@@ -142,19 +144,19 @@ export default function SignInModal() {
             <div className="signin-providers">
               <button className="signin-provider-btn signin-provider--google" onClick={() => handleProvider("google")} disabled={busy}>
                 <span className="signin-provider-icon signin-provider-icon--google"><GoogleIcon /></span>
-                Continue with Google
+                {t("signin.google")}
               </button>
 
               <button className="signin-provider-btn signin-provider--email" onClick={() => { setError(null); setView("email"); }} disabled={busy}>
                 <span className="signin-provider-icon signin-provider-icon--email"><EmailIcon /></span>
-                Continue with email
+                {t("signin.email")}
               </button>
 
-              <div className="signin-divider"><span>or</span></div>
+              <div className="signin-divider"><span>{t("signin.or")}</span></div>
 
               <button className="signin-provider-btn signin-provider--anonymous" onClick={() => handleProvider("anonymous")} disabled={busy}>
                 <span className="signin-provider-icon signin-provider-icon--anon"><AnonymousIcon /></span>
-                Continue as guest
+                {t("signin.guest")}
               </button>
             </div>
           )}
@@ -164,7 +166,7 @@ export default function SignInModal() {
               <input
                 className="signin-input"
                 type="email"
-                placeholder="Email address"
+                placeholder={t("signin.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -173,23 +175,23 @@ export default function SignInModal() {
               <input
                 className="signin-input"
                 type="password"
-                placeholder="Password"
+                placeholder={t("signin.passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
               />
               <button className="signin-submit-btn" type="submit" disabled={busy}>
-                {busy ? "..." : isSignUp ? "Create account" : "Sign in"}
+                {busy ? t("signin.busy") : isSignUp ? t("signin.createAccount") : t("signin.signIn")}
               </button>
               <button
                 type="button"
                 className="signin-toggle-link"
                 onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
               >
-                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Create one"}
+                {isSignUp ? t("signin.toggleToSignIn") : t("signin.toggleToSignUp")}
               </button>
-              <button type="button" className="signin-back-link" onClick={reset}>Back to all options</button>
+              <button type="button" className="signin-back-link" onClick={reset}>{t("signin.back")}</button>
             </form>
           )}
         </div>

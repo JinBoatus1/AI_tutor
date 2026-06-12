@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Category, Course, Cutoff, Rule } from "./mockEngine";
 import { weightsSum } from "./mockEngine";
+import { useLocale } from "../i18n/LocaleContext";
 
 /* The plain-English rubric rule picker (design D4). Editing is mock-local;
    on Confirm the parent persists. Maps 1:1 to the engine's three rules. */
@@ -36,6 +37,7 @@ export default function RubricEditor({
   onConfirm: (c: Course) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLocale();
   const [c, setC] = useState<Course>(course);
   const push = (updater: Course | ((prev: Course) => Course)) => {
     setC((prev) => {
@@ -60,18 +62,14 @@ export default function RubricEditor({
   const sumOk = Math.abs(sum - 100) < 0.01;
 
   return (
-    <div className="gr-editor" role="dialog" aria-label="Edit rubric">
+    <div className="gr-editor" role="dialog" aria-label={t("grades.editRubricTitle")}>
       <div className="gr-editor-head">
-        <h2 className="gr-card-h">{parsed ? "Confirm your rubric" : "Edit rubric"}</h2>
+        <h2 className="gr-card-h">{parsed ? t("grades.confirmRubric") : t("grades.editRubricTitle")}</h2>
         <span className={`gr-sumchip${sumOk ? " ok" : " warn"}`}>
-          weights: {sum}% {sumOk ? "✓" : "— should be 100"}
+          {t("grades.weightsSum", { sum: String(sum) })} {sumOk ? t("grades.weightsOk") : t("grades.weightsWarn")}
         </span>
       </div>
-      {parsed && (
-        <p className="gr-editor-note">
-          We read this from your syllabus. Check it over and fix anything before we compute grades.
-        </p>
-      )}
+      {parsed && <p className="gr-editor-note">{t("grades.parsedNote")}</p>}
 
       <div className="gr-editor-cats">
         {c.categories.map((cat, i) => {
@@ -83,11 +81,11 @@ export default function RubricEditor({
                 <input
                   className="gr-edit-name"
                   value={cat.name}
-                  aria-label="Category name"
+                  aria-label={t("grades.categoryName")}
                   onChange={(e) => setCat(i, { name: e.target.value })}
                 />
                 <label className="gr-edit-weight">
-                  weight
+                  {t("grades.weight")}
                   <input
                     type="number"
                     value={cat.weight}
@@ -99,7 +97,7 @@ export default function RubricEditor({
               </div>
 
               <div className="gr-scoring" role="radiogroup" aria-label={`${cat.name} scoring`}>
-                <span className="gr-scoring-label">Scoring:</span>
+                <span className="gr-scoring-label">{t("grades.scoring")}</span>
                 {(["uniform", "dropLowest", "rankWeights"] as Kind[]).map((k) => (
                   <button
                     key={k}
@@ -117,7 +115,7 @@ export default function RubricEditor({
                       )
                     }
                   >
-                    {k === "uniform" ? "All equal" : k === "dropLowest" ? "Drop lowest" : "Lowest counts less"}
+                    {k === "uniform" ? t("grades.allEqual") : k === "dropLowest" ? t("grades.dropLowest") : t("grades.lowestCountsLess")}
                   </button>
                 ))}
               </div>
@@ -125,30 +123,64 @@ export default function RubricEditor({
               <div className="gr-rule-params">
                 {cat.rule.kind === "uniform" && (
                   <span>
-                    <NumIn v={cat.rule.nSlots} onV={(v) => setRule(i, { kind: "uniform", nSlots: v })} /> items, each counts the same
+                    <NumIn v={cat.rule.nSlots} onV={(v) => setRule(i, { kind: "uniform", nSlots: v })} />{" "}
+                    {t("grades.uniformSuffix")}
                   </span>
                 )}
                 {cat.rule.kind === "dropLowest" && (
                   <span>
-                    drop the lowest <NumIn v={cat.rule.k} onV={(v) => setRule(i, { kind: "dropLowest", nSlots: cat.rule.kind === "dropLowest" ? cat.rule.nSlots : n, k: v })} /> of{" "}
-                    <NumIn v={cat.rule.nSlots} onV={(v) => setRule(i, { kind: "dropLowest", nSlots: v, k: cat.rule.kind === "dropLowest" ? cat.rule.k : 1 })} /> items
+                    {t("grades.dropPrefix")}{" "}
+                    <NumIn
+                      v={cat.rule.k}
+                      onV={(v) =>
+                        setRule(i, {
+                          kind: "dropLowest",
+                          nSlots: cat.rule.kind === "dropLowest" ? cat.rule.nSlots : n,
+                          k: v,
+                        })
+                      }
+                    />{" "}
+                    {t("grades.dropMid")}{" "}
+                    <NumIn
+                      v={cat.rule.nSlots}
+                      onV={(v) =>
+                        setRule(i, {
+                          kind: "dropLowest",
+                          nSlots: v,
+                          k: cat.rule.kind === "dropLowest" ? cat.rule.k : 1,
+                        })
+                      }
+                    />{" "}
+                    {t("grades.itemsSuffix")}
                   </span>
                 )}
                 {cat.rule.kind === "rankWeights" &&
                   (() => {
-                    const t = twoTier(cat.rule.weights);
+                    const tier = twoTier(cat.rule.weights);
                     const ns = cat.rule.weights.length;
                     const rebuild = (lowN: number, low: number, high: number) =>
                       setRule(i, { kind: "rankWeights", weights: buildRank(ns, lowN, low, high) });
-                    const tierSum = t.lowN * t.low + (ns - t.lowN) * t.high;
+                    const tierSum = tier.lowN * tier.low + (ns - tier.lowN) * tier.high;
                     return (
                       <span>
-                        the lowest <NumIn v={t.lowN} onV={(v) => rebuild(v, t.low, t.high)} /> of{" "}
-                        <NumIn v={ns} onV={(v) => setRule(i, { kind: "rankWeights", weights: buildRank(v, t.lowN, t.low, t.high) })} /> count{" "}
-                        <NumIn v={t.low} onV={(v) => rebuild(t.lowN, v, t.high)} /> pts, others{" "}
-                        <NumIn v={t.high} onV={(v) => rebuild(t.lowN, t.low, v)} /> pts each
+                        {t("grades.rankLowest")}{" "}
+                        <NumIn v={tier.lowN} onV={(v) => rebuild(v, tier.low, tier.high)} /> {t("grades.rankOf")}{" "}
+                        <NumIn
+                          v={ns}
+                          onV={(v) =>
+                            setRule(i, {
+                              kind: "rankWeights",
+                              weights: buildRank(v, tier.lowN, tier.low, tier.high),
+                            })
+                          }
+                        />{" "}
+                        {t("grades.rankCount")}{" "}
+                        <NumIn v={tier.low} onV={(v) => rebuild(tier.lowN, v, tier.high)} /> {t("grades.rankPtsOthers")}{" "}
+                        <NumIn v={tier.high} onV={(v) => rebuild(tier.lowN, tier.low, v)} /> {t("grades.rankPtsEach")}
                         <span className={`gr-tier-sum${Math.abs(tierSum - cat.weight) < 0.01 ? " ok" : " warn"}`}>
-                          {Math.abs(tierSum - cat.weight) < 0.01 ? `✓ adds up to ${cat.weight}` : `= ${tierSum}, not ${cat.weight}`}
+                          {Math.abs(tierSum - cat.weight) < 0.01
+                            ? t("grades.tierOk", { weight: String(cat.weight) })
+                            : t("grades.tierWarn", { sum: String(tierSum), weight: String(cat.weight) })}
                         </span>
                       </span>
                     );
@@ -160,7 +192,7 @@ export default function RubricEditor({
       </div>
 
       <div className="gr-edit-cutoffs">
-        <span className="gr-edit-cutoffs-label">Letter cutoffs</span>
+        <span className="gr-edit-cutoffs-label">{t("grades.letterCutoffs")}</span>
         <div className="gr-cutoff-row">
           {c.cutoffs
             .filter((x) => x.letter !== "F")
@@ -183,10 +215,10 @@ export default function RubricEditor({
 
       <div className="gr-editor-actions">
         <button className="gr-btn-ghost" onClick={onCancel}>
-          Cancel
+          {t("grades.cancel")}
         </button>
         <button className="gr-btn-primary" onClick={() => onConfirm(c)}>
-          {parsed ? "Confirm rubric" : "Save"}
+          {parsed ? t("grades.confirmRubricBtn") : t("grades.save")}
         </button>
       </div>
     </div>

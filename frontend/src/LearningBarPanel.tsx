@@ -21,6 +21,7 @@ import {
   tryHydrateLearnedFromServer,
   trySyncLearnedToServer,
 } from "./utils/learningBarLocalStorage";
+import { useLocale } from "./i18n/LocaleContext";
 
 type FocsNode = Record<string, unknown>;
 
@@ -175,6 +176,7 @@ function FocsTreeBranch({
   path: string;
   onOpenPages?: (detail: OutlineSectionPreviewDetail) => void;
 }) {
+  const { t } = useLocale();
   const token = sectionTokenForNode(title, path);
   const rangeStr = formatRange(node);
   const bookRange = bookPageRangeFromNode(node);
@@ -203,15 +205,15 @@ function FocsTreeBranch({
 
   const learnDotTitle = learned
     ? hasKids
-      ? "Mark this chapter and all subsections as not learned"
-      : "Mark as not yet learned"
+      ? t("progress.markNotLearnedChapter")
+      : t("progress.markNotLearned")
     : hasKids
-      ? "Mark this chapter and all subsections as learned"
-      : "Mark as learned";
+      ? t("progress.markLearnedChapter")
+      : t("progress.markLearned");
 
   const titleBtnTitle = splitLearnAndTitle
     ? bookRange
-      ? "Show these pages in the textbook panel"
+      ? t("progress.openPages")
       : learnDotTitle
     : learnDotTitle;
 
@@ -224,7 +226,7 @@ function FocsTreeBranch({
             className="focs-node__chevron"
             onClick={() => onToggleExpand(path)}
             aria-expanded={isOpen}
-            aria-label={isOpen ? "Collapse" : "Expand"}
+            aria-label={isOpen ? t("progress.collapse") : t("progress.expand")}
           >
             {isOpen ? "▼" : "▶"}
           </button>
@@ -281,6 +283,7 @@ export default function LearningBarPanel({
   embedHeaderEnd,
   onOutlineSectionPreview,
 }: LearningBarPanelProps) {
+  const { t, locale } = useLocale();
   const { token } = useAuth();
   const location = useLocation();
   const [fallbackStudentId] = useState(() => getOrCreateStudentId());
@@ -410,6 +413,10 @@ export default function LearningBarPanel({
     };
   }, [hydrated, learned.length, studentId, selectedTextbookId, token]);
 
+  useEffect(() => {
+    setSyncHint(null);
+  }, [locale]);
+
   const persistLearned = useCallback(
     async (next: string[]) => {
       setSaving(true);
@@ -422,20 +429,20 @@ export default function LearningBarPanel({
         setSyncHint(
           ok
             ? variant === "embed"
-              ? "Synced to server."
-              : "Synced to server (Learning Mode will use the same progress)."
+              ? t("progress.syncOkEmbed")
+              : t("progress.syncOkPage")
             : variant === "embed"
-              ? "Saved on this device; could not reach the server."
-              : "Saved on this device; could not reach the server—Learning Mode may be out of sync."
+              ? t("progress.syncLocalEmbed")
+              : t("progress.syncLocalPage")
         );
       } catch (e) {
-        const msg = (e as Error).message || "Save failed.";
+        const msg = (e as Error).message || t("progress.saveFailed");
         setError(msg);
       } finally {
         setSaving(false);
       }
     },
-    [studentId, variant, selectedTextbookId, token]
+    [studentId, variant, selectedTextbookId, token, t]
   );
 
   const onToggleToken = useCallback(
@@ -497,21 +504,21 @@ export default function LearningBarPanel({
   const embedWrap = (body: ReactNode) => (
     <div
       className="learning-bar-embed"
-      aria-label={`Learning progress for ${getTextbookLinkLabel(selectedTextbookId)}`}
+      aria-label={`${t("progress.title")} ${getTextbookLinkLabel(selectedTextbookId)}`}
     >
       <div className="learning-bar-embed-scroll">{body}</div>
     </div>
   );
 
   if (!hydrated) {
-    const loading = <p className="my-learning-bar-status">Loading…</p>;
+    const loading = <p className="my-learning-bar-status">{t("progress.loading")}</p>;
     return variant === "embed" ? embedWrap(loading) : <div className="my-learning-bar-page">{loading}</div>;
   }
 
   const titleWrapInner = (
     <>
       <h1 className="my-learning-bar-title">
-        Learning progress for{" "}
+        {t("progress.title")}{" "}
         <button
           type="button"
           ref={bookBtnRef}
@@ -530,9 +537,9 @@ export default function LearningBarPanel({
           ref={bookPopoverRef}
           className="my-learning-bar-book-popover"
           role="listbox"
-          aria-label="Choose textbook"
+          aria-label={t("progress.chooseTextbook")}
         >
-          <div className="my-learning-bar-book-popover-hint">Choose textbook</div>
+          <div className="my-learning-bar-book-popover-hint">{t("progress.chooseTextbook")}</div>
           {bookOptions.map((opt) => (
             <button
               key={opt.id}
@@ -575,17 +582,13 @@ export default function LearningBarPanel({
         <p className="my-learning-bar-meta">
           {variant === "embed" ? (
             <>
-              {
-                "Click the dot to toggle learned / not learned. Click the section title (when it has page numbers) to open those pages in the textbook panel. Same data as on the My Learning bar page."
-              }
-              {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
+              {t("progress.metaEmbed")}
+              {saving ? <span className="my-learning-bar-saving"> · {t("progress.saving")}</span> : null}
             </>
           ) : (
             <>
-              This page shows your progress against the textbook outline.
-              <br />
-              Click any topic to toggle learned / not learned.
-              {saving ? <span className="my-learning-bar-saving"> · Saving…</span> : null}
+              {t("progress.metaPage")}
+              {saving ? <span className="my-learning-bar-saving"> · {t("progress.saving")}</span> : null}
             </>
           )}
         </p>
@@ -598,11 +601,11 @@ export default function LearningBarPanel({
         <div className="my-learning-bar-legend">
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--learned" aria-hidden />
-            Learned
+            {t("progress.learned")}
           </span>
           <span>
             <span className="my-learning-bar-dot my-learning-bar-dot--not" aria-hidden />
-            Not learned
+            {t("progress.notLearned")}
           </span>
         </div>
       </header>
@@ -611,10 +614,10 @@ export default function LearningBarPanel({
         {expandablePaths.length > 0 ? (
           <div className="my-learning-bar-expand-row">
             <button type="button" className="my-learning-bar-expand-btn" onClick={expandAllSections}>
-              Expand all
+              {t("progress.expandAll")}
             </button>
             <button type="button" className="my-learning-bar-expand-btn" onClick={collapseAllSections}>
-              Collapse all
+              {t("progress.collapseAll")}
             </button>
           </div>
         ) : null}
