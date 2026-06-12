@@ -1,12 +1,28 @@
+/** Printed-book page anchor for “see in textbook” jumps. */
+export type BookAnchor = {
+  bookPage: number;
+  startBook: number;
+  endBook: number;
+  sectionTitle: string;
+  sectionHint?: string;
+};
+
 export type VocabEntry = {
   term: string;
   definition: string;
+  /** Curated example (usually from the book). */
+  example?: string;
+  exampleRef?: string;
+  book?: BookAnchor;
 };
 
 export type FormulaEntry = {
   /** LaTeX allowed: $...$ inline, $$...$$ block. */
   expr: string;
   explanation: string;
+  example?: string;
+  exampleRef?: string;
+  book?: BookAnchor;
 };
 
 export type SectionNote = {

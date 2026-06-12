@@ -1,7 +1,25 @@
-import type { FormulaEntry, SectionNote, VocabEntry } from "../utils/sectionNotes";
+import type { BookAnchor, FormulaEntry, SectionNote, VocabEntry } from "../utils/sectionNotes";
 
-const v = (term: string, definition: string): VocabEntry => ({ term, definition });
-const f = (expr: string, explanation: string): FormulaEntry => ({ expr, explanation });
+type EntryOpts = { example?: string; exampleRef?: string; book?: BookAnchor };
+
+const v = (term: string, definition: string, opts?: EntryOpts): VocabEntry => ({
+  term,
+  definition,
+  ...opts,
+});
+const f = (expr: string, explanation: string, opts?: EntryOpts): FormulaEntry => ({
+  expr,
+  explanation,
+  ...opts,
+});
+
+const ch4 = (bookPage: number, sectionTitle: string, sectionHint: string): BookAnchor => ({
+  bookPage,
+  startBook: 41,
+  endBook: 54,
+  sectionTitle,
+  sectionHint,
+});
 
 /** Chapter-level study notes for FCOS (keyed by section number: "1", "5.1", …). */
 export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
@@ -33,9 +51,23 @@ export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
     objectives:
       "Model epidemic spread on a grid: each person is infected or not; each day, you become infected if at least two neighbors were infected yesterday—then ask who ultimately gets infected and why modeling assumptions matter.",
     vocabulary: [
-      v("discrete process", "Time moves in whole steps (days); each person is in one of finitely many states (here, infected or not)."),
-      v("modeling assumption", "A deliberate simplification (grid layout, 2-neighbor rule) chosen before analyzing what happens next."),
-      v("neighbor (grid)", "Another person in a square that shares a side with yours—not diagonal."),
+      v("discrete process", "Time moves in whole steps (days); each person is in one of finitely many states (here, infected or not).", {
+        example:
+          "Day 1: some squares turn gray (new infections). Day 2: prior grays become black, new grays appear where the 2-neighbor rule fires.",
+        exampleRef: "§1.1, p. 7",
+        book: { bookPage: 7, startBook: 7, endBook: 14, sectionTitle: "1.1 Modeling Epidemics", sectionHint: "1.1" },
+      }),
+      v("modeling assumption", "A deliberate simplification (grid layout, 2-neighbor rule) chosen before analyzing what happens next.", {
+        example:
+          "People live on a grid; you get infected tomorrow only if ≥2 side-neighbors are infected today—or change the rule to 1-neighbor and compare outcomes.",
+        exampleRef: "§1.1, p. 7",
+        book: { bookPage: 7, startBook: 7, endBook: 14, sectionTitle: "1.1 Modeling Epidemics", sectionHint: "1.1" },
+      }),
+      v("neighbor (grid)", "Another person in a square that shares a side with yours—not diagonal.", {
+        example: "On the 7×7 epidemic grid, the red square asks: will two infected neighbors eventually force my infection?",
+        exampleRef: "§1.1, p. 7",
+        book: { bookPage: 7, startBook: 7, endBook: 14, sectionTitle: "1.1 Modeling Epidemics", sectionHint: "1.1" },
+      }),
     ],
     formulas: [
       f(
@@ -143,25 +175,55 @@ export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
     objectives:
       "Prove implications directly, by contraposition, contradiction, and equivalence; prove facts about sets.",
     vocabulary: [
-      v("direct proof", "Assume $P$; derive $Q$ step by step."),
-      v("contraposition", "Prove $\\neg Q \\Rightarrow \\neg P$ instead of $P \\Rightarrow Q$."),
-      v("contradiction", "Assume the negation of what you want; reach an impossible statement."),
-      v("iff ($\\Leftrightarrow$)", "Prove both directions when showing equivalence."),
-      v("set equality", "Often proved by mutual inclusion $A \\subseteq B$ and $B \\subseteq A$."),
+      v("direct proof", "Assume $P$; derive $Q$ step by step.", {
+        example:
+          "IF $x$ and $y$ are rational, THEN $x+y$ is rational: write $x=a/b$, $y=c/d$, then $x+y=(ad+bc)/(bd)$—a ratio of integers, so $q$ holds.",
+        exampleRef: "§4.1, p. 41",
+        book: ch4(41, "4.1 Direct Proof", "4.1"),
+      }),
+      v("contraposition", "Prove $\\neg Q \\Rightarrow \\neg P$ instead of $P \\Rightarrow Q$.", {
+        example:
+          "To show an implication, switch to the contrapositive when negating the conclusion is easier to work with than assuming $P$ directly.",
+        exampleRef: "§4.2, p. 45",
+        book: ch4(45, "4.2 Proof by Contraposition", "4.2"),
+      }),
+      v("contradiction", "Assume the negation of what you want; reach an impossible statement.", {
+        example:
+          "To prove a fact, assume its opposite and derive something that cannot be true—then the original statement must hold.",
+        exampleRef: "§4.4, p. 46",
+        book: ch4(46, "4.4 Proof by Contradiction (Reductio ad Absurdum)", "4.4"),
+      }),
+      v("iff ($\\Leftrightarrow$)", "Prove both directions when showing equivalence.", {
+        example: "Showing $P \\Leftrightarrow Q$ means two implications: $P \\Rightarrow Q$ and $Q \\Rightarrow P$, each proved separately.",
+        exampleRef: "§4.3, p. 45",
+        book: ch4(45, "4.3 Equivalence: If and Only If", "4.3"),
+      }),
+      v("set equality", "Often proved by mutual inclusion $A \\subseteq B$ and $B \\subseteq A$.", {
+        example: "To prove $A=B$, show every element of $A$ is in $B$ and every element of $B$ is in $A$—no need to list all members.",
+        exampleRef: "§4.5, p. 48",
+        book: ch4(48, "4.5 Proofs about Sets", "4.5"),
+      }),
     ],
     formulas: [
-      f(
-        "Direct: $P \\Rightarrow Q$",
-        "Start with $P$ true; end with $Q$ established—most common proof shape."
-      ),
+      f("Direct: $P \\Rightarrow Q$", "Start with $P$ true; end with $Q$ established—most common proof shape.", {
+        example: "Book proof: assume “$x,y$ rational” ($P$), derive “$x+y$ rational” ($Q$).",
+        exampleRef: "§4.1, p. 41",
+        book: ch4(41, "4.1 Direct Proof", "4.1"),
+      }),
       f(
         "$P \\Rightarrow Q \\equiv \\neg Q \\Rightarrow \\neg P$",
-        "Contrapositive swaps and negates—useful when $\\neg Q$ is easier to work with."
+        "Contrapositive swaps and negates—useful when $\\neg Q$ is easier to work with.",
+        {
+          example: "Instead of proving $p \\Rightarrow q$ head-on, prove “if $q$ fails, then $p$ fails.”",
+          exampleRef: "§4.2, p. 45",
+          book: ch4(45, "4.2 Proof by Contraposition", "4.2"),
+        }
       ),
-      f(
-        "$A = B$ via subsets",
-        "Show every element of $A$ is in $B$ and vice versa; no need to list all elements."
-      ),
+      f("$A = B$ via subsets", "Show every element of $A$ is in $B$ and vice versa; no need to list all elements.", {
+        example: "Mutual inclusion: $A \\subseteq B$ and $B \\subseteq A$ together force $A=B$.",
+        exampleRef: "§4.5, p. 48",
+        book: ch4(48, "4.5 Proofs about Sets", "4.5"),
+      }),
     ],
   },
   "5": {

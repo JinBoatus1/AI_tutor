@@ -18,10 +18,11 @@ import {
   SectionNoteButton,
   SectionNotePanel,
   useSectionNoteToggle,
+  type SectionNoteActions,
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
-import { getSectionNoteWithNewVocab, sectionTokenFromTitle } from "./utils/sectionNotes";
+import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -164,6 +165,10 @@ export default function LearningModel() {
   const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
   const [outlinePreviewError, setOutlinePreviewError] = useState<string | null>(null);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
+  const [bookHighlight, setBookHighlight] = useState<string | null>(null);
+  const pendingBookPageRef = useRef<number | null>(null);
+  const bookHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textbookImgRef = useRef<HTMLDivElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [pdfAttachment, setPdfAttachment] = useState<{ name: string; dataUrl: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -529,6 +534,182 @@ export default function LearningModel() {
   // ============================
   // SEND MESSAGE → BACKEND → SHOW REPLY
   // ============================
+  const sendChatMessage = useCallback(
+    async (userText: string, opts?: { clearInput?: boolean }) => {
+      const trimmed = userText.trim();
+      if (!trimmed || isAwaitingReply) return;
+      setOutlinePreviewError(null);
+
+      if (opts?.clearInput) setInput("");
+
+      addUserMessage(trimmed);
+      setAttachedImages([]);
+      setPdfAttachment(null);
+      setIsAwaitingReply(true);
+
+      const CHAT_TIMEOUT_MS = 120000;
+      const controller = new AbortController();
+      let timeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
+      try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        const resp = await fetch(apiUrl("/api/chat"), {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            message: trimmed,
+            history: messages,
+            student_id: studentId,
+            session_id: sessionId,
+            textbook_id: textbookId,
+          }),
+          signal: controller.signal,
+        });
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = null;
+
+        const data = (await resp.json()) as {
+          matched_topic?: any;
+          reply?: string;
+          confidence?: number;
+          reference_page_image_b64?: string;
+          reference_page_snippets_b64?: string[];
+          reference_section_pages_b64?: string[];
+          session_id?: string;
+          detail?: string;
+          error?: string;
+        };
+        if (data?.session_id && !sessionId) {
+          setSessionId(data.session_id);
+          setRefreshTrigger((n) => n + 1);
+        }
+        if (!resp.ok) {
+          const detail = data?.detail || data?.error || "Backend request failed.";
+          addAIMessage(`Backend error: ${detail}`);
+          return;
+        }
+
+        const reply = data.reply || "[Empty reply]";
+        const conf = typeof data.confidence === "number" ? data.confidence : null;
+
+        if (data.matched_topic) {
+          const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
+          const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
+          setDataMatchedTopic({
+            name: data.matched_topic.name,
+            startBook: sb,
+            endBook: eb,
+            sectionHint: sectionTokenFromTitle(data.matched_topic.name) || undefined,
+          });
+        } else {
+          setDataMatchedTopic(null);
+          setMatchedSection(null);
+        }
+        if (data.reference_section_pages_b64?.length) {
+          setReferenceSectionPages(
+            data.reference_section_pages_b64.map((b64) => `data:image/png;base64,${b64}`)
+          );
+          setSectionPageIndex(0);
+          setReferencePageSnippets(null);
+          setReferencePageImage(null);
+        } else if (data.reference_page_snippets_b64?.length) {
+          setReferencePageSnippets(
+            data.reference_page_snippets_b64.map((b64) => `data:image/png;base64,${b64}`)
+          );
+          setReferencePageImage(null);
+          setReferenceSectionPages(null);
+        } else if (data.reference_page_image_b64) {
+          setReferencePageImage(`data:image/png;base64,${data.reference_page_image_b64}`);
+          setReferencePageSnippets(null);
+          setReferenceSectionPages(null);
+        }
+
+        if (conf === null) {
+          addAIMessage(reply);
+        } else {
+          addAIMessage(`${reply}\n\nConfidence: ${conf}/100`);
+        }
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        if ((err as Error).name === "AbortError") {
+          addAIMessage("Request timed out (~2 min). Check that the backend is running, or try again later.");
+        } else {
+          addAIMessage("Request failed—could not reach the backend. Make sure the API server is running.");
+        }
+      } finally {
+        setIsAwaitingReply(false);
+      }
+    },
+    [
+      isAwaitingReply,
+      token,
+      messages,
+      studentId,
+      sessionId,
+      textbookId,
+      setSessionId,
+      setRefreshTrigger,
+    ]
+  );
+
+  const handleAskChat = useCallback(
+    (question: string) => {
+      if (chatCollapsed) expandChatPanel();
+      void sendChatMessage(question);
+    },
+    [chatCollapsed, expandChatPanel, sendChatMessage]
+  );
+
+  const handleJumpToBook = useCallback(
+    async (anchor: BookAnchor, highlightLabel: string) => {
+      setLeftPanelOpen(true);
+      setBookHighlight(highlightLabel);
+      if (bookHighlightTimerRef.current) clearTimeout(bookHighlightTimerRef.current);
+      bookHighlightTimerRef.current = setTimeout(() => setBookHighlight(null), 9000);
+
+      const inRange =
+        dataMatchedTopic &&
+        referenceSectionPages?.length &&
+        anchor.bookPage >= dataMatchedTopic.startBook &&
+        anchor.bookPage <= dataMatchedTopic.endBook;
+
+      if (inRange) {
+        const idx = anchor.bookPage - dataMatchedTopic!.startBook;
+        setSectionPageIndex(Math.max(0, Math.min(idx, referenceSectionPages!.length - 1)));
+        requestAnimationFrame(() => {
+          textbookImgRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return;
+      }
+
+      pendingBookPageRef.current = anchor.bookPage;
+      await handleOutlineSectionPreview({
+        sectionTitle: anchor.sectionTitle,
+        path: anchor.sectionHint ?? anchor.sectionTitle,
+        startBook: anchor.startBook,
+        endBook: anchor.endBook,
+        sectionHint: anchor.sectionHint ?? sectionTokenFromTitle(anchor.sectionTitle) ?? "",
+      });
+    },
+    [dataMatchedTopic, referenceSectionPages, handleOutlineSectionPreview]
+  );
+
+  useEffect(() => {
+    if (pendingBookPageRef.current == null || !referenceSectionPages?.length || !dataMatchedTopic) return;
+    const bookPage = pendingBookPageRef.current;
+    pendingBookPageRef.current = null;
+    const idx = bookPage - dataMatchedTopic.startBook;
+    setSectionPageIndex(Math.max(0, Math.min(idx, referenceSectionPages.length - 1)));
+    requestAnimationFrame(() => {
+      textbookImgRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [referenceSectionPages, dataMatchedTopic]);
+
   const handleSend = async () => {
     const userText = input.trim();
     const hasImages = attachedImages.length > 0;
@@ -783,6 +964,14 @@ export default function LearningModel() {
 
   const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
 
+  const sectionNoteActions: SectionNoteActions = useMemo(
+    () => ({
+      onAskChat: handleAskChat,
+      onJumpToBook: handleJumpToBook,
+    }),
+    [handleAskChat, handleJumpToBook]
+  );
+
   const noteSplitActive = Boolean(
     sectionNoteToggle.open && activeSectionNote && dataMatchedTopic
   );
@@ -837,17 +1026,30 @@ export default function LearningModel() {
                   Next ›
                 </button>
               </div>
-              <img
-                src={referenceSectionPages[sectionPageIndex]}
-                alt={`Section page ${sectionPageIndex + 1}`}
-                className="reference-page-img reference-img-clickable"
-                onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
-                }
-              />
+              <div
+                ref={textbookImgRef}
+                className={`reference-page-img-wrap${bookHighlight ? " reference-page-img-wrap--highlight" : ""}`}
+              >
+                {bookHighlight ? (
+                  <div className="book-page-highlight-callout" aria-live="polite">
+                    <span className="book-page-highlight-arrow" aria-hidden>
+                      ↳
+                    </span>
+                    <span className="book-page-highlight-label">书中此处 · {bookHighlight}</span>
+                  </div>
+                ) : null}
+                <img
+                  src={referenceSectionPages[sectionPageIndex]}
+                  alt={`Section page ${sectionPageIndex + 1}`}
+                  className="reference-page-img reference-img-clickable"
+                  onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
+                  }
+                />
+              </div>
             </>
           ) : referencePageSnippets?.length ? (
             referencePageSnippets.map((src, i) => (
@@ -948,6 +1150,7 @@ export default function LearningModel() {
               <SectionNotePanel
                 note={activeSectionNote}
                 panelId={sectionNoteToggle.panelId}
+                actions={sectionNoteActions}
               />
             </div>
             <div

@@ -1,6 +1,11 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import MathText from "./MathText";
-import type { SectionNote } from "./utils/sectionNotes";
+import type { BookAnchor, FormulaEntry, SectionNote, VocabEntry } from "./utils/sectionNotes";
+
+export type SectionNoteActions = {
+  onAskChat: (question: string) => void;
+  onJumpToBook: (anchor: BookAnchor, highlightLabel: string) => void;
+};
 
 export function useSectionNoteToggle(sectionLabel: string) {
   const [open, setOpen] = useState(false);
@@ -41,9 +46,129 @@ export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButton
 type SectionNotePanelProps = {
   note: SectionNote;
   panelId: string;
+  actions: SectionNoteActions;
 };
 
-export function SectionNotePanel({ note, panelId }: SectionNotePanelProps) {
+function plainTermLabel(label: ReactNode, fallback: string): string {
+  if (typeof label === "string") return label.replace(/\$/g, "").trim();
+  return fallback;
+}
+
+type ExpandableEntry = {
+  label: ReactNode;
+  labelKey: string;
+  definition: string;
+  example?: string;
+  exampleRef?: string;
+  book?: BookAnchor;
+};
+
+function ExpandableNoteEntry({
+  entry,
+  actions,
+}: {
+  entry: ExpandableEntry;
+  actions: SectionNoteActions;
+}) {
+  const [open, setOpen] = useState(false);
+  const termPlain = plainTermLabel(entry.label, entry.labelKey);
+  const hasCurated = Boolean(entry.example && entry.book);
+  const hasExampleOnly = Boolean(entry.example && !entry.book);
+
+  const askQuestion = (suffix = "") => {
+    const q = suffix
+      ? `什么是「${termPlain}」？${suffix}`
+      : `什么是「${termPlain}」？请用本节内容解释并给一个简短示例。`;
+    actions.onAskChat(q);
+  };
+
+  return (
+    <div className={`section-note-entry${open ? " section-note-entry--open" : ""}`}>
+      <div className="section-note-entry-head">
+        <div className="section-note-entry-title">
+          <MathText>{typeof entry.label === "string" ? entry.label : entry.labelKey}</MathText>
+        </div>
+        <button
+          type="button"
+          className="section-note-entry-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "收起" : "示例 / 追问"}
+        </button>
+      </div>
+      <p className="section-note-entry-def">
+        <MathText>{entry.definition}</MathText>
+      </p>
+
+      {open ? (
+        <div className="section-note-entry-body">
+          {hasCurated || hasExampleOnly ? (
+            <>
+              <p className="section-note-entry-example">
+                <MathText>{entry.example!}</MathText>
+              </p>
+              {entry.exampleRef ? (
+                <span className="section-note-entry-ref">{entry.exampleRef}</span>
+              ) : null}
+              {entry.book ? (
+                <button
+                  type="button"
+                  className="section-note-entry-book"
+                  onClick={() => actions.onJumpToBook(entry.book!, entry.exampleRef ?? termPlain)}
+                >
+                  在书中查看 ↗
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="section-note-entry-ask"
+                onClick={() => askQuestion("请再举一个例子或帮我加深理解。")}
+              >
+                继续追问 AI
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="section-note-entry-empty">本书暂未策展此词条的示例。</p>
+              <button
+                type="button"
+                className="section-note-entry-ask section-note-entry-ask--primary"
+                onClick={() => askQuestion()}
+              >
+                向 AI 提问：什么是「{termPlain}」？
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function vocabToEntry(item: VocabEntry): ExpandableEntry {
+  return {
+    label: item.term,
+    labelKey: item.term,
+    definition: item.definition,
+    example: item.example,
+    exampleRef: item.exampleRef,
+    book: item.book,
+  };
+}
+
+function formulaToEntry(item: FormulaEntry): ExpandableEntry {
+  return {
+    label: item.expr,
+    labelKey: item.expr,
+    definition: item.explanation,
+    example: item.example,
+    exampleRef: item.exampleRef,
+    book: item.book,
+  };
+}
+
+export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelProps) {
   return (
     <div id={panelId} className="left-panel-section-note" role="region" aria-label="Section study note">
       <div className="section-note-card section-note-card--goals">
@@ -63,18 +188,15 @@ export function SectionNotePanel({ note, panelId }: SectionNotePanelProps) {
           </div>
           <div className="section-note-card-body">
             <h3 className="left-panel-section-note-heading">Key vocabulary</h3>
-            <dl className="section-note-vocab-list">
+            <div className="section-note-entry-list">
               {note.vocabulary.map((item) => (
-                <div key={item.term} className="section-note-vocab-row">
-                  <dt className="section-note-vocab-term">
-                    <MathText>{item.term}</MathText>
-                  </dt>
-                  <dd className="section-note-vocab-def">
-                    <MathText>{item.definition}</MathText>
-                  </dd>
-                </div>
+                <ExpandableNoteEntry
+                  key={item.term}
+                  entry={vocabToEntry(item)}
+                  actions={actions}
+                />
               ))}
-            </dl>
+            </div>
           </div>
         </div>
       ) : null}
@@ -86,18 +208,15 @@ export function SectionNotePanel({ note, panelId }: SectionNotePanelProps) {
           </div>
           <div className="section-note-card-body">
             <h3 className="left-panel-section-note-heading">Important formulas</h3>
-            <ul className="section-note-formula-list">
+            <div className="section-note-entry-list">
               {note.formulas.map((item) => (
-                <li key={`${item.expr}:${item.explanation}`} className="section-note-formula-item">
-                  <div className="section-note-formula-expr">
-                    <MathText>{item.expr}</MathText>
-                  </div>
-                  <p className="section-note-formula-explain">
-                    <MathText>{item.explanation}</MathText>
-                  </p>
-                </li>
+                <ExpandableNoteEntry
+                  key={`${item.expr}:${item.explanation}`}
+                  entry={formulaToEntry(item)}
+                  actions={actions}
+                />
               ))}
-            </ul>
+            </div>
           </div>
         </div>
       ) : null}
