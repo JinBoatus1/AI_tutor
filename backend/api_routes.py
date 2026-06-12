@@ -320,6 +320,169 @@ def _is_simple_definition_question(message: str) -> bool:
     return False
 
 
+_INTAKE_REPLY_MARKERS = (
+    "intake (",
+    "intake:",
+    "please answer all 3",
+    "pick one section",
+    "new topic or review",
+    "study plan (",
+    "study plan:",
+    "closest match:",
+    "other nearby options",
+    "which chapter(s)/section(s)",
+    "study intake",
+    "可选小节",
+    "学习前小测",
+    "学习前确认",
+    "before we begin, three quick things",
+)
+
+
+def _sanitize_chat_history(history: Optional[List[dict]]) -> List[dict]:
+    """Drop welcome placeholders and old intake/section-menu assistant replies."""
+    out: List[dict] = []
+    for msg in history or []:
+        text = str(msg.get("text") or "").strip()
+        if not text or text == "__welcome__":
+            continue
+        if msg.get("sender") == "ai":
+            low = text.lower()
+            if any(m in low for m in _INTAKE_REPLY_MARKERS):
+                continue
+        out.append(msg)
+    return out
+
+
+def _persist_chat_messages(
+    chat_message: ChatMessage,
+    user_email: Optional[str],
+    answer: str,
+    result: dict[str, Any],
+) -> None:
+    if not user_email or chat_message.silent:
+        return
+    col = database.chat_sessions()
+    if col is None:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    new_msg_pair = [
+        {"sender": "user", "text": chat_message.message, "ts": now},
+        {"sender": "ai", "text": answer, "ts": now},
+    ]
+    if chat_message.session_id:
+        try:
+            col.update_one(
+                {"_id": ObjectId(chat_message.session_id), "user_email": user_email},
+                {
+                    "$push": {"messages": {"$each": new_msg_pair}},
+                    "$set": {"updated_at": now},
+                },
+            )
+        except Exception as e:
+            print(f"[DB] session update failed: {e}", flush=True)
+    else:
+        try:
+            title = chat_message.message[:80]
+            doc = col.insert_one(
+                {
+                    "user_email": user_email,
+                    "title": title,
+                    "created_at": now,
+                    "updated_at": now,
+                    "messages": new_msg_pair,
+                }
+            )
+            result["session_id"] = str(doc.inserted_id)
+        except Exception as e:
+            print(f"[DB] session create failed: {e}", flush=True)
+
+
+def _chat_direct_in_section(
+    chat_message: ChatMessage,
+    user_email: Optional[str],
+    section_hint: str,
+    textbook_id: str,
+) -> dict[str, Any]:
+    """Answer in the context of the section the student has open — no history, memory, bar, or intake."""
+    _book_label = (
+        "FOCS (Mathematics for Computer Science)"
+        if textbook_id == "focs"
+        else "the textbook the student selected"
+    )
+    system_content = (
+        f"You are an AI math tutor for {_book_label}. "
+        "The student is viewing a specific textbook section (reference below). "
+        "Answer their question directly with a clear explanation and a short example when helpful. "
+        "Never ask intake questions, never list optional sections, never say 'closest match', "
+        "and never ask them to pick a chapter or section."
+    )
+    section_info = lr.get_section_start_end_name(section_hint)
+    if section_info:
+        start_book, end_book, section_name = section_info
+        start_pdf = start_book + lr.effective_pdf_page_offset()
+        end_pdf = end_book + lr.effective_pdf_page_offset()
+        system_content += f"\n\nOpen section: {section_name}."
+        _pdf = lr.get_effective_pdf_bytes()
+        if _pdf:
+            ctx = lr.extract_pdf_pages_text(_pdf, start_pdf, end_pdf)
+            if ctx:
+                system_content += (
+                    f"\n\n--- Textbook reference ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
+                    f"{ctx[:12000]}\n--- End ---"
+                )
+
+    try:
+        matched_topic = lr.match_topic_with_llm(chat_message.message)
+    except Exception:
+        matched_topic = None
+    if matched_topic and section_info and (matched_topic.get("name") or "") != section_info[2]:
+        s = matched_topic["start"] + lr.effective_pdf_page_offset()
+        e = matched_topic["end"] + lr.effective_pdf_page_offset()
+        _pdf = lr.get_effective_pdf_bytes()
+        if _pdf:
+            mt_ctx = lr.extract_pdf_pages_text(_pdf, s, e)
+            if mt_ctx:
+                system_content += (
+                    f"\n\n--- Also relevant ({matched_topic['name']}, PDF pp. {s}-{e}) ---\n"
+                    f"{mt_ctx[:8000]}\n--- End ---"
+                )
+
+    resp = create_chat_completion(
+        model="gpt-5.2",
+        messages=[
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": chat_message.message},
+        ],
+        temperature=0.3,
+    )
+    answer = (resp.choices[0].message.content or "").strip()
+    result: dict[str, Any] = {"reply": answer}
+
+    if section_info:
+        start_book, end_book, name = section_info
+        start_pdf = start_book + lr.effective_pdf_page_offset()
+        end_pdf = end_book + lr.effective_pdf_page_offset()
+        result["matched_topic"] = {
+            "name": name,
+            "start_book": start_book,
+            "end_book": end_book,
+            "start_pdf": start_pdf,
+            "end_pdf": end_pdf,
+            "start": start_pdf,
+            "end": end_pdf,
+        }
+        _pdf = lr.get_effective_pdf_bytes()
+        if _pdf:
+            pages_b64 = lr.render_pdf_page_range_to_base64(_pdf, start_pdf, end_pdf)
+            if pages_b64:
+                result["reference_section_pages_b64"] = pages_b64
+
+    _persist_chat_messages(chat_message, user_email, answer, result)
+    print("[Chat] direct section response sent", flush=True)
+    return result
+
+
 def _force_one_sentence(answer: str) -> str:
     """
     Best-effort postprocess to enforce a single-sentence reply.
@@ -354,11 +517,21 @@ async def api_version():
 @router.post("/api/chat")
 async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(None)):
     print("[Chat] request received", flush=True)
-    has_prior_user_messages = any((m.get("sender") == "user") for m in (chat_message.history or []))
+    chat_history = _sanitize_chat_history(chat_message.history)
+    has_prior_user_messages = any((m.get("sender") == "user") for m in chat_history)
     student_id = chat_message.student_id or "default_student"
     user_email = verify_token(authorization)
+    client_section_hint = (chat_message.section_hint or "").strip() or None
 
     has_attachments = bool(chat_message.images_b64) or bool(chat_message.pdf_b64)
+
+    # Section-open direct Q&A: bypass bar, memory, history, and any intake/section-menu behavior.
+    if client_section_hint and not has_attachments:
+        tid = (chat_message.textbook_id or "focs").strip() or "focs"
+        if not user_email and tid.startswith("user_"):
+            tid = "focs"
+        with lr.request_book(tid, user_email):
+            return _chat_direct_in_section(chat_message, user_email, client_section_hint, tid)
 
     # TOP PRIORITY: simple definition questions must be answered in ONE sentence
     # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
@@ -440,7 +613,6 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             else "the textbook the student selected (outline + PDF pages)"
         )
         is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
-        client_section_hint = (chat_message.section_hint or "").strip() or None
         if is_simple_def:
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
@@ -526,29 +698,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
 
         mem: Any = None
         enable_memory_tool = False
-        if _MEMORY_AVAILABLE and memory_addr and not is_simple_def:
-            try:
-                mem = open_memory(MEMORY_ROOT, lr.effective_memory_book_id())
-                st_sum, sum_recs = mem.read(f"{memory_addr}/__summary__")
-                st_ev, ev_recs = mem.read(memory_addr)
-                has_summaries = st_sum == Status.OK and bool(sum_recs)
-                has_events = st_ev == Status.OK and len(ev_recs) > 0
-                if has_summaries:
-                    summary_block = _format_summary_records_for_prompt(sum_recs)
-                    system_content += (
-                        "\n\n--- Past sessions on this subtopic (summary log; compressed Q&A lines) ---\n"
-                        f"{summary_block}\n"
-                        "--- End summary ---\n"
-                    )
-                if has_events:
-                    system_content += (
-                        "\nFull verbatim Q&A for this subtopic is available. "
-                        "If the summary is not enough (e.g. the student refers to a prior explanation), "
-                        "call the tool `get_subtopic_memory_full` to load the complete event history."
-                    )
-                    enable_memory_tool = True
-            except Exception as e:
-                print(f"[Memory] read for prompt failed ({memory_addr}): {e}")
+        # Memory summaries often contain legacy intake replies; do not inject into the tutor prompt.
 
         if chat_message.pdf_b64 and not is_simple_def:
             system_content += (
@@ -560,7 +710,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         messages: List[dict[str, Any]] = [{"role": "system", "content": system_content}]
         # For simple definition questions, ignore prior history to prevent long plan/intake outputs.
         if not is_simple_def:
-            for msg in chat_message.history:
+            for msg in chat_history:
                 role = "assistant" if msg["sender"] == "ai" else "user"
                 messages.append({"role": role, "content": msg["text"]})
         # 最后一条 user：无图则纯文本，有图则 content 为多 part（text + image_url）
@@ -688,41 +838,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                         mem.write(f"{addr}/__summary__", summary_line)
                 except Exception as e:
                     print(f"[Memory] write failed for topic {matched_topic.get('name')}: {e}")
-        # Save to MongoDB if user is authenticated
-        if user_email and not chat_message.silent:
-            col = database.chat_sessions()
-            if col is not None:
-                now = datetime.now(timezone.utc).isoformat()
-                new_msg_pair = [
-                    {"sender": "user", "text": chat_message.message, "ts": now},
-                    {"sender": "ai", "text": answer, "ts": now},
-                ]
-                if chat_message.session_id:
-                    # Append to existing session
-                    try:
-                        col.update_one(
-                            {"_id": ObjectId(chat_message.session_id), "user_email": user_email},
-                            {
-                                "$push": {"messages": {"$each": new_msg_pair}},
-                                "$set": {"updated_at": now},
-                            },
-                        )
-                    except Exception as e:
-                        print(f"[DB] session update failed: {e}", flush=True)
-                else:
-                    # Create new session
-                    try:
-                        title = chat_message.message[:80]
-                        doc = col.insert_one({
-                            "user_email": user_email,
-                            "title": title,
-                            "created_at": now,
-                            "updated_at": now,
-                            "messages": new_msg_pair,
-                        })
-                        result["session_id"] = str(doc.inserted_id)
-                    except Exception as e:
-                        print(f"[DB] session create failed: {e}", flush=True)
+        _persist_chat_messages(chat_message, user_email, answer, result)
 
         print("[Chat] response sent", flush=True)
         return result
