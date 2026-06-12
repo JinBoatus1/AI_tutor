@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import MathText from "./MathText";
+import { useLocale } from "./i18n/LocaleContext";
 import type { BookAnchor, FormulaEntry, SectionNote, VocabEntry } from "./utils/sectionNotes";
 
 export type SectionNoteActions = {
@@ -70,6 +71,7 @@ function ExpandableNoteEntry({
   entry: ExpandableEntry;
   actions: SectionNoteActions;
 }) {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const termPlain = plainTermLabel(entry.label, entry.labelKey);
   const hasCurated = Boolean(entry.example && entry.book);
@@ -77,8 +79,8 @@ function ExpandableNoteEntry({
 
   const askQuestion = (suffix = "") => {
     const q = suffix
-      ? `What is "${termPlain}"? ${suffix}`
-      : `What is "${termPlain}"? Explain using this section and give a short example.`;
+      ? `${t("ask.whatIs", { term: termPlain })} ${suffix}`.trim()
+      : t("ask.whatIs", { term: termPlain });
     actions.onAskChat(q);
   };
 
@@ -94,7 +96,7 @@ function ExpandableNoteEntry({
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? "Collapse" : "Example / Ask"}
+          {open ? t("note.collapse") : t("note.exampleAsk")}
         </button>
       </div>
       <p className="section-note-entry-def">
@@ -117,26 +119,26 @@ function ExpandableNoteEntry({
                   className="section-note-entry-book"
                   onClick={() => actions.onJumpToBook(entry.book!, entry.exampleRef ?? termPlain)}
                 >
-                  See in textbook ↗
+                  {t("note.seeInBook")}
                 </button>
               ) : null}
               <button
                 type="button"
                 className="section-note-entry-ask"
-                onClick={() => askQuestion("Please give another example or help me understand more deeply.")}
+                onClick={() => askQuestion(t("ask.followUp"))}
               >
-                Ask AI to follow up
+                {t("note.askFollowUp")}
               </button>
             </>
           ) : (
             <>
-              <p className="section-note-entry-empty">No curated example for this term in the book yet.</p>
+              <p className="section-note-entry-empty">{t("note.noCurated")}</p>
               <button
                 type="button"
                 className="section-note-entry-ask section-note-entry-ask--primary"
                 onClick={() => askQuestion()}
               >
-                Ask AI: What is &ldquo;{termPlain}&rdquo;?
+                {t("note.askAi", { term: termPlain })}
               </button>
             </>
           )}
@@ -169,6 +171,7 @@ function formulaToEntry(item: FormulaEntry): ExpandableEntry {
 }
 
 export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelProps) {
+  const { t } = useLocale();
   return (
     <div id={panelId} className="left-panel-section-note" role="region" aria-label="Section study note">
       <div className="section-note-card section-note-card--goals">
@@ -176,7 +179,7 @@ export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelPro
           ◆
         </div>
         <div className="section-note-card-body">
-          <h3 className="left-panel-section-note-heading">What you&apos;ll learn</h3>
+          <h3 className="left-panel-section-note-heading">{t("note.whatYouLearn")}</h3>
           <p className="left-panel-section-note-text">{note.objectives}</p>
         </div>
       </div>
@@ -187,7 +190,7 @@ export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelPro
             Aa
           </div>
           <div className="section-note-card-body">
-            <h3 className="left-panel-section-note-heading">Key vocabulary</h3>
+            <h3 className="left-panel-section-note-heading">{t("note.keyVocab")}</h3>
             <div className="section-note-entry-list">
               {note.vocabulary.map((item) => (
                 <ExpandableNoteEntry
@@ -207,7 +210,7 @@ export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelPro
             ∑
           </div>
           <div className="section-note-card-body">
-            <h3 className="left-panel-section-note-heading">Important formulas</h3>
+            <h3 className="left-panel-section-note-heading">{t("note.formulas")}</h3>
             <div className="section-note-entry-list">
               {note.formulas.map((item) => (
                 <ExpandableNoteEntry

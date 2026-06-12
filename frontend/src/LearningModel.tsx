@@ -24,6 +24,7 @@ import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
+import { useLocale } from "./i18n/LocaleContext";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
 const TEXTBOOK_PANEL_MIN_PCT = 15;
@@ -107,6 +108,7 @@ function WelcomeCard() {
 
 export default function LearningModel() {
   const location = useLocation();
+  const { t, chatLanguageSuffix } = useLocale();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
   const { token } = useAuth();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -562,7 +564,7 @@ export default function LearningModel() {
           method: "POST",
           headers,
           body: JSON.stringify({
-            message: trimmed,
+            message: trimmed + chatLanguageSuffix(),
             history: messages,
             student_id: studentId,
             session_id: sessionId,
@@ -654,6 +656,7 @@ export default function LearningModel() {
       textbookId,
       setSessionId,
       setRefreshTrigger,
+      chatLanguageSuffix,
     ]
   );
 
@@ -769,7 +772,7 @@ export default function LearningModel() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          message: apiMessage,
+          message: apiMessage + chatLanguageSuffix(),
           history: messages,
           images_b64: imagesB64,
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
@@ -1035,7 +1038,7 @@ export default function LearningModel() {
                     <span className="book-page-highlight-arrow" aria-hidden>
                       ↳
                     </span>
-                    <span className="book-page-highlight-label">In the book · {bookHighlight}</span>
+                    <span className="book-page-highlight-label">{t("note.inTheBook")} {bookHighlight}</span>
                   </div>
                 ) : null}
                 <img
@@ -1206,7 +1209,7 @@ export default function LearningModel() {
         {/* Reset button */}
         <div className="reset-box">
           <button type="button" onClick={reset} disabled={isAwaitingReply}>
-            I already fully understand — Start a new question
+            {t("chat.newQuestion")}
           </button>
         </div>
 
@@ -1398,7 +1401,7 @@ export default function LearningModel() {
                   if (!isAwaitingReply) handleSend();
                 }
               }}
-              placeholder="Ask a math question..."
+              placeholder={t("chat.placeholder")}
               disabled={isAwaitingReply}
             />
             <button

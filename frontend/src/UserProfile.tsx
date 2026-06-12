@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
+import { useLocale } from "./i18n/LocaleContext";
+import { APP_LOCALES, LOCALE_NATIVE_LABELS, type AppLocale } from "./i18n/types";
 import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
 import {
   clearAllUploadedTextbooksFromBrowser,
@@ -21,6 +23,8 @@ import "./UserProfile.css";
 export default function UserProfile() {
   const { user, loading, logout, setShowSignIn, token } = useAuth();
   const { pageBackground, setPageBackground } = useProfileSettings();
+  const { locale, applyLocale, t } = useLocale();
+  const [localeNotice, setLocaleNotice] = useState<string | null>(null);
   const [textbookOptions, setTextbookOptions] = useState(() => readTextbookOptionList());
   const [selectedTextbook, setSelectedTextbook] = useState(() => readSelectedTextbookId());
   const [textbookUploading, setTextbookUploading] = useState(false);
@@ -195,19 +199,55 @@ export default function UserProfile() {
     }
   };
 
+  const onApplyLocale = (next: AppLocale) => {
+    applyLocale(next);
+    setLocaleNotice(t("locale.applied"));
+    window.setTimeout(() => setLocaleNotice(null), 2400);
+  };
+
   return (
     <div className="profile-page">
       <header className="profile-page-header">
-        <h1 className="profile-page-title">My profile</h1>
-        <p className="profile-page-subtitle">Account and appearance. More options can be added here later.</p>
+        <h1 className="profile-page-title">{t("profile.title")}</h1>
+        <p className="profile-page-subtitle">{t("profile.subtitle")}</p>
       </header>
+
+      <section className="profile-card" aria-labelledby="profile-locale-heading">
+        <h2 id="profile-locale-heading" className="profile-card-title">
+          {t("locale.sectionTitle")}
+        </h2>
+        <p className="profile-setting-desc">{t("locale.sectionDesc")}</p>
+        <div className="profile-locale-grid" role="radiogroup" aria-label={t("locale.sectionTitle")}>
+          {APP_LOCALES.map((code) => (
+            <button
+              key={code}
+              type="button"
+              role="radio"
+              aria-checked={locale === code}
+              className={`profile-locale-option${locale === code ? " profile-locale-option--active" : ""}`}
+              onClick={() => onApplyLocale(code)}
+            >
+              <span className="profile-locale-option-label">{LOCALE_NATIVE_LABELS[code]}</span>
+              <span className="profile-locale-option-code">{code.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="profile-locale-apply-all" onClick={() => onApplyLocale(locale)}>
+          {t("locale.applyAll")}
+        </button>
+        {localeNotice ? (
+          <p className="profile-locale-notice" role="status" aria-live="polite">
+            {localeNotice}
+          </p>
+        ) : null}
+      </section>
 
       <section className="profile-card" aria-labelledby="profile-account-heading">
         <h2 id="profile-account-heading" className="profile-card-title">
-          Account
+          {t("profile.account")}
         </h2>
         {loading ? (
-          <p className="profile-muted">Loading…</p>
+          <p className="profile-muted">{t("profile.loading")}</p>
         ) : user ? (
           <div className="profile-account-block">
             <div className="profile-account-row">
@@ -224,14 +264,14 @@ export default function UserProfile() {
               </div>
             </div>
             <button type="button" className="profile-signout-btn" onClick={() => void logout()}>
-              Sign out
+              {t("profile.signOut")}
             </button>
           </div>
         ) : (
           <div className="profile-account-block">
-            <p className="profile-muted">You are not signed in. Sign in to save chat history and sync learning progress.</p>
+            <p className="profile-muted">{t("profile.notSignedIn")}</p>
             <button type="button" className="profile-google-btn" onClick={() => setShowSignIn(true)}>
-              Sign in
+              {t("profile.signIn")}
             </button>
           </div>
         )}
@@ -239,7 +279,7 @@ export default function UserProfile() {
 
       <section className="profile-card" aria-labelledby="profile-textbook-heading">
         <h2 id="profile-textbook-heading" className="profile-card-title">
-          Textbooks and outlines
+          {t("profile.textbooks")}
         </h2>
         <p className="profile-setting-desc">
           When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch
@@ -360,7 +400,7 @@ export default function UserProfile() {
 
       <section className="profile-card" aria-labelledby="profile-appearance-heading">
         <h2 id="profile-appearance-heading" className="profile-card-title">
-          Appearance
+          {t("profile.appearance")}
         </h2>
         <p className="profile-setting-desc">
           Page background and Learning Mode chat panel — each preset updates both so text stays easy to read.

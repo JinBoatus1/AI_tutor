@@ -5,17 +5,20 @@ import "./index.css";
 import { CurriculumProvider } from "./context/CurriculumContext";
 import { AuthProvider } from "./context/AuthContext";
 import { ProfileSettingsProvider } from "./context/ProfileSettingsContext";
+import { LocaleProvider } from "./i18n/LocaleContext";
 import { SessionBridgeProvider } from "./context/SessionBridge";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <AuthProvider>
       <CurriculumProvider>
-        <ProfileSettingsProvider>
-          <SessionBridgeProvider>
-            <App />
-          </SessionBridgeProvider>
-        </ProfileSettingsProvider>
+        <LocaleProvider>
+          <ProfileSettingsProvider>
+            <SessionBridgeProvider>
+              <App />
+            </SessionBridgeProvider>
+          </ProfileSettingsProvider>
+        </LocaleProvider>
       </CurriculumProvider>
     </AuthProvider>
   </StrictMode>

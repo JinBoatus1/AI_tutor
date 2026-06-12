@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLocale } from "../i18n/LocaleContext";
 import SidebarHistory from "./SidebarHistory";
 import LearningBarPanel, { type OutlineSectionPreviewDetail } from "../LearningBarPanel";
 import { useSessionBridge } from "../context/SessionBridge";
@@ -56,17 +57,18 @@ const I = {
   ),
 };
 
-type Tab = { key: string; label: string; icon: ReactNode; path: string; gated?: boolean };
+type Tab = { key: string; labelKey: "sidebar.learningMode" | "sidebar.grades" | "sidebar.autoGrader" | "sidebar.profile"; icon: ReactNode; path: string; gated?: boolean };
 
 const TABS: Tab[] = [
-  { key: "/learning", label: "Learning Mode", icon: I.learning, path: "/learning" },
-  { key: "/grades", label: "Grades", icon: I.course, path: "/grades" },
-  { key: "/autograder", label: "Auto Grader", icon: I.grader, path: "/autograder" },
-  { key: "/profile", label: "My profile", icon: I.profile, path: "/profile", gated: true },
+  { key: "/learning", labelKey: "sidebar.learningMode", icon: I.learning, path: "/learning" },
+  { key: "/grades", labelKey: "sidebar.grades", icon: I.course, path: "/grades" },
+  { key: "/autograder", labelKey: "sidebar.autoGrader", icon: I.grader, path: "/autograder" },
+  { key: "/profile", labelKey: "sidebar.profile", icon: I.profile, path: "/profile", gated: true },
 ];
 
 export default function Sidebar() {
   const { user, loading, logout, setShowSignIn } = useAuth();
+  const { t } = useLocale();
   const navigate = useNavigate();
   const location = useLocation();
   const bridge = useSessionBridge();
@@ -121,28 +123,28 @@ export default function Sidebar() {
       </div>
 
       <div className="sb-shell">
-        <div className="sb-group-label">Workspace</div>
+        <div className="sb-group-label">{t("sidebar.workspace")}</div>
         <nav className="sb-nav">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               className={`sb-link${activeKey === tab.key ? " is-active" : ""}`}
               onClick={() => go(tab)}
-              title={tab.label}
+              title={t(tab.labelKey)}
             >
               <span className="sb-link-ic">{tab.icon}</span>
-              <span className="sb-link-label">{tab.label}</span>
+              <span className="sb-link-label">{t(tab.labelKey)}</span>
             </button>
           ))}
         </nav>
 
-        <div className="sb-group-label sb-group-label--gap">Study</div>
+        <div className="sb-group-label sb-group-label--gap">{t("sidebar.study")}</div>
 
         {/* Learning Progress (was Aquarius's "syllabus") — the real panel, bridged to Learning Mode */}
         <div className={`sb-section sb-section--progress${openProgress ? " is-open" : ""}`}>
           <button className="sb-section-head" onClick={() => setOpenProgress((o) => !o)}>
             <span className="sb-link-ic">{I.progress}</span>
-            <span className="sb-link-label">Learning Progress</span>
+            <span className="sb-link-label">{t("sidebar.learningProgress")}</span>
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
@@ -156,11 +158,11 @@ export default function Sidebar() {
         <div className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}>
           <button className="sb-section-head" onClick={() => setOpenHistory((o) => !o)}>
             <span className="sb-link-ic">{I.history}</span>
-            <span className="sb-link-label">History</span>
+            <span className="sb-link-label">{t("sidebar.history")}</span>
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
-            {user ? <SidebarHistory /> : <div className="sb-empty">Sign in to keep your chat history.</div>}
+            {user ? <SidebarHistory /> : <div className="sb-empty">{t("sidebar.signInHistory")}</div>}
           </div>
         </div>
       </div>
@@ -173,13 +175,15 @@ export default function Sidebar() {
             ) : (
               <span className="sb-avatar sb-avatar--empty">{(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}</span>
             )}
-            <span className="sb-user-name">{user.isAnonymous ? "Guest" : user.displayName || user.email}</span>
-            <button className="sb-signout" onClick={logout} title="Sign out">Sign out</button>
+            <span className="sb-user-name">{user.isAnonymous ? t("sidebar.guest") : user.displayName || user.email}</span>
+            <button className="sb-signout" onClick={logout} title={t("sidebar.signOut")}>
+              {t("sidebar.signOut")}
+            </button>
           </div>
         ) : (
           <button className="sb-signin" onClick={() => setShowSignIn(true)}>
             <span className="sb-link-ic">{I.profile}</span>
-            <span className="sb-link-label">Sign in</span>
+            <span className="sb-link-label">{t("sidebar.signIn")}</span>
           </button>
         )}
       </div>
