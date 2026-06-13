@@ -21,6 +21,25 @@ These came out of `/plan-eng-review` plus an outside-voice challenge. Where the 
 9. **Persistence:** versioned key `practice.v1.focs.4`, guarded parse → empty fallback, keyed only to `focs`. **vitest:** first commit = harness + 1 green CI test, before any logic depends on it (it's a new dep touching package.json/CI). **Offline:** warm-up + auto-graded practice fully local; only the challenge degrades (sign-in / connection needed).
 10. **Build order (B):** spine (panel + masteryEngine + hint ladder + proof-order) first → spot-flaw + fill-blank fast-follow; all 6 ship on this branch.
 
+## Design-review revisions — LOCKED 2026-06-12
+
+From `/plan-design-review` (focused on states / a11y / responsive; info-arch, AI-slop, and the editorial design system were already locked).
+
+**D-1. Auto-graded feedback = immediate inline, no penalty, explain-on-wrong.** On submit: correct → teal check + advance; wrong → gentle "not quite" + a **one-line `why`** + retry, never a score penalty. Applies to MCQ / proof-order / spot-flaw / fill-blank. → adds a `why: string` field per auto-graded item in `focsPracticeSets.ts`.
+
+**D-2. Interaction states table:**
+
+| Surface | Loading | Empty / first-run | Error | Success |
+|---|---|---|---|---|
+| Auto-graded formats | none (local, instant) | — | n/a (no network) | inline check + advance |
+| Challenge hint | reuse `learning-reply-status-spinner` while `/api/chat` is in flight | "Type what you've tried to begin" | inline "couldn't reach the tutor — retry" (attempt preserved) | rung reply renders |
+| Practice panel | — | warm intro card: "Practice Chapter 4 — 3 stages to mastery" + primary **Start warm-up** | — | — |
+| Mastery | — | tier = Not started | — | hitting **Mastered** → editorial celebration (Caveat note + ring fills), not a modal |
+
+**D-3. Accessibility:** proof-order = drag **plus** up/down move buttons (keyboard-operable, `aria` position announced); spot-flaw lines = real focusable `button`s (Tab/Enter, `aria-pressed`); flashcard flips on Enter/Space; **44px** min touch targets; mastery climb announced via `aria-live`. No interaction is drag-only or hover-only.
+
+**D-4. Responsive:** desktop/tablet = the ~65/35 split; **mobile (<~640px) = practice full-width, textbook becomes a "view textbook" toggle/sheet** (not a stacked split). Drag/move/select targets stay ≥44px on touch.
+
 ## 1. Problem & motivation
 
 AI Tutor today reads like *a chatbot you can read a book with*. We want it to feel like *a learning tool* — somewhere a student actively practices and demonstrably masters a chapter, not just reads.
@@ -216,9 +235,10 @@ The challenge/hint-ladder LLM round-trip is verified manually in the running app
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | not run (optional) |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | **CLEAR** | 5 review decisions (D1–D5) + scope challenge; 0 unresolved, 0 critical gaps |
 | Outside Voice | Claude subagent | Independent challenge | 1 | issues_found | 11 findings, all folded (2 critical: wrong chapter, false "frontend-only") |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | recommended next (UI-heavy) |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | **CLEAR (7→9/10)** | 4 decisions (feedback model, states table, drag/click a11y, mobile split); 0 unresolved |
 
 - **CROSS-MODEL:** the outside voice contradicted four locked assumptions — Chapter 1 content (→ Chapter 4, D7), frontend-only (→ client-side `activeSectionTitle`), leak-guard integrity (→ prompt hygiene, D8), exact-order grading (→ topological-sort, D9). All four corrected and re-locked.
+- **DESIGN:** focused review on states / a11y / responsive (visuals + IA already locked in brainstorm). Added: explain-on-wrong feedback, full states table, keyboard path for drag/click (the biggest gap), mobile full-width layout.
 - **UNRESOLVED:** 0.
-- **VERDICT:** ENG CLEARED — ready to implement. Build order: **T1 (AI-grading go/no-go eval) → T2 (vitest harness) → spine T3–T12 → fast-follow T13–T15.** Tasks + test plan in `~/.gstack/projects/JinBoatus1-AI_tutor/`.
+- **VERDICT:** ENG + DESIGN CLEARED — ready to implement. Build order: **T1 (AI-grading go/no-go eval) → T2 (vitest harness) → spine T3–T12 → fast-follow T13–T15.** Tasks + test plan in `~/.gstack/projects/JinBoatus1-AI_tutor/`.
 - **Tooling note:** `gstack-review-log` is broken on this install (invalid-JSON / unbound-var; UPGRADE_AVAILABLE 1.40→1.57), so this entry is not in the `/ship` dashboard until gstack is upgraded.
