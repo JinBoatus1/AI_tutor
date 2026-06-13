@@ -6,7 +6,7 @@ import { computeTier, stageUnlock } from "./masteryEngine";
 import { emptyProgress, type PracticeProgress, type PracticeSet, type Stage, type PracticeQuestion } from "./types";
 import { MasteryHeader } from "./MasteryHeader";
 import { StageStepper } from "./StageStepper";
-import { HintLadder } from "./HintLadder";
+import { HintLadderPanel } from "./HintLadderPanel";
 import { Flashcard } from "./formats/Flashcard";
 import { McqQuestion } from "./formats/McqQuestion";
 import { ProofOrderQuestion } from "./formats/ProofOrderQuestion";
@@ -167,7 +167,7 @@ export function PracticePanel({
     const twinIdx = problem.twinPromptId ? set!.challenge.findIndex((c) => c.id === problem.twinPromptId) : -1;
     return (
       <div className="pr-stage">
-        <HintLadder
+        <HintLadderPanel
           key={problem.id}
           problem={problem}
           token={token}

@@ -7,7 +7,7 @@ import type { ChallengeProblem } from "./types";
 /** The challenge stage: free-response attempt + the escalating hint ladder.
  * One rung per "still stuck"; the final answer (L6) needs an explicit confirm,
  * after which a twin problem is offered (pedagogy, design D8). */
-export function HintLadder({
+export function HintLadderPanel({
   problem,
   token,
   hasTwin,

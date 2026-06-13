@@ -22,6 +22,9 @@ import {
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
+import { PracticePanel } from "./practice/PracticePanel";
+import { isProblemsSection, chapterOfProblems } from "./practice/isProblemsSection";
+import { getPracticeSet } from "./data/focsPracticeSets";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 import { useLocale } from "./i18n/LocaleContext";
@@ -92,6 +95,8 @@ const NOTE_SPLIT_STORAGE_KEY = "ai_tutor_textbook_note_split_pct_v2";
 const NOTE_SPLIT_DEFAULT = 40;
 const NOTE_SPLIT_MIN = 22;
 const NOTE_SPLIT_MAX = 92;
+const PRACTICE_SPLIT_STORAGE_KEY = "ai_tutor_practice_split_pct_v1";
+const PRACTICE_SPLIT_DEFAULT = 62;
 
 export default function LearningModel() {
   const location = useLocation();
@@ -147,6 +152,10 @@ export default function LearningModel() {
     endBook: number;
     sectionHint?: string;
   } | null>(null);
+  // Client-side trigger for Practice mode (eng-review #2/#3): captured synchronously
+  // from the outline click, NOT from the server-set dataMatchedTopic.
+  const [activeSectionTitle, setActiveSectionTitle] = useState<string | null>(null);
+  const [practiceViewNote, setPracticeViewNote] = useState(false);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
   const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
@@ -241,6 +250,8 @@ export default function LearningModel() {
     async (detail: OutlineSectionPreviewDetail) => {
       setOutlinePreviewError(null);
       setLeftPanelOpen(true);
+      setActiveSectionTitle(detail.sectionTitle);
+      setPracticeViewNote(false);
       setDataMatchedTopic(null);
       setMatchedSection(null);
       setReferencePageImage(null);
@@ -374,8 +385,14 @@ export default function LearningModel() {
   // Learning Progress now lives in the global Sidebar (see Sidebar.tsx). The
   // in-workspace learning-bar column + its resize/collapse machinery were removed.
 
+  const practiceChapter = isProblemsSection(activeSectionTitle)
+    ? chapterOfProblems(activeSectionTitle)
+    : null;
+  const practiceActive = Boolean(practiceChapter && getPracticeSet(practiceChapter));
+
   const hasLeftPanelContent = Boolean(
-    dataMatchedTopic ||
+    practiceActive ||
+      dataMatchedTopic ||
       matchedSection ||
       outlinePreviewLoading ||
       Boolean(outlinePreviewError) ||
@@ -889,6 +906,7 @@ export default function LearningModel() {
     setSessionId(null);
     setMatchedSection(null);
     setDataMatchedTopic(null);
+    setActiveSectionTitle(null);
     setReferencePageImage(null);
     setReferencePageSnippets(null);
     setReferenceSectionPages(null);
@@ -916,6 +934,7 @@ export default function LearningModel() {
       setSessionId(sid);
       setMatchedSection(null);
       setDataMatchedTopic(null);
+      setActiveSectionTitle(null);
       setReferencePageImage(null);
       setReferencePageSnippets(null);
       setReferenceSectionPages(null);
@@ -966,6 +985,13 @@ export default function LearningModel() {
   const noteSplit = useVerticalSplitPct({
     storageKey: NOTE_SPLIT_STORAGE_KEY,
     defaultPct: NOTE_SPLIT_DEFAULT,
+    minPct: NOTE_SPLIT_MIN,
+    maxPct: NOTE_SPLIT_MAX,
+  });
+
+  const practiceSplit = useVerticalSplitPct({
+    storageKey: PRACTICE_SPLIT_STORAGE_KEY,
+    defaultPct: PRACTICE_SPLIT_DEFAULT,
     minPct: NOTE_SPLIT_MIN,
     maxPct: NOTE_SPLIT_MAX,
   });
@@ -1134,7 +1160,59 @@ export default function LearningModel() {
           </div>
         )}
 
-        {noteSplitActive && activeSectionNote ? (
+        {practiceActive ? (
+          <div className="textbook-note-split" ref={practiceSplit.containerRef}>
+            <div
+              className="textbook-note-pane"
+              style={{ flex: `0 0 ${practiceSplit.pct}%` }}
+            >
+              {practiceViewNote && activeSectionNote ? (
+                <div className="left-panel-section-note">
+                  <button
+                    type="button"
+                    onClick={() => setPracticeViewNote(false)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#0f766e",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      padding: "6px 0",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    ← Back to practice
+                  </button>
+                  <SectionNotePanel
+                    note={activeSectionNote}
+                    panelId={sectionNoteToggle.panelId}
+                    actions={sectionNoteActions}
+                  />
+                </div>
+              ) : (
+                <PracticePanel
+                  chapter={practiceChapter!}
+                  textbookId={textbookId}
+                  chapterTitle={`Chapter ${practiceChapter}`}
+                  token={token}
+                  onViewNote={activeSectionNote ? () => setPracticeViewNote(true) : undefined}
+                />
+              )}
+            </div>
+            <div
+              className="textbook-note-split-handle"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label={t("learning.resizeNote")}
+              aria-valuenow={Math.round(practiceSplit.pct)}
+              onMouseDown={practiceSplit.onResizeStart}
+              title={t("learning.resizeNoteTitle")}
+            >
+              <span className="textbook-note-split-handle-grip" aria-hidden />
+            </div>
+            <div className="textbook-pages-pane">{textbookBody}</div>
+          </div>
+        ) : noteSplitActive && activeSectionNote ? (
           <div className="textbook-note-split" ref={noteSplit.containerRef}>
             <div
               className="textbook-note-pane"
