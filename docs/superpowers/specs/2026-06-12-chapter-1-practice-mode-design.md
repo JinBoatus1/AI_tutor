@@ -6,6 +6,21 @@
 - **Owner:** Shijun / lius24
 - **Surface:** Learning Mode, the left "notes" pane
 
+## Eng-review revisions — LOCKED 2026-06-12 (supersede conflicting text below)
+
+These came out of `/plan-eng-review` plus an outside-voice challenge. Where the body conflicts, **these win.**
+
+1. **Chapter 4 "Proofs", NOT Chapter 1.** Ch.1 (1.1–1.5) is a motivational survey with no real proofs ("a first taste of what a proof is"; 1.6 note: "practice, not new theory"). The proof formats (③ order, ④ flaw, ⑥ free-response) need real proof content → v1 authors **Chapter 4** (Direct / Contraposition / Contradiction / Sets / 4.6 Problems). Every "Chapter 1 / 1.6" reference below means Chapter 4 / 4.6.
+2. **Trigger is client-side.** Capture `activeSectionTitle` synchronously from `detail.sectionTitle` in `handleOutlineSectionPreview`; mount `PracticePanel` off **that**, not the server-set `dataMatchedTopic` (needs a round-trip + is a fuzzy label). So warm-up + auto-graded practice are truly **offline**; only the challenge calls `/api/chat`. (The "no backend dependency" claim only holds with this fix.)
+3. **Strict trigger** `/^\d+\.\d+\s+Problems$/` — excludes "23.1 Decision Problems", "27 … Problems", "11.5 Problem Solving with Graphs", "12.3 Whirlwind Tour …". Tested.
+4. **AI-grading go/no-go eval is the FIRST task** (5 Ch.4 proof attempts: correct / subtly-wrong / hand-wavy / off-topic / blank through the real envelope). If it can't separate correct from plausible-wrong, "Mastered" can't be AI-gated in v1 — surface before building the spine.
+5. **`challengeChat.ts` rides `/api/chat`** with a defensive prompt envelope (delimited "ignore textbook matching, you are a rung-N practice tutor") and **ignores `matched_topic`/`reference_*`** in the response. No `system` param exists, so rung rules ride the user message. Self-contained (TODO: unify the 4 `/api/chat` callers later — needs Jin's sites).
+6. **Leak guard = prompt hygiene, NOT integrity.** Answer keys live in the client bundle (`focsPracticeSets.ts`), so "withhold below L4" only stops the model over-helping. **DROP** "reveal ≠ Mastered" + its masteryEngine state. **KEEP** "after reveal → twin problem" as pure pedagogy. Real integrity = phase 2 (server).
+7. **Proof-order grading = dependency-DAG / topological-sort** (each step declares prerequisites; any valid topo order is correct), NOT exact-sequence. The topo validator is a ~20-line pure function, 100% unit-tested incl. the multi-valid-order case.
+8. **Split reuse:** separate `PRACTICE_SPLIT_STORAGE_KEY` (~65/35 practice/textbook), practice-split vs note-split mutually exclusive, auto-open on Problems sections.
+9. **Persistence:** versioned key `practice.v1.focs.4`, guarded parse → empty fallback, keyed only to `focs`. **vitest:** first commit = harness + 1 green CI test, before any logic depends on it (it's a new dep touching package.json/CI). **Offline:** warm-up + auto-graded practice fully local; only the challenge degrades (sign-in / connection needed).
+10. **Build order (B):** spine (panel + masteryEngine + hint ladder + proof-order) first → spot-flaw + fill-blank fast-follow; all 6 ship on this branch.
+
 ## 1. Problem & motivation
 
 AI Tutor today reads like *a chatbot you can read a book with*. We want it to feel like *a learning tool* — somewhere a student actively practices and demonstrably masters a chapter, not just reads.
@@ -177,3 +192,33 @@ The challenge/hint-ladder LLM round-trip is verified manually in the running app
 
 - **v1** — this spec: Chapter 1, mock content, frontend + existing `/api/chat`, localStorage.
 - **Phase 2** — real problem extraction; server-side rung lock + hidden key + farming classifier; auto question-gen + QC; SymPy/code grading; demotion + spaced review; signed-in server persistence; all chapters + uploaded textbooks.
+
+## What already exists (reuse, not rebuild)
+
+- **`/api/chat`** (LearningModel.tsx:309/546/755) — single-shot JSON; the hint ladder and grading ride it (no new endpoint in v1).
+- **The note/textbook split** (`useVerticalSplitPct`, LearningModel.tsx:966/1137) — Practice reuses it with a separate `PRACTICE_SPLIT_STORAGE_KEY`.
+- **`FOCS_SECTION_NOTES`** — warm-up flashcards seed from Chapter 4's existing vocabulary/formulas; "view study note" reuses `SectionNotePanel`.
+- **`handleOutlineSectionPreview` / `detail.sectionTitle`** (LearningModel.tsx:240) — the synchronous trigger source for `activeSectionTitle`.
+- **`apiBase.apiUrl`, `learningBarLocalStorage` pattern, `MathText` (KaTeX), the reference-page pane** — all reused.
+
+## NOT in scope (deferred, with rationale)
+
+- **Server-side integrity** (hidden key, rung lock, anti-farming classifier) — unenforceable client-side; the honest home is the backend → phase 2.
+- **Shared `/api/chat` client across the 4 callers** (T16) — refactoring Jin's 3 sites is collaborative-repo scope creep → TODO.
+- **Demotion / spaced review** — needs cross-session scheduling → phase 2.
+- **Real problem extraction, auto question-gen, SymPy/code grading, signed-in sync, chapters beyond 4, uploaded textbooks** — content/backend weight → phase 2.
+- **`spot-flaw` + `fill-blank`** — in v1 scope but sequenced as fast-follow (T13/T14) after the spine proves out.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | not run (optional) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | **CLEAR** | 5 review decisions (D1–D5) + scope challenge; 0 unresolved, 0 critical gaps |
+| Outside Voice | Claude subagent | Independent challenge | 1 | issues_found | 11 findings, all folded (2 critical: wrong chapter, false "frontend-only") |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | recommended next (UI-heavy) |
+
+- **CROSS-MODEL:** the outside voice contradicted four locked assumptions — Chapter 1 content (→ Chapter 4, D7), frontend-only (→ client-side `activeSectionTitle`), leak-guard integrity (→ prompt hygiene, D8), exact-order grading (→ topological-sort, D9). All four corrected and re-locked.
+- **UNRESOLVED:** 0.
+- **VERDICT:** ENG CLEARED — ready to implement. Build order: **T1 (AI-grading go/no-go eval) → T2 (vitest harness) → spine T3–T12 → fast-follow T13–T15.** Tasks + test plan in `~/.gstack/projects/JinBoatus1-AI_tutor/`.
+- **Tooling note:** `gstack-review-log` is broken on this install (invalid-JSON / unbound-var; UPGRADE_AVAILABLE 1.40→1.57), so this entry is not in the `/ship` dashboard until gstack is upgraded.
