@@ -94,6 +94,28 @@
 .pr-step[draggable="true"] { cursor: grab; }
 .pr-step--dragging { opacity: 0.5; }
 
+/* ---- spot-the-flaw (focusable proof lines) ---- */
+.pr-flaw-lines { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: flaw; }
+.pr-flaw-line {
+  width: 100%; text-align: left; min-height: 44px; border: 1px solid var(--pr-rule); border-radius: 8px;
+  background: #fffdf8; padding: 9px 12px 9px 34px; cursor: pointer; font-size: 0.86rem; line-height: 1.4;
+  font-family: var(--pr-sans); color: var(--pr-ink); position: relative;
+}
+.pr-flaw-line::before {
+  counter-increment: flaw; content: counter(flaw); position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-family: var(--pr-mono); font-size: 0.72rem; color: var(--pr-ink-soft);
+}
+.pr-flaw-line--picked { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.08); }
+.pr-flaw-line--flaw { border-color: #d97706; background: rgba(217, 119, 6, 0.14); }
+
+/* ---- fill-in-the-blank ---- */
+.pr-fill { font-size: 0.92rem; line-height: 1.9; margin: 0 0 12px; }
+.pr-blank {
+  display: inline-block; min-width: 140px; margin: 0 4px; border: none; border-bottom: 1.5px dashed var(--pr-teal);
+  background: rgba(20, 184, 166, 0.05); font-family: var(--pr-sans); font-size: 0.9rem; color: var(--pr-ink); padding: 2px 6px;
+}
+.pr-blank:focus { outline: none; border-bottom-color: var(--pr-teal-deep); background: rgba(20, 184, 166, 0.1); }
+
 /* ---- feedback (explain-on-wrong) ---- */
 .pr-feedback { margin-top: 4px; font-size: 0.85rem; }
 .pr-feedback--ok { color: var(--pr-teal-deep); font-weight: 600; }

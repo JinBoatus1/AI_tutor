@@ -3,17 +3,18 @@ import "./Practice.css";
 import { getPracticeSet } from "../data/focsPracticeSets";
 import { loadProgress, saveProgress } from "../utils/practiceProgress";
 import { computeTier, stageUnlock } from "./masteryEngine";
-import { emptyProgress, type PracticeProgress, type PracticeSet, type Stage, type PracticeQuestion } from "./types";
+import type { PracticeProgress, PracticeSet, Stage, PracticeQuestion } from "./types";
 import { MasteryHeader } from "./MasteryHeader";
 import { StageStepper } from "./StageStepper";
 import { HintLadderPanel } from "./HintLadderPanel";
 import { Flashcard } from "./formats/Flashcard";
 import { McqQuestion } from "./formats/McqQuestion";
 import { ProofOrderQuestion } from "./formats/ProofOrderQuestion";
+import { SpotFlawQuestion } from "./formats/SpotFlawQuestion";
+import { FillBlankQuestion } from "./formats/FillBlankQuestion";
 
-// Formats whose UI exists in the spine. spot-flaw + fill-blank join with T13/T14;
-// until then they're filtered out so the denominators (tier %, unlocks) stay honest.
-const SUPPORTED_KINDS = new Set<PracticeQuestion["kind"]>(["mcq", "proof-order"]);
+// Every auto-graded format has a UI now (T13/T14 added spot-flaw + fill-blank).
+const SUPPORTED_KINDS = new Set<PracticeQuestion["kind"]>(["mcq", "proof-order", "spot-flaw", "fill-blank"]);
 
 export function PracticePanel({
   chapter,
@@ -110,6 +111,10 @@ export function PracticePanel({
         return <McqQuestion key={q.id} question={q} onAnswered={onAnswered} />;
       case "proof-order":
         return <ProofOrderQuestion key={q.id} question={q} onAnswered={onAnswered} />;
+      case "spot-flaw":
+        return <SpotFlawQuestion key={q.id} question={q} onAnswered={onAnswered} />;
+      case "fill-blank":
+        return <FillBlankQuestion key={q.id} question={q} onAnswered={onAnswered} />;
       default:
         return null;
     }
