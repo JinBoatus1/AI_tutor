@@ -32,7 +32,8 @@ class AutoGraderGradeRequest(BaseModel):
 
     paper_id: str = Field(description="Paper identifier for tracing")
     question_source: str = Field(description="Question paper path (.pdf/.jpg/.jpeg/.png)")
-    answer_source: str = Field(description="Answer paper path (.pdf/.jpg/.jpeg/.png)")
+    answer_source: str | None = Field(default=None, description="Optional answer paper path (.pdf/.jpg/.jpeg/.png)")
+    grading_criteria: str | None = Field(default=None, description="Optional user-supplied grading criteria")
 
 
 class AutoGraderGradeResponse(BaseModel):
@@ -40,6 +41,10 @@ class AutoGraderGradeResponse(BaseModel):
 
     paper_id: str
     pair_count: int
+    grading_mode: Literal["question_answer", "question_only"] = Field(
+        default="question_answer",
+        description="question_answer when an answer file was supplied, question_only otherwise",
+    )
     temp_dir: str | None = Field(default=None, description="Temporary directory containing cropped pair PDFs")
     pairs: list[str] = Field(default_factory=list, description="Detected question labels")
     scores: dict[str, AutoGraderScoreItem] = Field(
@@ -66,5 +71,6 @@ async def grade_paper_once(request: AutoGraderGradeRequest) -> AutoGraderGradeRe
         paper_id=request.paper_id,
         question_source=request.question_source,
         answer_source=request.answer_source,
+        grading_criteria=request.grading_criteria,
     )
     return AutoGraderGradeResponse.model_validate(raw_result)
