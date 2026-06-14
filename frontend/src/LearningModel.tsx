@@ -98,6 +98,17 @@ const NOTE_SPLIT_MAX = 92;
 const PRACTICE_SPLIT_STORAGE_KEY = "ai_tutor_practice_split_pct_v1";
 const PRACTICE_SPLIT_DEFAULT = 62;
 
+const INTAKE_REPLY_RE =
+  /intake|pick one section|please answer all|study plan|closest match|new topic or review|可选小节|学习前/i;
+
+function buildChatApiHistory(msgs: { sender: string; text: string }[]) {
+  return msgs.filter((m) => {
+    if (m.text === WELCOME_MSG_SENTINEL) return false;
+    if (m.sender === "ai" && INTAKE_REPLY_RE.test(m.text || "")) return false;
+    return true;
+  });
+}
+
 export default function LearningModel() {
   const location = useLocation();
   const { t, chatLanguageSuffix } = useLocale();
@@ -560,15 +571,19 @@ export default function LearningModel() {
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }
+        const sectionHint =
+          dataMatchedTopic?.sectionHint ??
+          (dataMatchedTopic?.name ? sectionTokenFromTitle(dataMatchedTopic.name) : null);
         const resp = await fetch(apiUrl("/api/chat"), {
           method: "POST",
           headers,
           body: JSON.stringify({
             message: trimmed + chatLanguageSuffix(),
-            history: messages,
+            history: sectionHint ? [] : buildChatApiHistory(messages),
             student_id: studentId,
             session_id: sessionId,
             textbook_id: textbookId,
+            section_hint: sectionHint,
           }),
           signal: controller.signal,
         });
@@ -658,6 +673,7 @@ export default function LearningModel() {
       setRefreshTrigger,
       chatLanguageSuffix,
       t,
+      dataMatchedTopic,
     ]
   );
 
@@ -769,17 +785,21 @@ export default function LearningModel() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
+      const sectionHint =
+        dataMatchedTopic?.sectionHint ??
+        (dataMatchedTopic?.name ? sectionTokenFromTitle(dataMatchedTopic.name) : null);
       const resp = await fetch(apiUrl("/api/chat"), {
         method: "POST",
         headers,
         body: JSON.stringify({
           message: apiMessage + chatLanguageSuffix(),
-          history: messages,
+          history: sectionHint ? [] : buildChatApiHistory(messages),
           images_b64: imagesB64,
           pdf_b64: hasPdf ? pdfSnapshot!.dataUrl : undefined,
           student_id: studentId,
           session_id: sessionId,
           textbook_id: textbookId,
+          section_hint: sectionHint,
         }),
         signal: controller.signal,
       });
@@ -930,7 +950,8 @@ export default function LearningModel() {
         sender: m.sender,
         text: m.text,
       }));
-      setMessages(msgs.length > 0 ? msgs : [{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
+      const cleaned = buildChatApiHistory(msgs);
+      setMessages(cleaned.length > 0 ? cleaned : [{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
       setSessionId(sid);
       setMatchedSection(null);
       setDataMatchedTopic(null);
