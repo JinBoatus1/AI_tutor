@@ -57,13 +57,12 @@ const I = {
   ),
 };
 
-type Tab = { key: string; labelKey: "sidebar.learningMode" | "sidebar.grades" | "sidebar.autoGrader" | "sidebar.profile"; icon: ReactNode; path: string; gated?: boolean };
+type Tab = { key: string; labelKey: "sidebar.learningMode" | "sidebar.grades" | "sidebar.autoGrader"; icon: ReactNode; path: string };
 
 const TABS: Tab[] = [
   { key: "/learning", labelKey: "sidebar.learningMode", icon: I.learning, path: "/learning" },
   { key: "/grades", labelKey: "sidebar.grades", icon: I.course, path: "/grades" },
   { key: "/autograder", labelKey: "sidebar.autoGrader", icon: I.grader, path: "/autograder" },
-  { key: "/profile", labelKey: "sidebar.profile", icon: I.profile, path: "/profile", gated: true },
 ];
 
 const SIDEBAR_PROGRESS_OPEN_KEY = "sidebar-open-progress";
@@ -138,11 +137,15 @@ export default function Sidebar() {
           : "/";
 
   const go = (tab: Tab) => {
-    if (tab.gated && !user && !loading) {
+    navigate(tab.path);
+  };
+
+  const goProfile = () => {
+    if (!user && !loading) {
       setShowSignIn(true);
       return;
     }
-    navigate(tab.path);
+    navigate("/profile");
   };
 
   return (
@@ -205,11 +208,21 @@ export default function Sidebar() {
       <div className="sb-footer">
         {loading ? null : user ? (
           <div className="sb-user">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="" className="sb-avatar" referrerPolicy="no-referrer" />
-            ) : (
-              <span className="sb-avatar sb-avatar--empty">{(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}</span>
-            )}
+            <button
+              type="button"
+              className={`sb-avatar-btn${activeKey === "/profile" ? " is-active" : ""}`}
+              onClick={goProfile}
+              title={t("sidebar.profile")}
+              aria-label={t("sidebar.profile")}
+            >
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="sb-avatar" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="sb-avatar sb-avatar--empty">
+                  {(user.displayName || user.email || "?").slice(0, 1).toUpperCase()}
+                </span>
+              )}
+            </button>
             <span className="sb-user-name">{user.isAnonymous ? t("sidebar.guest") : user.displayName || user.email}</span>
             <button className="sb-signout" onClick={logout} title={t("sidebar.signOut")}>
               {t("sidebar.signOut")}
