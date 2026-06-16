@@ -66,6 +66,25 @@ const TABS: Tab[] = [
   { key: "/profile", labelKey: "sidebar.profile", icon: I.profile, path: "/profile", gated: true },
 ];
 
+const SIDEBAR_PROGRESS_OPEN_KEY = "sidebar-open-progress";
+const SIDEBAR_HISTORY_OPEN_KEY = "sidebar-open-history";
+
+function readSidebarSectionOpen(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSidebarSectionOpen(key: string, open: boolean): void {
+  try {
+    localStorage.setItem(key, open ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function Sidebar() {
   const { user, loading, logout, setShowSignIn } = useAuth();
   const { t } = useLocale();
@@ -81,8 +100,24 @@ export default function Sidebar() {
   };
 
   const [collapsed, setCollapsed] = useState<boolean>(() => localStorage.getItem("sidebar-collapsed") === "1");
-  const [openProgress, setOpenProgress] = useState(true);
-  const [openHistory, setOpenHistory] = useState(true);
+  const [openProgress, setOpenProgress] = useState(() => readSidebarSectionOpen(SIDEBAR_PROGRESS_OPEN_KEY));
+  const [openHistory, setOpenHistory] = useState(() => readSidebarSectionOpen(SIDEBAR_HISTORY_OPEN_KEY));
+
+  const toggleProgress = () => {
+    setOpenProgress((o) => {
+      const next = !o;
+      writeSidebarSectionOpen(SIDEBAR_PROGRESS_OPEN_KEY, next);
+      return next;
+    });
+  };
+
+  const toggleHistory = () => {
+    setOpenHistory((o) => {
+      const next = !o;
+      writeSidebarSectionOpen(SIDEBAR_HISTORY_OPEN_KEY, next);
+      return next;
+    });
+  };
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -142,7 +177,7 @@ export default function Sidebar() {
 
         {/* Learning Progress (was Aquarius's "syllabus") — the real panel, bridged to Learning Mode */}
         <div className={`sb-section sb-section--progress${openProgress ? " is-open" : ""}`}>
-          <button className="sb-section-head" onClick={() => setOpenProgress((o) => !o)}>
+          <button className="sb-section-head" onClick={toggleProgress} aria-expanded={openProgress}>
             <span className="sb-link-ic">{I.progress}</span>
             <span className="sb-link-label">{t("sidebar.learningProgress")}</span>
             <span className="sb-caret">{I.chevron}</span>
@@ -156,7 +191,7 @@ export default function Sidebar() {
 
         {/* History (our "recent") */}
         <div className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}>
-          <button className="sb-section-head" onClick={() => setOpenHistory((o) => !o)}>
+          <button className="sb-section-head" onClick={toggleHistory} aria-expanded={openHistory}>
             <span className="sb-link-ic">{I.history}</span>
             <span className="sb-link-label">{t("sidebar.history")}</span>
             <span className="sb-caret">{I.chevron}</span>
