@@ -252,7 +252,7 @@ const EN = {
   "note.inTheBook": "In the book ·",
 
   "chat.placeholder": "Ask a math question…",
-  "chat.newQuestion": "I already fully understand — Start a new question",
+  "chat.newQuestion": "Start a new session",
 
   "ask.whatIs": 'What is "{term}"? Explain using this section and give a short example.',
   "ask.followUp": "Please give another example or help me understand more deeply.",
@@ -524,7 +524,7 @@ const ZH: Record<MessageKey, string> = {
   "note.inTheBook": "书中此处 ·",
 
   "chat.placeholder": "输入数学问题…",
-  "chat.newQuestion": "我已完全理解 — 开始新问题",
+  "chat.newQuestion": "开始新会话",
 
   "ask.whatIs": "什么是「{term}」？请用本节内容解释并给一个简短示例。",
   "ask.followUp": "请再举一个例子或帮我加深理解。",
@@ -807,7 +807,7 @@ const ES: Record<MessageKey, string> = {
   "note.inTheBook": "En el libro ·",
 
   "chat.placeholder": "Haz una pregunta de matemáticas…",
-  "chat.newQuestion": "Ya lo entiendo — Empezar una pregunta nueva",
+  "chat.newQuestion": "Iniciar una sesión nueva",
 
   "ask.whatIs": '¿Qué es "{term}"? Explica con esta sección y da un ejemplo breve.',
   "ask.followUp": "Da otro ejemplo o ayúdame a entender mejor.",

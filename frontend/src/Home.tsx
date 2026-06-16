@@ -32,9 +32,7 @@ export default function Home() {
                 for <span className="hs-mark">Everyone</span>
               </h1>
               <p className="hs-lede">
-                Ask a discrete-math question in plain language. We <b>match your textbook</b>, explain
-                with structure — proofs, truth tables, counting — and remember your <b>topic checklist</b>{" "}
-                when you sign in.
+                Ask a question, view notes and textbook, practice proofs, acquire reasoning skills.
               </p>
 
               {!loading && user && (
@@ -109,7 +107,7 @@ export default function Home() {
               <div className="hs-card hs-chat">
                 <div className="hs-dots"><i /><i /><i /></div>
                 <div className="hs-bubble q">
-                  Why is <code>¬(p→q) ≡ p ∧ ¬q</code>? 🤔
+                  <code>¬(p→q) ≡ p ∧ ¬q</code>? 🤔
                 </div>
                 <div className="hs-bubble a">
                   <code>p→q</code> is false only when p is true, q false. So its negation is exactly{" "}
@@ -134,7 +132,7 @@ export default function Home() {
                 <div className="hs-pl-copy">
                   <span className="hs-pl-label">how your tutor thinks</span>
                   <h2>
-                    A study pipeline <span className="hs-hl"><span>you can inspect.</span></span>
+                    Personalize your <span className="hs-hl"><span>learning.</span></span>
                   </h2>
                   <p>
                     It doesn't just answer. It pulls the exact definition or theorem from your book, lays
