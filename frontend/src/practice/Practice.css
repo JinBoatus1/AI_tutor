@@ -1,0 +1,165 @@
+/* Chapter Practice / Quiz Mode — editorial ivory + teal "Report Card" system,
+   reused from Grades.css (direction A). All tokens + rules scoped under .practice
+   so the warm palette never leaks. No purple. */
+.practice {
+  --pr-paper: #f7f3ea;
+  --pr-ink: #20242c;
+  --pr-ink-soft: #5b6b82;
+  --pr-rule: #d9d2c2;
+  --pr-teal: #14b8a6;
+  --pr-teal-bright: #5eead4;
+  --pr-teal-deep: #0f766e;
+  --pr-bad: #b45309;
+  --pr-serif: "DM Serif Display", Georgia, serif;
+  --pr-sans: "DM Sans", system-ui, sans-serif;
+  --pr-mono: "DM Mono", ui-monospace, monospace;
+  --pr-hand: "Caveat", cursive;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  background: var(--pr-paper);
+  color: var(--pr-ink);
+  font-family: var(--pr-sans);
+}
+
+/* ---- mastery header ---- */
+.pr-mastery { border-bottom: 1px solid var(--pr-rule); padding-bottom: 12px; }
+.pr-mastery-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pr-mastery-title { font-family: var(--pr-serif); font-size: 1.15rem; }
+.pr-mastery-tier {
+  font-family: var(--pr-mono); font-size: 0.72rem; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--pr-teal-deep);
+  background: rgba(20, 184, 166, 0.12); border-radius: 999px; padding: 2px 10px;
+}
+.pr-mastery-bar { position: relative; height: 7px; border-radius: 4px; background: #e7e0d0; margin-top: 9px; overflow: hidden; }
+.pr-mastery-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--pr-teal), var(--pr-teal-bright)); transition: width 0.5s ease; }
+.pr-mastery-labels { display: flex; justify-content: space-between; font-size: 0.66rem; color: var(--pr-ink-soft); margin-top: 4px; }
+.pr-mastery-labels span.is-on { color: var(--pr-teal-deep); font-weight: 600; }
+
+/* ---- stage stepper ---- */
+.pr-stepper { display: flex; gap: 6px; }
+.pr-step-btn {
+  flex: 1; border: 1px solid var(--pr-rule); border-radius: 8px; background: #fffdf8;
+  padding: 7px 6px; font-size: 0.78rem; color: var(--pr-ink-soft); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: var(--pr-sans);
+}
+.pr-step-btn small { font-family: var(--pr-mono); font-size: 0.64rem; opacity: 0.8; }
+.pr-step-btn--active { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.1); color: var(--pr-teal-deep); font-weight: 600; }
+.pr-step-btn--locked { opacity: 0.45; cursor: not-allowed; }
+
+/* ---- toolbar (view note / skip to challenge) ---- */
+.pr-toolbar { display: flex; gap: 12px; }
+.pr-link { background: none; border: none; padding: 0; cursor: pointer; font-size: 0.78rem; color: var(--pr-teal-deep); text-decoration: underline; font-family: var(--pr-sans); }
+.pr-link:disabled { color: var(--pr-ink-soft); text-decoration: none; cursor: default; opacity: 0.6; }
+
+/* ---- generic question ---- */
+.pr-stage { flex: 1; }
+.pr-q-prompt { font-size: 0.98rem; line-height: 1.55; margin: 0 0 12px; }
+.pr-progress-line { font-family: var(--pr-mono); font-size: 0.7rem; color: var(--pr-ink-soft); margin-bottom: 8px; }
+
+/* buttons */
+.pr-btn {
+  font-family: var(--pr-sans); font-weight: 600; font-size: 0.85rem; border: none; cursor: pointer;
+  background: var(--pr-teal); color: #06302b; border-radius: 8px; padding: 8px 18px;
+}
+.pr-btn:disabled { background: #cfe9e3; color: #6b8e88; cursor: default; }
+.pr-btn--ghost { background: none; color: var(--pr-teal-deep); border: 1px solid var(--pr-teal); }
+
+/* ---- MCQ ---- */
+.pr-choices { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.pr-choice {
+  width: 100%; text-align: left; min-height: 44px; border: 1px solid var(--pr-rule); border-radius: 8px;
+  background: #fffdf8; padding: 9px 12px; cursor: pointer; font-size: 0.9rem; font-family: var(--pr-sans); color: var(--pr-ink);
+}
+.pr-choice--picked { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.08); }
+.pr-choice--correct { border-color: var(--pr-teal); background: rgba(94, 234, 212, 0.25); }
+
+/* ---- proof-order ---- */
+.pr-steps { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 7px; counter-reset: step; }
+.pr-step {
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--pr-rule); border-radius: 8px;
+  background: #fffdf8; padding: 8px 10px;
+}
+.pr-step-text { flex: 1; font-size: 0.86rem; line-height: 1.4; }
+.pr-step-moves { display: flex; flex-direction: column; gap: 3px; }
+.pr-move {
+  width: 32px; height: 22px; min-height: 22px; border: 1px solid var(--pr-rule); border-radius: 5px;
+  background: #fff; cursor: pointer; color: var(--pr-teal-deep); font-size: 0.8rem; line-height: 1; display: grid; place-items: center;
+}
+.pr-move:disabled { opacity: 0.3; cursor: default; }
+.pr-step[draggable="true"] { cursor: grab; }
+.pr-step--dragging { opacity: 0.5; }
+
+/* ---- spot-the-flaw (focusable proof lines) ---- */
+.pr-flaw-lines { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: flaw; }
+.pr-flaw-line {
+  width: 100%; text-align: left; min-height: 44px; border: 1px solid var(--pr-rule); border-radius: 8px;
+  background: #fffdf8; padding: 9px 12px 9px 34px; cursor: pointer; font-size: 0.86rem; line-height: 1.4;
+  font-family: var(--pr-sans); color: var(--pr-ink); position: relative;
+}
+.pr-flaw-line::before {
+  counter-increment: flaw; content: counter(flaw); position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-family: var(--pr-mono); font-size: 0.72rem; color: var(--pr-ink-soft);
+}
+.pr-flaw-line--picked { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.08); }
+.pr-flaw-line--flaw { border-color: #d97706; background: rgba(217, 119, 6, 0.14); }
+
+/* ---- fill-in-the-blank ---- */
+.pr-fill { font-size: 0.92rem; line-height: 1.9; margin: 0 0 12px; }
+.pr-blank {
+  display: inline-block; min-width: 140px; margin: 0 4px; border: none; border-bottom: 1.5px dashed var(--pr-teal);
+  background: rgba(20, 184, 166, 0.05); font-family: var(--pr-sans); font-size: 0.9rem; color: var(--pr-ink); padding: 2px 6px;
+}
+.pr-blank:focus { outline: none; border-bottom-color: var(--pr-teal-deep); background: rgba(20, 184, 166, 0.1); }
+
+/* ---- feedback (explain-on-wrong) ---- */
+.pr-feedback { margin-top: 4px; font-size: 0.85rem; }
+.pr-feedback--ok { color: var(--pr-teal-deep); font-weight: 600; }
+.pr-feedback--no { color: var(--pr-bad); display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+/* ---- flashcard ---- */
+.pr-flashcard {
+  width: 100%; min-height: 150px; border: 1px solid var(--pr-rule); border-radius: 12px; background: #fffdf8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 22px; cursor: pointer; text-align: center; font-family: var(--pr-sans);
+}
+.pr-flashcard-face { font-size: 1.05rem; line-height: 1.5; color: var(--pr-ink); }
+.pr-flashcard--flipped .pr-flashcard-face { font-size: 0.95rem; color: var(--pr-ink-soft); }
+.pr-flashcard-hint { font-family: var(--pr-hand); font-size: 1rem; color: var(--pr-ink-soft); }
+.pr-deck-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+.pr-deck-count { font-family: var(--pr-mono); font-size: 0.72rem; color: var(--pr-ink-soft); }
+
+/* ---- challenge / hint ladder ---- */
+.pr-attempt {
+  width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--pr-rule); border-radius: 10px;
+  background: #fffdf8; padding: 10px 12px; font-family: var(--pr-sans); font-size: 0.9rem; color: var(--pr-ink); line-height: 1.5;
+}
+.pr-hints { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.pr-hint { border-left: 2px solid var(--pr-teal); background: rgba(20, 184, 166, 0.06); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 0.86rem; line-height: 1.5; }
+.pr-hint-rung { font-family: var(--pr-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pr-teal-deep); display: block; margin-bottom: 2px; }
+.pr-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pr-spinner { display: inline-flex; align-items: center; gap: 7px; font-size: 0.82rem; color: var(--pr-ink-soft); }
+.pr-spinner::before { content: ""; width: 13px; height: 13px; border: 2px solid var(--pr-rule); border-top-color: var(--pr-teal); border-radius: 50%; animation: pr-spin 0.8s linear infinite; }
+@keyframes pr-spin { to { transform: rotate(360deg); } }
+.pr-error { color: var(--pr-bad); font-size: 0.82rem; }
+.pr-reveal-confirm { border: 1px dashed var(--pr-bad); border-radius: 8px; padding: 10px 12px; font-size: 0.84rem; }
+
+/* ---- empty / mastered ---- */
+.pr-empty, .pr-locked-note { text-align: center; padding: 26px 14px; color: var(--pr-ink-soft); }
+.pr-empty-title { font-family: var(--pr-serif); font-size: 1.3rem; color: var(--pr-ink); margin-bottom: 6px; }
+.pr-mastered-note { font-family: var(--pr-hand); font-size: 1.25rem; color: var(--pr-teal-deep); margin-top: 8px; }
+
+/* ---- mobile: panel goes full-width; the textbook toggle lives in the host (T3) ---- */
+@media (max-width: 640px) {
+  .practice { padding: 12px 12px 20px; }
+  .pr-step-btn { font-size: 0.72rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-mastery-fill { transition: none; }
+  .pr-spinner::before { animation: none; }
+}
