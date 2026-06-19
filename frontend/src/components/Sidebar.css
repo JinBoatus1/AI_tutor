@@ -2,7 +2,7 @@
 .sb {
   --sb-w: 336px;
   --sb-w-collapsed: 72px;
-  --sb-progress-h: 240px;
+  --sb-history-h: min(200px, 26vh);
   --tealb: #5eead4;
   --teal: #14b8a6;
   width: var(--sb-w);
@@ -85,10 +85,20 @@
 }
 .sb-section.is-open .sb-section-body { opacity: 1; margin-top: 2px; }
 
-.sb-section--progress { flex: 0 0 auto; }
+.sb-section--progress {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sb-section--progress:not(.is-open) {
+  flex: 0 0 auto;
+}
 .sb-section--progress.is-open .sb-section-body {
-  max-height: var(--sb-progress-h);
-  height: var(--sb-progress-h);
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  height: auto;
   overflow: hidden;
   padding-left: 0;
   display: flex;
@@ -96,16 +106,15 @@
 }
 
 .sb-section--hist {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.sb-section--hist:not(.is-open) { flex: 0 0 auto; }
 .sb-section--hist.is-open .sb-section-body {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
-  max-height: none;
+  max-height: var(--sb-history-h);
   overflow-y: auto;
   overflow-x: hidden;
   padding-left: 0;
@@ -126,7 +135,7 @@
 
 .sb-empty { font-size: 0.82rem; color: rgba(148, 163, 184, 0.55); padding: 8px 12px; }
 
-/* Learning Progress: fixed-height panel; tree scrolls inside */
+/* Learning Progress: fills remaining sidebar height; tree scrolls inside */
 .sb-progress-embed {
   flex: 1 1 0;
   min-height: 0;
