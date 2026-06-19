@@ -10,6 +10,7 @@ import Grades from "./Grades";
 import SignInModal from "./SignInModal";
 import Sidebar from "./components/Sidebar";
 import OnboardingTour from "./components/OnboardingTour";
+import { OnboardingProvider } from "./context/OnboardingContext";
 import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
@@ -78,7 +79,9 @@ function AppShell() {
 function App() {
   return (
     <Router>
-      <AppShell />
+      <OnboardingProvider>
+        <AppShell />
+      </OnboardingProvider>
     </Router>
   );
 }
