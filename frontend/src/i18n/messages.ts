@@ -165,15 +165,6 @@ const EN = {
   "grades.confirmRubricBtn": "Confirm rubric",
   "grades.save": "Save",
 
-  "learning.welcomeWho": "AI Tutor",
-  "learning.welcomeLead": "Before we begin, three quick things.",
-  "learning.welcomeStep1": "Are you learning new content, or reviewing for an exam?",
-  "learning.welcomeStep2":
-    "On the left, in Learning progress: tap the dot to mark a topic learned, or click a section title with page numbers to open those pages in the textbook panel.",
-  "learning.welcomeStep3": "Which chapter or section do you want to study now?",
-  "learning.welcomeClose":
-    "I'll match the right topic to the textbook tree, then guide you step by step.",
-  "learning.welcomeHand": "ask me anything ✎",
   "learning.loadingPages": "Loading book pages…",
   "learning.prevPage": "Previous page",
   "learning.nextPage": "Next page",
@@ -468,14 +459,6 @@ const ZH: Record<MessageKey, string> = {
   "grades.confirmRubricBtn": "确认规则",
   "grades.save": "保存",
 
-  "learning.welcomeWho": "AI Tutor",
-  "learning.welcomeLead": "开始之前，有三件小事。",
-  "learning.welcomeStep1": "你是在学习新内容，还是备考复习？",
-  "learning.welcomeStep2":
-    "在左侧「学习进度」中：点击圆点标记已学/未学；点击带页码的章节标题可在教材面板打开对应页面。",
-  "learning.welcomeStep3": "你现在想学哪一章或哪一节？",
-  "learning.welcomeClose": "我会根据教材大纲匹配主题，然后一步步引导你。",
-  "learning.welcomeHand": "随时问我 ✎",
   "learning.loadingPages": "正在加载书页…",
   "learning.prevPage": "上一页",
   "learning.nextPage": "下一页",
@@ -771,14 +754,6 @@ const ES: Record<MessageKey, string> = {
   "grades.confirmRubricBtn": "Confirmar rúbrica",
   "grades.save": "Guardar",
 
-  "learning.welcomeWho": "AI Tutor",
-  "learning.welcomeLead": "Antes de empezar, tres cosas rápidas.",
-  "learning.welcomeStep1": "¿Estás aprendiendo contenido nuevo o repasando para un examen?",
-  "learning.welcomeStep2":
-    "A la izquierda, en Progreso de aprendizaje: toca el punto para marcar aprendido, o haz clic en un título de sección con números de página para abrir esas páginas.",
-  "learning.welcomeStep3": "¿Qué capítulo o sección quieres estudiar ahora?",
-  "learning.welcomeClose": "Haré coincidir el tema con el esquema del libro y te guiaré paso a paso.",
-  "learning.welcomeHand": "pregúntame lo que quieras ✎",
   "learning.loadingPages": "Cargando páginas del libro…",
   "learning.prevPage": "Página anterior",
   "learning.nextPage": "Página siguiente",

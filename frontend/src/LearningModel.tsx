@@ -83,24 +83,6 @@ function readChatCollapsed(): boolean {
   }
 }
 
-/** The Learning Mode first-run greeting — rendered as WelcomeCard (localized). */
-function WelcomeCard() {
-  const { t } = useLocale();
-  return (
-    <section className="lm-welcome">
-      <div className="lm-welcome-who">{t("learning.welcomeWho")}</div>
-      <h2 className="lm-welcome-lead">{t("learning.welcomeLead")}</h2>
-      <ol className="lm-welcome-steps">
-        <li>{t("learning.welcomeStep1")}</li>
-        <li>{t("learning.welcomeStep2")}</li>
-        <li>{t("learning.welcomeStep3")}</li>
-      </ol>
-      <p className="lm-welcome-close">{t("learning.welcomeClose")}</p>
-      <div className="lm-welcome-hand">{t("learning.welcomeHand")}</div>
-    </section>
-  );
-}
-
 /** Client-side cap for chat PDF attach; keep in line with backend MAX_USER_PDF_MB (default 100). */
 const MAX_PDF_UPLOAD_BYTES = 100 * 1024 * 1024;
 
@@ -165,7 +147,7 @@ export default function LearningModel() {
   }, [token]);
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>([{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
+  const [messages, setMessages] = useState<any[]>([]);
   const { curriculumTree, setCurriculumTree } = useCurriculum();
   const [textbookId, setTextbookId] = useState(() => readSelectedTextbookId());
 
@@ -938,7 +920,7 @@ export default function LearningModel() {
   const hasUserMessage = messages.some((m) => m.sender === "user");
 
   const reset = () => {
-    setMessages([{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
+    setMessages([]);
     setSessionId(null);
     setMatchedSection(null);
     setDataMatchedTopic(null);
@@ -967,7 +949,7 @@ export default function LearningModel() {
         text: m.text,
       }));
       const cleaned = buildChatApiHistory(msgs);
-      setMessages(cleaned.length > 0 ? cleaned : [{ sender: "ai", text: WELCOME_MSG_SENTINEL }]);
+      setMessages(cleaned);
       setSessionId(sid);
       setMatchedSection(null);
       setDataMatchedTopic(null);
@@ -1372,27 +1354,23 @@ export default function LearningModel() {
         >
           {messages.map((m, i) => (
             <div key={i} className={m.sender === "user" ? "msg-user" : "msg-ai"}>
-              {m.sender === "ai" && m.text === WELCOME_MSG_SENTINEL ? (
-                <WelcomeCard />
-              ) : (
-                <MarkdownMessage
-                  className={
-                    m.sender === "user"
-                      ? "markdown-message markdown-message--user"
-                      : "markdown-message"
-                  }
-                  onPickLine={
-                    m.sender === "ai"
-                      ? (text) => {
-                          setInput(text);
-                          queueMicrotask(() => chatInputRef.current?.focus());
-                        }
-                      : undefined
-                  }
-                >
-                  {m.text}
-                </MarkdownMessage>
-              )}
+              <MarkdownMessage
+                className={
+                  m.sender === "user"
+                    ? "markdown-message markdown-message--user"
+                    : "markdown-message"
+                }
+                onPickLine={
+                  m.sender === "ai"
+                    ? (text) => {
+                        setInput(text);
+                        queueMicrotask(() => chatInputRef.current?.focus());
+                      }
+                    : undefined
+                }
+              >
+                {m.text}
+              </MarkdownMessage>
               {m.images?.length > 0 && (
                 <div className="msg-user-images">
                   {m.images.map((src: string, j: number) => (
