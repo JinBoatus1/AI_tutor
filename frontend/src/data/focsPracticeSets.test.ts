@@ -1,12 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { FOCS_PRACTICE_SETS, getPracticeSet } from "./focsPracticeSets";
+import { FOCS_PRACTICE_SETS, FOCS_PROBLEM_CHAPTERS, getPracticeSet } from "./focsPracticeSets";
 import { isValidTopoOrder } from "../practice/grading";
 
 describe("focsPracticeSets content integrity", () => {
   const sets = Object.values(FOCS_PRACTICE_SETS);
 
+  it("every FOCS Problems chapter has a practice set", () => {
+    expect(FOCS_PROBLEM_CHAPTERS.length).toBeGreaterThan(1);
+    for (const chapter of FOCS_PROBLEM_CHAPTERS) {
+      expect(getPracticeSet(chapter), `chapter ${chapter}`).not.toBeNull();
+    }
+  });
+
   it("getPracticeSet returns Chapter 4 and null for unknown", () => {
     expect(getPracticeSet("4")?.title).toBe("Proofs");
+    expect(getPracticeSet("1")?.chapter).toBe("1");
     expect(getPracticeSet("99")).toBeNull();
   });
 

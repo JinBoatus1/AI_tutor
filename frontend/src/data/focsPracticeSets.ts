@@ -3,7 +3,11 @@
 // 4.3 Iff, 4.5 Proofs about Sets. Math is in $...$ (rendered by MathText/KaTeX).
 // `why` = the explain-on-wrong line (design D-1). Proof-order `deps` drive the
 // topological-sort grader (design D9); a commutable pair is included on purpose.
-import type { PracticeSet } from "../practice/types";
+// The Chapter 4 set is cloned to every other FOCS "X.Y Problems" section until
+// chapter-specific content is authored.
+import focsTree from "./focsTree.json";
+import { chapterOfProblems } from "../practice/isProblemsSection";
+import type { PracticeQuestion, PracticeSet } from "../practice/types";
 
 const chapter4: PracticeSet = {
   chapter: "4",
@@ -115,9 +119,94 @@ const chapter4: PracticeSet = {
   ],
 };
 
-export const FOCS_PRACTICE_SETS: Record<string, PracticeSet> = {
-  "4": chapter4,
-};
+const CHAPTER_TITLE_RE = /^(\d+)\s+(.+)$/;
+
+function collectProblemChapters(node: Record<string, unknown>, chapters: Set<string>): void {
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "_range" || key === "start" || key === "end") continue;
+    const ch = chapterOfProblems(key);
+    if (ch) chapters.add(ch);
+    if (value && typeof value === "object") {
+      collectProblemChapters(value as Record<string, unknown>, chapters);
+    }
+  }
+}
+
+function collectChapterTitles(node: Record<string, unknown>, titles: Map<string, string>): void {
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "_range" || key === "start" || key === "end") continue;
+    const m = key.match(CHAPTER_TITLE_RE);
+    if (m && value && typeof value === "object") {
+      titles.set(m[1], m[2]);
+    }
+    if (value && typeof value === "object") {
+      collectChapterTitles(value as Record<string, unknown>, titles);
+    }
+  }
+}
+
+function prefixId(chapter: string, id: string): string {
+  return `ch${chapter}-${id}`;
+}
+
+function clonePracticeQuestion(chapter: string, q: PracticeQuestion): PracticeQuestion {
+  if (q.kind === "proof-order") {
+    const stepId = (id: string) => prefixId(chapter, id);
+    return {
+      ...q,
+      id: prefixId(chapter, q.id),
+      steps: q.steps.map((s) => ({
+        ...s,
+        id: stepId(s.id),
+        deps: s.deps.map(stepId),
+      })),
+    };
+  }
+  if (q.kind === "spot-flaw") {
+    return {
+      ...q,
+      id: prefixId(chapter, q.id),
+      lines: q.lines.map((l) => ({ ...l, id: prefixId(chapter, l.id) })),
+      flawLineId: prefixId(chapter, q.flawLineId),
+    };
+  }
+  return { ...q, id: prefixId(chapter, q.id) };
+}
+
+/** Clone the Chapter 4 template for another chapter (prefixed ids; Chapter 4 keeps originals). */
+export function clonePracticeSetForChapter(template: PracticeSet, chapter: string, title: string): PracticeSet {
+  return {
+    chapter,
+    title,
+    warmup: template.warmup.map((c) => ({ ...c, id: prefixId(chapter, c.id) })),
+    practice: template.practice.map((q) => clonePracticeQuestion(chapter, q)),
+    challenge: template.challenge.map((c) => ({
+      ...c,
+      id: prefixId(chapter, c.id),
+      twinPromptId: c.twinPromptId ? prefixId(chapter, c.twinPromptId) : undefined,
+    })),
+  };
+}
+
+export const FOCS_PROBLEM_CHAPTERS: string[] = (() => {
+  const chapters = new Set<string>();
+  collectProblemChapters(focsTree as Record<string, unknown>, chapters);
+  return [...chapters].sort((a, b) => Number(a) - Number(b));
+})();
+
+const FOCS_CHAPTER_TITLES: Map<string, string> = (() => {
+  const titles = new Map<string, string>();
+  collectChapterTitles(focsTree as Record<string, unknown>, titles);
+  return titles;
+})();
+
+export const FOCS_PRACTICE_SETS: Record<string, PracticeSet> = Object.fromEntries(
+  FOCS_PROBLEM_CHAPTERS.map((chapter) => {
+    const title = FOCS_CHAPTER_TITLES.get(chapter) ?? `Chapter ${chapter}`;
+    const set = chapter === "4" ? chapter4 : clonePracticeSetForChapter(chapter4, chapter, title);
+    return [chapter, set];
+  }),
+);
 
 /** Practice set for a chapter token (e.g. "4"), or null if none is authored. */
 export function getPracticeSet(chapter: string): PracticeSet | null {
