@@ -1410,7 +1410,7 @@ export default function LearningModel() {
                   disabled={isAwaitingReply}
                   onClick={() => {
                     setInput(ex.sendText);
-                    void handleSend(ex.sendText);
+                    queueMicrotask(() => chatInputRef.current?.focus());
                   }}
                 >
                   <span className="chat-example-num">{i + 1}.</span>
