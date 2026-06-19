@@ -34,6 +34,7 @@ import {
   emitOnboardingNoteReady,
   emitOnboardingProblemsReady,
   emitOnboardingExpandPaths,
+  ONBOARDING_FINISHED_EVENT,
 } from "./onboarding/onboardingStorage";
 import {
   ONBOARDING_NOTE_SECTION,
@@ -189,6 +190,8 @@ export default function LearningModel() {
   const [bookHighlight, setBookHighlight] = useState<string | null>(null);
   const pendingBookPageRef = useRef<number | null>(null);
   const bookHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Closes the section Note split; wired after useSectionNoteToggle mounts. */
+  const closeSectionNoteRef = useRef<() => void>(() => {});
   const textbookImgRef = useRef<HTMLDivElement>(null);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [pdfAttachment, setPdfAttachment] = useState<{ name: string; dataUrl: string } | null>(null);
@@ -271,6 +274,7 @@ export default function LearningModel() {
 
   const handleOutlineSectionPreview = useCallback(
     async (detail: OutlineSectionPreviewDetail) => {
+      closeSectionNoteRef.current();
       setOutlinePreviewError(null);
       setLeftPanelOpen(true);
       setActiveSectionTitle(detail.sectionTitle);
@@ -1003,14 +1007,21 @@ export default function LearningModel() {
 
   const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
 
+  closeSectionNoteRef.current = () => {
+    sectionNoteToggle.setOpen(false);
+    setPracticeViewNote(false);
+  };
+
   useEffect(() => {
     const onTourStep = (e: Event) => {
       const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
       if (stepId === "note") {
         void (async () => {
           await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
-          sectionNoteToggle.setOpen(true);
-          emitOnboardingNoteReady();
+          window.setTimeout(() => {
+            sectionNoteToggle.setOpen(true);
+            emitOnboardingNoteReady();
+          }, 0);
         })();
       } else if (stepId === "problems") {
         sectionNoteToggle.setOpen(false);
@@ -1025,6 +1036,12 @@ export default function LearningModel() {
     window.addEventListener(ONBOARDING_STEP_EVENT, onTourStep);
     return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourStep);
   }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen]);
+
+  useEffect(() => {
+    const onFinished = () => closeSectionNoteRef.current();
+    window.addEventListener(ONBOARDING_FINISHED_EVENT, onFinished);
+    return () => window.removeEventListener(ONBOARDING_FINISHED_EVENT, onFinished);
+  }, []);
 
   const sectionNoteActions: SectionNoteActions = useMemo(
     () => ({

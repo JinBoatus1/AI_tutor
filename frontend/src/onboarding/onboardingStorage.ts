@@ -50,3 +50,9 @@ export const ONBOARDING_EXPAND_PATHS_EVENT = "ai-tutor-onboarding-expand-paths";
 export function emitOnboardingExpandPaths(paths: string[]): void {
   window.dispatchEvent(new CustomEvent(ONBOARDING_EXPAND_PATHS_EVENT, { detail: { paths } }));
 }
+
+export const ONBOARDING_FINISHED_EVENT = "ai-tutor-onboarding-finished";
+
+export function emitOnboardingFinished(): void {
+  window.dispatchEvent(new Event(ONBOARDING_FINISHED_EVENT));
+}

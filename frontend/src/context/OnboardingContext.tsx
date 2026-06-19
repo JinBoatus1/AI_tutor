@@ -15,6 +15,7 @@ import {
   onboardingStorageKey,
   readOnboardingDone,
   writeOnboardingDone,
+  emitOnboardingFinished,
 } from "../onboarding/onboardingStorage";
 import { ONBOARDING_STEPS } from "../onboarding/onboardingSteps";
 import { getOrCreateStudentId } from "../utils/studentId";
@@ -47,6 +48,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
   const finish = useCallback(() => {
     writeOnboardingDone(storageKey);
+    emitOnboardingFinished();
     setActive(false);
     setStepIndex(0);
     setForceRun(false);

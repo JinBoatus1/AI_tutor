@@ -16,7 +16,7 @@ export function useSectionNoteToggle(sectionLabel: string) {
   useEffect(() => {
     if (prevLabelRef.current !== sectionLabel) {
       prevLabelRef.current = sectionLabel;
-      setOpen(true);
+      if (sectionLabel) setOpen(false);
     }
   }, [sectionLabel]);
 
