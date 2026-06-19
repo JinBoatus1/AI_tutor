@@ -40,6 +40,35 @@
 .sb-brand-name {
   font-family: "DM Serif Display", serif; font-size: 1.12rem; color: #f1f5f9; white-space: nowrap;
 }
+.sb-brand { flex: 1 1 auto; }
+.sb-tour-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 234, 212, 0.22);
+  background: rgba(94, 234, 212, 0.08);
+  color: var(--tealb);
+  cursor: pointer;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sb-tour-btn:hover {
+  background: rgba(94, 234, 212, 0.14);
+  border-color: rgba(94, 234, 212, 0.38);
+  color: #99f6e4;
+}
+.sb-tour-ic { width: 16px; height: 16px; flex: 0 0 16px; display: grid; place-items: center; }
+.sb-tour-ic svg { width: 15px; height: 15px; }
+.sb-tour-label { overflow: hidden; text-overflow: ellipsis; }
 
 /* scroll shell — flex column; no outer scroll (progress/history scroll inside) */
 .sb-shell {
@@ -230,9 +259,11 @@
 .sb--collapsed .sb-caret,
 .sb--collapsed .sb-section-body,
 .sb--collapsed .sb-user-name,
-.sb--collapsed .sb-signout { display: none; }
+.sb--collapsed .sb-signout,
+.sb--collapsed .sb-tour-label { display: none; }
 .sb--collapsed .sb-top { flex-direction: column; gap: 10px; padding: 14px 0 10px; }
-.sb--collapsed .sb-brand { justify-content: center; }
+.sb--collapsed .sb-brand { justify-content: center; flex: 0 0 auto; }
+.sb--collapsed .sb-tour-btn { margin-left: 0; padding: 8px; }
 .sb--collapsed .sb-shell { padding: 8px 10px; }
 .sb--collapsed .sb-link, .sb--collapsed .sb-section-head, .sb--collapsed .sb-signin { justify-content: center; padding: 11px 0; gap: 0; }
 .sb--collapsed .sb-footer { display: flex; justify-content: center; }

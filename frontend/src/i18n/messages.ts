@@ -267,6 +267,7 @@ const EN = {
   "onboarding.profileTitle": "Product tour",
   "onboarding.profileDesc": "Replay the Learning Mode walkthrough anytime.",
   "onboarding.restart": "Restart tour",
+  "onboarding.restartShort": "Tour",
 
   "chat.placeholder": "Ask a math question…",
   "chat.newQuestion": "Start a new session",
@@ -555,6 +556,7 @@ const ZH: Record<MessageKey, string> = {
   "onboarding.profileTitle": "新手引导",
   "onboarding.profileDesc": "可随时重新查看 Learning Mode 功能介绍。",
   "onboarding.restart": "重新开始引导",
+  "onboarding.restartShort": "引导",
 
   "chat.placeholder": "输入数学问题…",
   "chat.newQuestion": "开始新会话",
@@ -856,6 +858,7 @@ const ES: Record<MessageKey, string> = {
   "onboarding.profileTitle": "Tour del producto",
   "onboarding.profileDesc": "Vuelve a ver la guía de Learning Mode cuando quieras.",
   "onboarding.restart": "Reiniciar tour",
+  "onboarding.restartShort": "Tour",
 
   "chat.placeholder": "Haz una pregunta de matemáticas…",
   "chat.newQuestion": "Iniciar una sesión nueva",

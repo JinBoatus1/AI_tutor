@@ -5,6 +5,7 @@ import { useLocale } from "../i18n/LocaleContext";
 import SidebarHistory from "./SidebarHistory";
 import LearningBarPanel, { type OutlineSectionPreviewDetail } from "../LearningBarPanel";
 import { useSessionBridge } from "../context/SessionBridge";
+import { useOnboarding } from "../context/OnboardingContext";
 import { getOrCreateStudentId } from "../utils/studentId";
 import { ONBOARDING_PREPARE_EVENT, ONBOARDING_STEP_EVENT } from "../onboarding/onboardingStorage";
 import "./Sidebar.css";
@@ -56,6 +57,12 @@ const I = {
       <path d="m9 6 6 6-6 6" />
     </svg>
   ),
+  tour: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v4l2.5 2.5" />
+    </svg>
+  ),
 };
 
 type Tab = { key: string; labelKey: "sidebar.learningMode" | "sidebar.grades" | "sidebar.autoGrader"; icon: ReactNode; path: string };
@@ -91,6 +98,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const bridge = useSessionBridge();
+  const { startOnboarding } = useOnboarding();
   const [studentId] = useState(() => getOrCreateStudentId());
   const onLearning = location.pathname.startsWith("/learning");
 
@@ -171,6 +179,11 @@ export default function Sidebar() {
     navigate("/profile");
   };
 
+  const onRestartTour = () => {
+    if (!onLearning) navigate("/learning");
+    window.setTimeout(() => startOnboarding({ force: true }), onLearning ? 120 : 320);
+  };
+
   return (
     <aside className={`sb${collapsed ? " sb--collapsed" : ""}`} aria-label="Main navigation">
       <div className="sb-top">
@@ -180,6 +193,16 @@ export default function Sidebar() {
         <button className="sb-brand" onClick={() => navigate("/")} title="AI Tutor">
           <span className="sb-brand-mark">∑</span>
           <span className="sb-brand-name">AI Tutor</span>
+        </button>
+        <button
+          type="button"
+          className="sb-tour-btn"
+          onClick={onRestartTour}
+          title={t("onboarding.restart")}
+          aria-label={t("onboarding.restart")}
+        >
+          <span className="sb-tour-ic">{I.tour}</span>
+          <span className="sb-tour-label">{t("onboarding.restartShort")}</span>
         </button>
       </div>
 
