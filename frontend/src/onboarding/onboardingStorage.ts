@@ -32,3 +32,9 @@ export const ONBOARDING_STEP_EVENT = "ai-tutor-onboarding-step";
 export function emitOnboardingStep(stepId: string): void {
   window.dispatchEvent(new CustomEvent(ONBOARDING_STEP_EVENT, { detail: { stepId } }));
 }
+
+export const ONBOARDING_NOTE_READY_EVENT = "ai-tutor-onboarding-note-ready";
+
+export function emitOnboardingNoteReady(): void {
+  window.dispatchEvent(new Event(ONBOARDING_NOTE_READY_EVENT));
+}

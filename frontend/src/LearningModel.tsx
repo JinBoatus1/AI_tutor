@@ -29,6 +29,11 @@ import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } fr
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 import { useLocale } from "./i18n/LocaleContext";
 import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
+import {
+  ONBOARDING_STEP_EVENT,
+  emitOnboardingNoteReady,
+} from "./onboarding/onboardingStorage";
+import { ONBOARDING_NOTE_SECTION } from "./onboarding/onboardingDemoSection";
 import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -991,6 +996,20 @@ export default function LearningModel() {
     : "";
 
   const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
+
+  useEffect(() => {
+    const onTourNoteStep = (e: Event) => {
+      const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
+      if (stepId !== "note") return;
+      void (async () => {
+        await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
+        sectionNoteToggle.setOpen(true);
+        emitOnboardingNoteReady();
+      })();
+    };
+    window.addEventListener(ONBOARDING_STEP_EVENT, onTourNoteStep);
+    return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourNoteStep);
+  }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen]);
 
   const sectionNoteActions: SectionNoteActions = useMemo(
     () => ({

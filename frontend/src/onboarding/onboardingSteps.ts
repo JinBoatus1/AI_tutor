@@ -33,6 +33,13 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
     placement: "bottom",
   },
   {
+    id: "note",
+    target: "section-note",
+    titleKey: "onboarding.noteTitle",
+    bodyKey: "onboarding.noteBody",
+    placement: "right",
+  },
+  {
     id: "chat",
     target: "chat-panel",
     titleKey: "onboarding.chatTitle",

@@ -57,7 +57,7 @@ This is the main study screen: **left** = outline (learning progress), **center*
 ### First time
 
 1. Read the short **welcome** in the chat (how to use the tree and ask questions).
-2. On your **first visit** to Learning Mode, a **product tour** may dim the screen and point out the outline, history, **Start a new session**, and chat. Use **Next** / **Skip tour**, or replay it anytime from **My profile** → **Product tour** → **Restart tour** (signed in).
+2. On your **first visit** to Learning Mode, a **product tour** may dim the screen and point out the outline, history, **Start a new session**, **Note**, and chat. Use **Next** / **Skip tour**, or replay it anytime from **My profile** → **Product tour** → **Restart tour** (signed in).
 3. If you are **signed in**, you may see **past chat sessions** under **History** in the left sidebar.
 
 ### Worked example: induction (Problem 5.1)

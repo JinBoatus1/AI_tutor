@@ -253,7 +253,8 @@ const EN = {
   "note.inTheBook": "In the book ·",
 
   "onboarding.progressTitle": "Learning Progress",
-  "onboarding.progressBody": "Browse the textbook outline and mark sections you've learned.",
+  "onboarding.progressBody":
+    "Browse the outline and mark sections learned. Click a section title to load book pages in the center.",
   "onboarding.historyTitle": "Chat history",
   "onboarding.historyBody": "Pick up past tutoring sessions anytime.",
   "onboarding.chatTitle": "Let's start — ask a question",
@@ -262,6 +263,9 @@ const EN = {
   "onboarding.inputBody": "Type a math question, or attach a photo or PDF.",
   "onboarding.newSessionTitle": "Start a new session",
   "onboarding.newSessionBody": "Clear the current chat and begin fresh.",
+  "onboarding.noteTitle": "Study Note",
+  "onboarding.noteBody":
+    "Click a section in the left tree, then open Note for key vocabulary, formulas, and links into the book.",
   "onboarding.next": "Next",
   "onboarding.skip": "Skip tour",
   "onboarding.done": "Done",
@@ -544,7 +548,7 @@ const ZH: Record<MessageKey, string> = {
   "note.inTheBook": "书中此处 ·",
 
   "onboarding.progressTitle": "学习进度",
-  "onboarding.progressBody": "浏览教材大纲，标记已学章节。",
+  "onboarding.progressBody": "浏览大纲并标记已学章节。点击某一节标题，在中间加载教材页面。",
   "onboarding.historyTitle": "聊天记录",
   "onboarding.historyBody": "随时回到之前的辅导会话。",
   "onboarding.chatTitle": "开始提问吧",
@@ -553,6 +557,8 @@ const ZH: Record<MessageKey, string> = {
   "onboarding.inputBody": "输入数学问题，或上传图片、PDF。",
   "onboarding.newSessionTitle": "开始新会话",
   "onboarding.newSessionBody": "清空当前对话，重新开始。",
+  "onboarding.noteTitle": "学习笔记 Note",
+  "onboarding.noteBody": "在左侧树中点击某一节，再打开 Note，查看关键词汇、公式和书中示例链接。",
   "onboarding.next": "下一步",
   "onboarding.skip": "跳过引导",
   "onboarding.done": "完成",
@@ -846,7 +852,8 @@ const ES: Record<MessageKey, string> = {
   "note.inTheBook": "En el libro ·",
 
   "onboarding.progressTitle": "Progreso de aprendizaje",
-  "onboarding.progressBody": "Explora el índice del libro y marca lo que ya aprendiste.",
+  "onboarding.progressBody":
+    "Explora el índice y marca lo aprendido. Haz clic en una sección para cargar sus páginas en el centro.",
   "onboarding.historyTitle": "Historial de chat",
   "onboarding.historyBody": "Retoma sesiones de tutoría anteriores cuando quieras.",
   "onboarding.chatTitle": "Empecemos — haz una pregunta",
@@ -855,6 +862,9 @@ const ES: Record<MessageKey, string> = {
   "onboarding.inputBody": "Escribe una pregunta de matemáticas o adjunta una foto o PDF.",
   "onboarding.newSessionTitle": "Iniciar una sesión nueva",
   "onboarding.newSessionBody": "Borra el chat actual y empieza de nuevo.",
+  "onboarding.noteTitle": "Nota de estudio",
+  "onboarding.noteBody":
+    "Haz clic en una sección del árbol izquierdo y abre Note para ver vocabulario, fórmulas y enlaces al libro.",
   "onboarding.next": "Siguiente",
   "onboarding.skip": "Omitir tour",
   "onboarding.done": "Listo",

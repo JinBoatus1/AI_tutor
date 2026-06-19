@@ -35,6 +35,7 @@ export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButton
     <button
       type="button"
       className={`left-panel-note-btn${open ? " left-panel-note-btn--open" : ""}`}
+      data-onboarding="section-note"
       onClick={onToggle}
       aria-expanded={open}
       aria-controls={panelId}
@@ -174,7 +175,13 @@ function formulaToEntry(item: FormulaEntry): ExpandableEntry {
 export function SectionNotePanel({ note, panelId, actions }: SectionNotePanelProps) {
   const { t } = useLocale();
   return (
-    <div id={panelId} className="left-panel-section-note" role="region" aria-label="Section study note">
+    <div
+      id={panelId}
+      className="left-panel-section-note"
+      data-onboarding="section-note-panel"
+      role="region"
+      aria-label="Section study note"
+    >
       <div className="section-note-card section-note-card--goals">
         <div className="section-note-card-icon" aria-hidden>
           ◆

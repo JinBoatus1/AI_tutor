@@ -15,6 +15,7 @@ describe("focsPracticeSets content integrity", () => {
   it("getPracticeSet returns Chapter 4 and null for unknown", () => {
     expect(getPracticeSet("4")?.title).toBe("Proofs");
     expect(getPracticeSet("1")?.chapter).toBe("1");
+    expect(getPracticeSet("1")?.warmup[0].front).not.toBe(getPracticeSet("4")?.warmup[0].front);
     expect(getPracticeSet("99")).toBeNull();
   });
 
