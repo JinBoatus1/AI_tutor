@@ -26,24 +26,17 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
     placement: "right",
   },
   {
-    id: "chat",
-    target: "chat-panel",
-    titleKey: "onboarding.chatTitle",
-    bodyKey: "onboarding.chatBody",
-    placement: "left",
-  },
-  {
-    id: "input",
-    target: "chat-input",
-    titleKey: "onboarding.inputTitle",
-    bodyKey: "onboarding.inputBody",
-    placement: "top",
-  },
-  {
     id: "new-session",
     target: "new-session",
     titleKey: "onboarding.newSessionTitle",
     bodyKey: "onboarding.newSessionBody",
     placement: "bottom",
+  },
+  {
+    id: "chat",
+    target: "chat-panel",
+    titleKey: "onboarding.chatTitle",
+    bodyKey: "onboarding.chatBody",
+    placement: "left",
   },
 ];
