@@ -57,29 +57,77 @@ This is the main study screen: **left** = outline (learning progress), **center*
 ### First time
 
 1. Read the short **welcome** in the chat (how to use the tree and ask questions).
-2. If you are **signed in**, you may see **past chat sessions** in a side area (depends on deployment).
+2. On your **first visit** to Learning Mode, a **product tour** may dim the screen and point out the outline, history, **Start a new session**, and chat. Use **Next** / **Skip tour**, or replay it anytime from **My profile** → **Product tour** → **Restart tour** (signed in).
+3. If you are **signed in**, you may see **past chat sessions** under **History** in the left sidebar.
+
+### Worked example: induction (Problem 5.1)
+
+This walkthrough shows how the **left outline**, **center book + Note + Problems**, and **right chat** work together on a real FOCS topic.
+
+#### 1. Open the chapter’s **Problems** section (left)
+
+In **Learning progress**, expand **Chapter 5 — Induction**, then click the section named **`5.3 Problems`** (page range in parentheses, e.g. `(pp. …)`).
+
+> **Important:** You must click a row whose title ends with **`Problems`** (e.g. `5.3 Problems`, `1.6 Problems`). That is the chapter **problem set**, not a single exercise like “Problem 5.1” in the book text. Other titles such as “Problem Solving with Graphs” are **not** problem sets and will not open practice.
+
+After you click **`5.3 Problems`**:
+
+- The **center** top area opens **Chapter 5 practice** (warm-up, quizzes, proof drills tied to the chapter).
+- The **bottom** of the center still shows **book page images** for the loaded section.
+- You can drag the **horizontal divider** between practice and pages to resize.
+
+#### 2. Read the section and open **Note** (center)
+
+For definitions and curated help (objectives, key vocabulary, formulas):
+
+1. In the **left** tree, click a **lesson section** such as **`5.1 Ordinary Induction`** (not the Problems row).
+2. Wait for **book pages** to load in the **center**.
+3. Click **`Note`** in the bar above the pages (top-right of the textbook panel).
+
+The **Note** panel lists what to learn, important terms, and formulas for that section. You can **See in textbook ↗** to jump to a book example, or **Ask AI to follow up** from a term. Click **`Note`** again or **Collapse** to hide it.
+
+If you opened **`5.3 Problems`** first, you can still switch to **`5.1 Ordinary Induction`** in the tree for the reading + **Note**, while keeping practice available when you return to **`5.3 Problems`**.
+
+#### 3. Try the sample questions (right chat)
+
+Above the chat input, **Try an example** offers two starters (book content stays in **English**):
+
+| # | Example | What happens when you click |
+|---|---------|------------------------------|
+| 1 | **What is induction?** | The text is **copied into the input box** (not sent). Press **Enter** or **Send** when ready. |
+| 2 | **Problem 5.1:** Is 2^p − 1 prime for p = 2, 3, 5, 7? … | Same: fills the input with the full Problem 5.1 wording from the book; you send it yourself. |
+
+The AI reply may **match** the topic and show related pages in the **center** (e.g. **5.1 Ordinary Induction** with **Note** available). For the best alignment, click the relevant **section** or **`5.3 Problems`** in the **left** tree **before** or **after** you ask.
+
+#### 4. Start fresh
+
+Use **Start a new session** at the top of the chat when you change chapters or want a clean thread.
 
 ### Left: Learning progress (outline)
 
 - **Tree** of chapters and sections. **Parentheses** = **printed book page numbers** (match the physical book), e.g. `(pp. 7–14)`.
 - **Teal dot** = marked **learned**; **hollow** circle = **not learned** yet. Click the dot to toggle (some parent rows update children per app rules).
 - Click **section title text** (with page numbers) to **load** those book pages in the **center**.
+- Rows titled **`X.Y Problems`** (e.g. **`5.3 Problems`**) open the chapter **practice / problem-set** view in the **center**—see the **Worked example: induction** above.
 - **Expand all** / **Collapse all**; drag the **divider**; **collapse** the whole left strip for more room, **reveal** to show it again.
 - The header shows which **book** (e.g. **FCOS**). Guests default to the built-in book; **signed-in** users select PDFs in **My profile**.
 
 ### Center: Textbook (page preview)
 
 - The line **Pages A–B** is **printed book** range, aligned with the **left** tree.
+- **`Note`** (when shown) opens a **curated study note** for the current section—objectives, vocabulary, formulas, and links into the book. See the induction example above.
+- When a **`Problems`** section is selected, the **top** of the center may show **interactive practice**; **book pages** stay in the **bottom** pane (resize with the divider).
 - **Prev** / **Next** and **“Page 1 of N”** refer to **images in this load**: **1 of N** = **image** index, **not** a printed page number. Do **not** mix that up with the header **“Pages 145–160”**.
 - Wait for images after you pick a section or after a topic is **matched**. You can open images in a lightbox when the UI offers it. **Hide** closes the center; use **Show textbook sidebar** in the chat if the book panel is hidden but there is still content for this session.
 
 ### Right: Chat
 
 - Type a question, **Enter** or **Send**.
+- **Try an example** (above the input, before your first message): click a sample question to **copy it into the input**; edit if you like, then send.
 - **Attach:** file button for **image / PDF**; **monitor** icon for **screen capture** (the browser may ask for a target).
 - **Paste** images (Ctrl+V / Cmd+V) when supported.
-- **“I already fully understand — Start a new question”** ends the current thread (e.g. when changing chapters or problem sets).
-- **Tips:** name **section numbers** (`3.2`, `Chapter 11`, …) or **click the section** in the tree first, then ask about what you see in the **center**.
+- **Start a new session** clears the current thread (e.g. when changing chapters or problem sets).
+- **Tips:** name **section numbers** (`3.2`, `Chapter 11`, …) or **click the section** (or **`X.Y Problems`**) in the tree first, then ask about what you see in the **center**.
 
 ### Optional: full-page learning progress
 
@@ -115,6 +163,8 @@ Only when **signed in** (otherwise the app opens sign-in).
 - **Upload new textbook (PDF):** the server checks that the file is a real **textbook**; if rejected, that flow is for course books only—**Auto Grader** is for arbitrary homework PDFs. While processing, you may see **“Building outline…”**
 
 **Appearance:** a **color preset** adjusts **page background** and the **chat panel** in Learning Mode. Stored in your app/browser profile per implementation.
+
+**Product tour:** **Restart tour** replays the Learning Mode walkthrough (outline, history, chat).
 
 **After changing or uploading a book,** open **Learning Mode** again so the new outline and pages apply.
 
