@@ -38,3 +38,15 @@ export const ONBOARDING_NOTE_READY_EVENT = "ai-tutor-onboarding-note-ready";
 export function emitOnboardingNoteReady(): void {
   window.dispatchEvent(new Event(ONBOARDING_NOTE_READY_EVENT));
 }
+
+export const ONBOARDING_PROBLEMS_READY_EVENT = "ai-tutor-onboarding-problems-ready";
+
+export function emitOnboardingProblemsReady(): void {
+  window.dispatchEvent(new Event(ONBOARDING_PROBLEMS_READY_EVENT));
+}
+
+export const ONBOARDING_EXPAND_PATHS_EVENT = "ai-tutor-onboarding-expand-paths";
+
+export function emitOnboardingExpandPaths(paths: string[]): void {
+  window.dispatchEvent(new CustomEvent(ONBOARDING_EXPAND_PATHS_EVENT, { detail: { paths } }));
+}

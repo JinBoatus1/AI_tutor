@@ -32,8 +32,14 @@ import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import {
   ONBOARDING_STEP_EVENT,
   emitOnboardingNoteReady,
+  emitOnboardingProblemsReady,
+  emitOnboardingExpandPaths,
 } from "./onboarding/onboardingStorage";
-import { ONBOARDING_NOTE_SECTION } from "./onboarding/onboardingDemoSection";
+import {
+  ONBOARDING_NOTE_SECTION,
+  ONBOARDING_PROBLEMS_SECTION,
+  ONBOARDING_INDUCTION_EXPAND_PATHS,
+} from "./onboarding/onboardingDemoSection";
 import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -998,17 +1004,26 @@ export default function LearningModel() {
   const sectionNoteToggle = useSectionNoteToggle(sectionNoteLabel);
 
   useEffect(() => {
-    const onTourNoteStep = (e: Event) => {
+    const onTourStep = (e: Event) => {
       const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
-      if (stepId !== "note") return;
-      void (async () => {
-        await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
-        sectionNoteToggle.setOpen(true);
-        emitOnboardingNoteReady();
-      })();
+      if (stepId === "note") {
+        void (async () => {
+          await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
+          sectionNoteToggle.setOpen(true);
+          emitOnboardingNoteReady();
+        })();
+      } else if (stepId === "problems") {
+        sectionNoteToggle.setOpen(false);
+        setPracticeViewNote(false);
+        emitOnboardingExpandPaths(ONBOARDING_INDUCTION_EXPAND_PATHS);
+        void (async () => {
+          await handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION);
+          emitOnboardingProblemsReady();
+        })();
+      }
     };
-    window.addEventListener(ONBOARDING_STEP_EVENT, onTourNoteStep);
-    return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourNoteStep);
+    window.addEventListener(ONBOARDING_STEP_EVENT, onTourStep);
+    return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourStep);
   }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen]);
 
   const sectionNoteActions: SectionNoteActions = useMemo(
@@ -1205,6 +1220,7 @@ export default function LearningModel() {
           <div className="textbook-note-split" ref={practiceSplit.containerRef}>
             <div
               className="textbook-note-pane"
+              data-onboarding="chapter-practice"
               style={{ flex: `0 0 ${practiceSplit.pct}%` }}
             >
               {practiceViewNote && activeSectionNote ? (

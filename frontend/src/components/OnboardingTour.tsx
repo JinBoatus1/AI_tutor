@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useOnboarding } from "../context/OnboardingContext";
 import { useLocale } from "../i18n/LocaleContext";
 import { ONBOARDING_STEPS } from "../onboarding/onboardingSteps";
-import { emitOnboardingStep, ONBOARDING_NOTE_READY_EVENT } from "../onboarding/onboardingStorage";
+import { emitOnboardingStep, ONBOARDING_NOTE_READY_EVENT, ONBOARDING_PROBLEMS_READY_EVENT } from "../onboarding/onboardingStorage";
 import "./OnboardingTour.css";
 
 const SPOTLIGHT_PAD = 10;
@@ -82,7 +82,11 @@ export default function OnboardingTour() {
   const measure = useCallback(() => {
     if (!active || !step) return;
     const targets =
-      step.id === "note" ? ["section-note-panel", "section-note"] : [step.target];
+      step.id === "note"
+        ? ["section-note-panel", "section-note"]
+        : step.id === "problems"
+          ? ["learning-progress", "chapter-practice"]
+          : [step.target];
     for (const id of targets) {
       const el = document.querySelector(`[data-onboarding="${id}"]`);
       if (el) {
@@ -99,11 +103,14 @@ export default function OnboardingTour() {
     if (step) emitOnboardingStep(step.id);
     const t1 = window.setTimeout(measure, 80);
     const t2 = window.setTimeout(measure, 360);
-    const t3 = step.id === "note" ? window.setTimeout(measure, 900) : undefined;
-    const t4 = step.id === "note" ? window.setTimeout(measure, 1800) : undefined;
+    const t3 =
+      step.id === "note" || step.id === "problems" ? window.setTimeout(measure, 900) : undefined;
+    const t4 =
+      step.id === "note" || step.id === "problems" ? window.setTimeout(measure, 1800) : undefined;
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     window.addEventListener(ONBOARDING_NOTE_READY_EVENT, measure);
+    window.addEventListener(ONBOARDING_PROBLEMS_READY_EVENT, measure);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -112,6 +119,7 @@ export default function OnboardingTour() {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener(ONBOARDING_NOTE_READY_EVENT, measure);
+      window.removeEventListener(ONBOARDING_PROBLEMS_READY_EVENT, measure);
     };
   }, [active, measure, stepIndex]);
 

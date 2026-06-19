@@ -40,6 +40,13 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
     placement: "right",
   },
   {
+    id: "problems",
+    target: "learning-progress",
+    titleKey: "onboarding.problemsTitle",
+    bodyKey: "onboarding.problemsBody",
+    placement: "right",
+  },
+  {
     id: "chat",
     target: "chat-panel",
     titleKey: "onboarding.chatTitle",

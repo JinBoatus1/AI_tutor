@@ -266,6 +266,9 @@ const EN = {
   "onboarding.noteTitle": "Study Note",
   "onboarding.noteBody":
     "Click a section in the left tree, then open Note for key vocabulary, formulas, and links into the book.",
+  "onboarding.problemsTitle": "Chapter Problems",
+  "onboarding.problemsBody":
+    "Expand Chapter 5 — Induction and click **5.3 Problems** in the left tree. Practice opens here (including Problem 5.1 on Mersenne primes).",
   "onboarding.next": "Next",
   "onboarding.skip": "Skip tour",
   "onboarding.done": "Done",
@@ -559,6 +562,9 @@ const ZH: Record<MessageKey, string> = {
   "onboarding.newSessionBody": "清空当前对话，重新开始。",
   "onboarding.noteTitle": "学习笔记 Note",
   "onboarding.noteBody": "在左侧树中点击某一节，再打开 Note，查看关键词汇、公式和书中示例链接。",
+  "onboarding.problemsTitle": "章节习题 Problems",
+  "onboarding.problemsBody":
+    "在左侧展开第 5 章 Induction，点击 **5.3 Problems**。中间会打开本章练习（含 Problem 5.1 梅森素数题）。",
   "onboarding.next": "下一步",
   "onboarding.skip": "跳过引导",
   "onboarding.done": "完成",
@@ -865,6 +871,9 @@ const ES: Record<MessageKey, string> = {
   "onboarding.noteTitle": "Nota de estudio",
   "onboarding.noteBody":
     "Haz clic en una sección del árbol izquierdo y abre Note para ver vocabulario, fórmulas y enlaces al libro.",
+  "onboarding.problemsTitle": "Problemas del capítulo",
+  "onboarding.problemsBody":
+    "Expande el Capítulo 5 — Induction y haz clic en **5.3 Problems** a la izquierda. Aquí se abre la práctica (incluido el Problema 5.1).",
   "onboarding.next": "Siguiente",
   "onboarding.skip": "Omitir tour",
   "onboarding.done": "Listo",

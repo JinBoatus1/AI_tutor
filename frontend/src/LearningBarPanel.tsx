@@ -22,6 +22,7 @@ import {
   trySyncLearnedToServer,
 } from "./utils/learningBarLocalStorage";
 import { useLocale } from "./i18n/LocaleContext";
+import { ONBOARDING_EXPAND_PATHS_EVENT } from "./onboarding/onboardingStorage";
 
 type FocsNode = Record<string, unknown>;
 
@@ -476,6 +477,20 @@ export default function LearningBarPanel({
   useEffect(() => {
     setExpanded({});
   }, [selectedTextbookId]);
+
+  useEffect(() => {
+    const onExpandPaths = (e: Event) => {
+      const paths = (e as CustomEvent<{ paths?: string[] }>).detail?.paths ?? [];
+      if (!paths.length) return;
+      setExpanded((prev) => {
+        const next = { ...prev };
+        for (const p of paths) next[p] = true;
+        return next;
+      });
+    };
+    window.addEventListener(ONBOARDING_EXPAND_PATHS_EVENT, onExpandPaths);
+    return () => window.removeEventListener(ONBOARDING_EXPAND_PATHS_EVENT, onExpandPaths);
+  }, []);
 
   useEffect(() => {
     if (!bookPickerOpen) return;
