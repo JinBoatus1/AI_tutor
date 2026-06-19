@@ -9,6 +9,7 @@ import UserProfile from "./UserProfile";
 import Grades from "./Grades";
 import SignInModal from "./SignInModal";
 import Sidebar from "./components/Sidebar";
+import OnboardingTour from "./components/OnboardingTour";
 import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
@@ -68,6 +69,7 @@ function AppShell() {
         </div>
 
         <SignInModal />
+        <OnboardingTour />
       </div>
     </div>
   );

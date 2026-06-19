@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLocale } from "../i18n/LocaleContext";
@@ -6,6 +6,7 @@ import SidebarHistory from "./SidebarHistory";
 import LearningBarPanel, { type OutlineSectionPreviewDetail } from "../LearningBarPanel";
 import { useSessionBridge } from "../context/SessionBridge";
 import { getOrCreateStudentId } from "../utils/studentId";
+import { ONBOARDING_PREPARE_EVENT, ONBOARDING_STEP_EVENT } from "../onboarding/onboardingStorage";
 import "./Sidebar.css";
 
 /* ---- inline icons (no icon dependency) ---- */
@@ -126,6 +127,28 @@ export default function Sidebar() {
     });
   };
 
+  useEffect(() => {
+    const onPrepare = () => {
+      setCollapsed(false);
+      localStorage.setItem("sidebar-collapsed", "0");
+      setOpenProgress(true);
+      writeSidebarSectionOpen(SIDEBAR_PROGRESS_OPEN_KEY, true);
+    };
+    const onStep = (e: Event) => {
+      const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
+      if (stepId === "history") {
+        setOpenHistory(true);
+        writeSidebarSectionOpen(SIDEBAR_HISTORY_OPEN_KEY, true);
+      }
+    };
+    window.addEventListener(ONBOARDING_PREPARE_EVENT, onPrepare);
+    window.addEventListener(ONBOARDING_STEP_EVENT, onStep);
+    return () => {
+      window.removeEventListener(ONBOARDING_PREPARE_EVENT, onPrepare);
+      window.removeEventListener(ONBOARDING_STEP_EVENT, onStep);
+    };
+  }, []);
+
   const activeKey = location.pathname.startsWith("/autograder")
     ? "/autograder"
     : location.pathname.startsWith("/grades")
@@ -186,14 +209,17 @@ export default function Sidebar() {
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
-            <div className="sb-progress-embed">
+            <div className="sb-progress-embed" data-onboarding="learning-progress">
               <LearningBarPanel variant="embed" studentId={studentId} onOutlineSectionPreview={previewSection} />
             </div>
           </div>
         </div>
 
         {/* History (our "recent") */}
-        <div className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}>
+        <div
+          className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}
+          data-onboarding="history"
+        >
           <button className="sb-section-head" onClick={toggleHistory} aria-expanded={openHistory}>
             <span className="sb-link-ic">{I.history}</span>
             <span className="sb-link-label">{t("sidebar.history")}</span>

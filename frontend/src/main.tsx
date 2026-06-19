@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProfileSettingsProvider } from "./context/ProfileSettingsContext";
 import { LocaleProvider } from "./i18n/LocaleContext";
 import { SessionBridgeProvider } from "./context/SessionBridge";
+import { OnboardingProvider } from "./context/OnboardingContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -15,7 +16,9 @@ createRoot(document.getElementById("root")!).render(
         <LocaleProvider>
           <ProfileSettingsProvider>
             <SessionBridgeProvider>
-              <App />
+              <OnboardingProvider>
+                <App />
+              </OnboardingProvider>
             </SessionBridgeProvider>
           </ProfileSettingsProvider>
         </LocaleProvider>

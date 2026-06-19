@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiUrl } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
+import { useOnboarding } from "./context/OnboardingContext";
 import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { useLocale } from "./i18n/LocaleContext";
 import { APP_LOCALES, LOCALE_NATIVE_LABELS, type AppLocale } from "./i18n/types";
@@ -23,6 +25,8 @@ import "./UserProfile.css";
 
 export default function UserProfile() {
   const { user, loading, logout, setShowSignIn, token } = useAuth();
+  const { startOnboarding } = useOnboarding();
+  const navigate = useNavigate();
   const { pageBackground, setPageBackground } = useProfileSettings();
   const { locale, applyLocale, t } = useLocale();
   const [localeNotice, setLocaleNotice] = useState<string | null>(null);
@@ -196,6 +200,11 @@ export default function UserProfile() {
     window.setTimeout(() => setLocaleNotice(null), 2400);
   };
 
+  const onRestartTour = () => {
+    navigate("/learning");
+    window.setTimeout(() => startOnboarding({ force: true }), 120);
+  };
+
   return (
     <div className="profile-page">
       <header className="profile-page-header">
@@ -232,6 +241,18 @@ export default function UserProfile() {
           </p>
         ) : null}
       </section>
+
+      {user ? (
+        <section className="profile-card" aria-labelledby="profile-onboarding-heading">
+          <h2 id="profile-onboarding-heading" className="profile-card-title">
+            {t("onboarding.profileTitle")}
+          </h2>
+          <p className="profile-setting-desc">{t("onboarding.profileDesc")}</p>
+          <button type="button" className="profile-locale-apply-all" onClick={onRestartTour}>
+            {t("onboarding.restart")}
+          </button>
+        </section>
+      ) : null}
 
       <section className="profile-card" aria-labelledby="profile-account-heading">
         <h2 id="profile-account-heading" className="profile-card-title">

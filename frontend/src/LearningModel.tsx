@@ -1275,6 +1275,7 @@ export default function LearningModel() {
       {(!showLeftColumn || !chatCollapsed) && (
       <div
         className="chat-panel"
+        data-onboarding="chat-panel"
         aria-label={t("learning.panelLabel")}
         style={
           showLeftColumn
@@ -1296,7 +1297,7 @@ export default function LearningModel() {
         )}
 
         {/* Reset button */}
-        <div className="reset-box">
+        <div className="reset-box" data-onboarding="new-session">
           <button type="button" onClick={reset} disabled={isAwaitingReply}>
             {t("chat.newQuestion")}
           </button>
@@ -1450,7 +1451,7 @@ export default function LearningModel() {
             e.target.value = "";
           }}
         />
-        <div className="learning-input-shell">
+        <div className="learning-input-shell" data-onboarding="chat-input">
           <div className="input-row">
             <button
               type="button"
