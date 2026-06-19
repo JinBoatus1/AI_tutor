@@ -28,6 +28,7 @@ import { getPracticeSet } from "./data/focsPracticeSets";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 import { useLocale } from "./i18n/LocaleContext";
+import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -730,8 +731,8 @@ export default function LearningModel() {
     });
   }, [referenceSectionPages, dataMatchedTopic]);
 
-  const handleSend = async () => {
-    const userText = input.trim();
+  const handleSend = async (textOverride?: string) => {
+    const userText = (textOverride ?? input).trim();
     const hasImages = attachedImages.length > 0;
     const pdfSnapshot = pdfAttachment;
     const hasPdf = Boolean(pdfSnapshot);
@@ -1360,21 +1361,6 @@ export default function LearningModel() {
               </div>
             </div>
           )}
-          {!hasUserMessage && (
-            <div className="chat-empty-hint">
-              <svg className="chat-empty-icon" viewBox="0 0 24 24" aria-hidden>
-                <path
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-                />
-              </svg>
-              <p className="chat-empty-text">{t("learning.emptyHint")}</p>
-            </div>
-          )}
         </div>
 
         {/* Selected image previews */}
@@ -1409,6 +1395,29 @@ export default function LearningModel() {
                 </button>
               </span>
             ))}
+          </div>
+        )}
+
+        {!hasUserMessage && (
+          <div className="chat-example-prompts" role="group" aria-label={t("learning.exampleLabel")}>
+            <p className="chat-example-label">{t("learning.exampleLabel")}</p>
+            <div className="chat-example-list">
+              {LEARNING_CHAT_EXAMPLES.map((ex, i) => (
+                <button
+                  key={ex.id}
+                  type="button"
+                  className="chat-example-chip"
+                  disabled={isAwaitingReply}
+                  onClick={() => {
+                    setInput(ex.sendText);
+                    void handleSend(ex.sendText);
+                  }}
+                >
+                  <span className="chat-example-num">{i + 1}.</span>
+                  <span className="chat-example-text">{ex.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1497,7 +1506,7 @@ export default function LearningModel() {
             <button
               type="button"
               className="learning-send-btn"
-              onClick={handleSend}
+              onClick={() => void handleSend()}
               title={t("learning.send")}
               aria-label={t("learning.send")}
               disabled={isAwaitingReply}
