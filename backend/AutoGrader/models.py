@@ -112,4 +112,4 @@ class EvaluationResult(BaseModel):
     evidence: list[str] = Field(default_factory=list)
 
 
-# TODO: 后续如果需要兼容旧版单文件上传协议，可在这里补充兼容层模型。
+# TODO: Add compatibility-layer models here if we ever need to support the legacy single-file upload protocol.

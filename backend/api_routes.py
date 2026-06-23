@@ -1339,12 +1339,13 @@ def _is_supported_upload(upload: UploadFile) -> bool:
 @router.post("/api/autograder/grade")
 async def autograder_grade(
     question_file: UploadFile = File(...),
-    answer_file: UploadFile = File(...),
+    answer_file: UploadFile | None = File(None),
     paper_id: str = Form("web-paper"),
+    grading_criteria: str = Form(""),
 ):
     if not _is_supported_upload(question_file):
         raise HTTPException(status_code=400, detail="question_file must be pdf/jpg/jpeg/png")
-    if not _is_supported_upload(answer_file):
+    if answer_file is not None and not _is_supported_upload(answer_file):
         raise HTTPException(status_code=400, detail="answer_file must be pdf/jpg/jpeg/png")
 
     q_tmp_path: Optional[str] = None
@@ -1352,26 +1353,29 @@ async def autograder_grade(
     generated_temp_dir: Optional[str] = None
     try:
         q_bytes = await question_file.read()
-        a_bytes = await answer_file.read()
+        a_bytes = await answer_file.read() if answer_file is not None else b""
         if not q_bytes:
             raise HTTPException(status_code=400, detail="question_file is empty")
-        if not a_bytes:
-            raise HTTPException(status_code=400, detail="answer_file is empty")
+        if answer_file is not None and not a_bytes:
+            answer_file = None
 
         q_tmp = tempfile.NamedTemporaryFile(prefix="autograder_question_", suffix=_suffix_from_upload(question_file), delete=False)
-        a_tmp = tempfile.NamedTemporaryFile(prefix="autograder_answer_", suffix=_suffix_from_upload(answer_file), delete=False)
         q_tmp.write(q_bytes)
-        a_tmp.write(a_bytes)
         q_tmp.close()
-        a_tmp.close()
         q_tmp_path = q_tmp.name
-        a_tmp_path = a_tmp.name
+
+        if answer_file is not None:
+            a_tmp = tempfile.NamedTemporaryFile(prefix="autograder_answer_", suffix=_suffix_from_upload(answer_file), delete=False)
+            a_tmp.write(a_bytes)
+            a_tmp.close()
+            a_tmp_path = a_tmp.name
 
         resp = await grade_paper_once(
             AutoGraderGradeRequest(
                 paper_id=paper_id.strip() or "web-paper",
                 question_source=q_tmp_path,
                 answer_source=a_tmp_path,
+                grading_criteria=grading_criteria.strip() or None,
             )
         )
         payload = resp.model_dump()

@@ -1,66 +1,52 @@
-/* Auto Grader — visual language aligned with Learning Mode (teal / mint, DM Sans) */
-
 .autograder-page {
   flex: 1;
   min-height: 0;
   overflow: auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 14px 28px;
+  justify-content: center;
+  padding: 18px 14px 32px;
   font-family: "DM Sans", system-ui, sans-serif;
 }
 
 .autograder-page-inner {
   width: 100%;
-  max-width: 520px;
+  max-width: 620px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .autograder-hero {
   text-align: center;
-  padding: 4px 8px 0;
+  padding: 2px 8px 0;
 }
 
 .autograder-hero-title {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: clamp(1.45rem, 3.2vw, 1.85rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
   color: #0f766e;
   line-height: 1.2;
 }
 
-.autograder-hero-sub {
-  margin: 0;
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: #64748b;
-  line-height: 1.45;
-  max-width: 36em;
-  margin-inline: auto;
-}
-
 .autograder-card {
   background: #fff;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid rgba(45, 212, 191, 0.22);
   box-shadow: 0 4px 24px -6px rgba(15, 118, 110, 0.12), 0 12px 40px -16px rgba(15, 23, 42, 0.08);
-  padding: 22px 20px 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .autograder-panel {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 14px 12px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 14px;
+  border-radius: 8px;
+  background: #f8fafc;
   border: 1px solid #e2e8f0;
 }
 
@@ -93,12 +79,12 @@
 
 .autograder-file-choose-btn {
   padding: 9px 16px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid #99f6e4;
-  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  background: #ecfdf5;
   color: #0f766e;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -110,45 +96,65 @@
   color: #115e59;
 }
 
-.autograder-file-choose-btn:focus-visible {
+.autograder-file-choose-btn:focus-visible,
+.autograder-submit:focus-visible,
+.autograder-textarea:focus-visible {
   outline: 2px solid #2dd4bf;
   outline-offset: 2px;
 }
 
 .autograder-file-status {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.84rem;
   color: #64748b;
   line-height: 1.4;
-  max-width: 100%;
   word-break: break-word;
-  flex: 1;
-  min-width: 0;
 }
 
 .autograder-file-status--picked {
   color: #0f766e;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.autograder-textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #0f172a;
+  background: #fff;
+}
+
+.autograder-textarea::placeholder {
+  color: #94a3b8;
 }
 
 .autograder-submit {
   align-self: stretch;
-  margin-top: 2px;
-  padding: 12px 20px;
+  min-height: 44px;
+  padding: 11px 18px;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 800;
   font-family: inherit;
   color: #fff;
   cursor: pointer;
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 55%, #115e59 100%);
-  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.28);
+  background: #0f766e;
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.25);
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 
 .autograder-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.35);
+  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.32);
 }
 
 .autograder-submit:disabled {
@@ -157,15 +163,10 @@
   transform: none;
 }
 
-.autograder-submit:focus-visible {
-  outline: 2px solid #5eead4;
-  outline-offset: 3px;
-}
-
 .autograder-error-text {
   margin: 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.86rem;
   color: #b91c1c;
   background: #fef2f2;
@@ -174,24 +175,41 @@
 
 .autograder-result {
   width: 100%;
-  max-width: 520px;
-  margin-top: 2px;
-  padding: 18px 18px 16px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%);
+  padding: 18px;
+  border-radius: 8px;
+  background: #f0fdfa;
   border: 1px solid rgba(45, 212, 191, 0.35);
   box-shadow: 0 4px 20px -8px rgba(15, 118, 110, 0.15);
 }
 
+.autograder-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
 .autograder-result h3 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 1.05rem;
   font-weight: 800;
   color: #0f766e;
 }
 
+.autograder-mode-pill {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #99f6e4;
+  color: #115e59;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .autograder-result-meta {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 0.82rem;
   color: #475569;
   line-height: 1.5;
@@ -206,20 +224,49 @@
 
 .autograder-score-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
   border: 1px solid #d1fae5;
   font-size: 0.88rem;
   color: #334155;
 }
 
+.autograder-score-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
 .autograder-score-item strong {
   color: #0f766e;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.autograder-score-item small {
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.autograder-answer-details {
+  color: #475569;
+}
+
+.autograder-answer-details summary {
+  cursor: pointer;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.autograder-answer-details p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .autograder-total-score {
@@ -229,4 +276,26 @@
   font-size: 0.95rem;
   font-weight: 800;
   color: #115e59;
+}
+
+@media (max-width: 520px) {
+  .autograder-page {
+    padding-inline: 10px;
+  }
+
+  .autograder-card,
+  .autograder-result {
+    padding: 14px;
+  }
+
+  .autograder-result-header,
+  .autograder-score-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .autograder-score-item strong {
+    text-align: left;
+  }
 }

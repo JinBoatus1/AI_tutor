@@ -3,17 +3,23 @@ import { apiUrl } from "./api";
 import { useLocale } from "./i18n/LocaleContext";
 import "./AutoGrader.css";
 
-type ScoreMode = "absolute" | "percentage";
+type ScoreMode = "absolute" | "percentage" | "manual_review";
+type GradingMode = "question_answer" | "question_only";
 
 type ScoreItem = {
-  score: number;
+  score: number | null;
   mode: ScoreMode;
   max_score?: number | null;
+  manual_review?: boolean;
+  reason?: string | null;
+  question_text?: string | null;
+  answer_text?: string | null;
 };
 
 type GradeResponse = {
   paper_id: string;
   pair_count: number;
+  grading_mode: GradingMode;
   pairs: string[];
   scores: Record<string, ScoreItem>;
   all_absolute: boolean;
@@ -25,6 +31,7 @@ export default function AutoGrader() {
   const { t } = useLocale();
   const [questionFile, setQuestionFile] = useState<File | null>(null);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
+  const [gradingCriteria, setGradingCriteria] = useState("");
   const questionInputRef = useRef<HTMLInputElement>(null);
   const answerInputRef = useRef<HTMLInputElement>(null);
   const [grading, setGrading] = useState(false);
@@ -50,16 +57,20 @@ export default function AutoGrader() {
   const handleSubmit = async () => {
     setError("");
     setResult(null);
-    if (!questionFile || !answerFile) {
-      setError(t("autograder.errBothFiles"));
+    if (!questionFile) {
+      setError(t("autograder.errQuestionFile"));
       return;
     }
 
     const formData = new FormData();
-
     formData.append("paper_id", `web-${Date.now()}`);
     formData.append("question_file", questionFile);
-    formData.append("answer_file", answerFile);
+    if (answerFile) {
+      formData.append("answer_file", answerFile);
+    }
+    if (gradingCriteria.trim()) {
+      formData.append("grading_criteria", gradingCriteria.trim());
+    }
 
     setGrading(true);
     try {
@@ -83,6 +94,16 @@ export default function AutoGrader() {
     }
   };
 
+  const renderScoreValue = (item: ScoreItem) => {
+    if (item.manual_review || item.mode === "manual_review") {
+      return "Manual review";
+    }
+    if (item.mode === "absolute" && item.max_score != null) {
+      return `${item.score ?? 0}/${item.max_score}`;
+    }
+    return `${item.score ?? 0}%`;
+  };
+
   return (
     <div className="autograder-page">
       <div className="autograder-page-inner">
@@ -91,7 +112,7 @@ export default function AutoGrader() {
           <p className="autograder-hero-sub">{t("autograder.subtitle")}</p>
         </header>
 
-        <div className="autograder-card">
+        <section className="autograder-card" aria-label="Auto grader inputs">
           <div className="autograder-panel">
             <span className="autograder-panel-label">{t("autograder.questionFile")}</span>
             <div className="autograder-file-row">
@@ -119,7 +140,7 @@ export default function AutoGrader() {
           </div>
 
           <div className="autograder-panel">
-            <span className="autograder-panel-label">{t("autograder.answerFile")}</span>
+            <span className="autograder-panel-label">{t("autograder.answerFileOptional")}</span>
             <div className="autograder-file-row">
               <input
                 ref={answerInputRef}
@@ -144,33 +165,56 @@ export default function AutoGrader() {
             </div>
           </div>
 
+          <div className="autograder-panel">
+            <label className="autograder-panel-label" htmlFor="autograder-criteria">
+              {t("autograder.criteria")}
+            </label>
+            <textarea
+              id="autograder-criteria"
+              className="autograder-textarea"
+              value={gradingCriteria}
+              placeholder={t("autograder.criteriaPlaceholder")}
+              onChange={(event) => setGradingCriteria(event.target.value)}
+            />
+          </div>
+
           <button type="button" className="autograder-submit" onClick={handleSubmit} disabled={grading}>
             {grading ? t("autograder.grading") : t("autograder.start")}
           </button>
 
           {error ? <p className="autograder-error-text">{error}</p> : null}
-        </div>
+        </section>
 
         {result ? (
           <section className="autograder-result" aria-labelledby="autograder-result-heading">
-            <h3 id="autograder-result-heading">{t("autograder.results")}</h3>
+            <div className="autograder-result-header">
+              <h3 id="autograder-result-heading">{t("autograder.results")}</h3>
+              <span className="autograder-mode-pill">
+                {result.grading_mode === "question_only"
+                  ? t("autograder.modeQuestionOnly")
+                  : t("autograder.modeQuestionAnswer")}
+              </span>
+            </div>
             <p className="autograder-result-meta">
               {t("autograder.pairsDetected", { count: String(result.pair_count) })}
             </p>
 
             <div className="autograder-score-list">
-              {sortedScores.map(([qid, item]) => {
-                const display =
-                  item.mode === "absolute" && item.max_score != null
-                    ? `${item.score}/${item.max_score}`
-                    : `${item.score}%`;
-                return (
-                  <div className="autograder-score-item" key={qid}>
+              {sortedScores.map(([qid, item]) => (
+                <div className="autograder-score-item" key={qid}>
+                  <div className="autograder-score-main">
                     <span>Q{qid}</span>
-                    <strong>{display}</strong>
+                    <strong>{renderScoreValue(item)}</strong>
                   </div>
-                );
-              })}
+                  {item.reason ? <small>{item.reason}</small> : null}
+                  {item.answer_text && result.grading_mode === "question_only" ? (
+                    <details className="autograder-answer-details">
+                      <summary>Reference answer</summary>
+                      <p>{item.answer_text}</p>
+                    </details>
+                  ) : null}
+                </div>
+              ))}
             </div>
 
             {result.all_absolute && result.total_score != null && result.total_max_score != null ? (

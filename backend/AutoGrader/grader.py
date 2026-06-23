@@ -24,52 +24,53 @@ from .models import (
     PaperQuestionAnswerPairs,
     QuestionAnswerPdfPair,
 )
+from .recognizer import QuestionAnswerRecognizer
 from .question_splitter import DocumentSplitter, QuestionDetector, QuestionSplitter
 
 
 class AutoGraderBase(ABC):
     @abstractmethod
     async def submit_job(self, request: AutoGradeJobSubmitRequest) -> AutoGradeJobSubmitResponse:
-        """提交一批评分任务。"""
+        """Submit a batch of grading tasks."""
 
     @abstractmethod
     async def get_job_status(self, job_id: str) -> AutoGradeJobStatusResponse:
-        """查询任务状态。"""
+        """Check the status of a job."""
 
     @abstractmethod
     async def get_job_results(self, job_id: str) -> AutoGradeJobResultsResponse:
-        """获取任务中的所有试卷结果。"""
+        """Fetch all paper results for a job."""
 
 
 class SchedulerBase(ABC):
     @abstractmethod
     async def enqueue(self, request: AutoGradeJobSubmitRequest) -> str:
-        """把批量评分请求放入队列。"""
+        """Enqueue a batch grading request."""
 
     @abstractmethod
     async def cancel(self, job_id: str) -> None:
-        """取消一个尚未完成的任务。"""
+        """Cancel a job that has not finished yet."""
 
 
 class EvaluatorBase(ABC):
     @abstractmethod
     async def evaluate(self, task: GradeTaskItem) -> EvaluationResult:
-        """对单份试卷做一个维度或一个模型的评分。"""
+        """Evaluate one paper with a single criterion or model."""
 
 
 class AggregatorBase(ABC):
     @abstractmethod
     def aggregate(self, paper_id: str, results: list[EvaluationResult]) -> AutoGradeResult:
-        """聚合多个评估器的结果，产出最终分数。"""
+        """Aggregate multiple evaluator outputs into a final score."""
 
 
 class WorkerPoolBase(ABC):
     @abstractmethod
     async def submit(self, task: GradeTaskItem) -> AutoGradePaperResult:
-        """提交单份试卷到 worker 执行。"""
+        """Submit one paper to a worker for execution."""
 
 
-# TODO: 后续在 concrete 模块中实现调度器、worker 和聚合器。
+# TODO: Implement the scheduler, worker pool, and aggregator in a concrete module later.
 
 
 class AutoGraderEntry:
@@ -79,6 +80,7 @@ class AutoGraderEntry:
         self._papers: dict[str, PaperQuestionAnswerPairs] = {}
         self._scores: dict[str, dict[str, dict[str, Any]]] = {}
         self._paper_temp_dirs: dict[str, Path] = {}
+        self._recognizer = QuestionAnswerRecognizer()
 
     @staticmethod
     def _load_document_bytes(source_path: str | Path) -> bytes:
@@ -154,6 +156,15 @@ class AutoGraderEntry:
             answer_path.write_bytes(pair.answer_pdf)
         return temp_root
 
+    @staticmethod
+    def _save_question_parts_to_temp_dir(paper_id: str, parts: list[tuple[str, bytes]]) -> Path:
+        temp_root = Path(tempfile.mkdtemp(prefix=f"autograder_{paper_id}_"))
+        for index, (label, question_pdf) in enumerate(parts, start=1):
+            normalized_label = QuestionDetector.normalize_question_label(label)
+            question_path = temp_root / f"question_{index:02d}_{normalized_label}.pdf"
+            question_path.write_bytes(question_pdf)
+        return temp_root
+
     async def pair_paper(self, paper_id: str, question_source: str | Path, answer_source: str | Path) -> PaperQuestionAnswerPairs:
         """Pair one question paper and one answer paper, save temp artifacts, and keep the paper registry."""
         question_pdf = self._load_document_bytes(question_source)
@@ -180,37 +191,125 @@ class AutoGraderEntry:
         self._paper_temp_dirs[paper_id] = temp_dir
         return record
 
-    async def score_paper(self, paper_id: str) -> dict[str, dict[str, Any]]:
-        """Score each paired question once with a single LLM call and return a question->score map."""
+    async def pair_question_paper(self, paper_id: str, question_source: str | Path) -> PaperQuestionAnswerPairs:
+        """Split one question paper without a separate answer paper."""
+        question_pdf = self._load_document_bytes(question_source)
+        parts = await DocumentSplitter.split_pdf_by_questions_with_labels(
+            question_pdf,
+            detection_method="llm",
+        )
+        if not parts:
+            parts = [("question", question_pdf)]
+
+        temp_dir = self._save_question_parts_to_temp_dir(paper_id, parts)
+        pairs = [
+            QuestionAnswerPdfPair(
+                question_label=label,
+                question_pdf=question_pdf_part,
+                answer_pdf=b"",
+                metadata={"question_only": True, "match_index": index},
+            )
+            for index, (label, question_pdf_part) in enumerate(parts)
+        ]
+        record = PaperQuestionAnswerPairs(
+            paper_id=paper_id,
+            pairs=pairs,
+            metadata={
+                "temp_dir": str(temp_dir),
+                "question_source": str(question_source),
+                "answer_source": None,
+                "pair_count": len(pairs),
+                "grading_mode": "question_only",
+            },
+        )
+        self._papers[paper_id] = record
+        self._paper_temp_dirs[paper_id] = temp_dir
+        return record
+
+    async def score_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
+        """Recognize each pair first, then score only the pairs that are clear enough to grade."""
         paper = self._papers.get(paper_id)
         if paper is None or not paper.pairs:
             self._scores[paper_id] = {}
             return {}
 
+        inspections = await self._recognizer.inspect_pairs(paper.pairs)
+        inspect_by_label = {
+            self._normalize_pair_label(label): data
+            for label, data in inspections.items()
+        }
+
+        scored_pairs: list[tuple[QuestionAnswerPdfPair, dict[str, Any]]] = []
+        scores: dict[str, dict[str, Any]] = {}
+
+        for pair in paper.pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            inspection = inspect_by_label.get(label)
+            if not inspection:
+                scores[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": "Recognition output was missing for this pair",
+                }
+                continue
+
+            if not inspection.get("can_grade", False):
+                scores[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": inspection.get("reason") or "The pair is not clear enough for automatic grading",
+                    "question_text": inspection.get("question_text"),
+                    "answer_text": inspection.get("answer_text"),
+                }
+                continue
+
+            scored_pairs.append((pair, inspection))
+
+        if not scored_pairs:
+            self._scores[paper_id] = scores
+            return scores
+
         system_msg = (
-            "You are grading an exam. For each question-answer pair, first inspect the question and answer to determine the maximum points for that question. "
+            "You are grading an exam. The recognized question_text and answer_text are the primary inputs. Use the page images only to verify unclear OCR or layout details. "
+            "For each question-answer pair, first inspect the recognized text and determine the maximum points for that question. "
             "If the max points are explicit or can be inferred from the question/rubric, score with that absolute max and return score plus max_score. "
-            "If the max points are not found, return a percentage score from 0 to 100 and set mode to percentage. "
+            "If the user supplied grading criteria, apply those criteria as part of the rubric and mention the relevant criterion briefly in reason when it affects the score. "
+            "If the recognized text is too noisy, incomplete, contradictory, or otherwise not trustworthy, mark the pair for manual review instead of guessing a score. "
+            "If the max points are not found but the pair is still clear enough to grade, return a percentage score from 0 to 100 and set mode to percentage. "
             "Return ONLY valid JSON. Use the shape: {\"scores\": {\"5\": {\"score\": 12, \"max_score\": 16, \"mode\": \"absolute\"}, \"6\": {\"score\": 86, \"mode\": \"percentage\"}}}."
         )
         user_parts: list[dict[str, Any]] = [
             {
                 "type": "text",
                 "text": (
-                    "You will receive several question-answer pairs. For each pair, read the question and the answer carefully. "
+                    "You will receive several question-answer pairs. For each pair, read the transcribed question and answer text carefully; use the page images only to resolve OCR mistakes or layout ambiguity. "
                     "Determine the full score for that question if it is visible or inferable from the paper. "
                     "If the full score is visible/inferable, return an absolute score and max_score. "
+                    "If the text is not trustworthy enough to score, return manual_review metadata instead of guessing. "
                     "Otherwise return a percentage score and set mode to percentage. "
                     "Return only a JSON object mapping the question label to a score object."
                 ),
             }
         ]
+        criteria = (grading_criteria or "").strip()
+        if criteria:
+            user_parts.append({"type": "text", "text": f"GRADING CRITERIA:\n{criteria}"})
 
-        for pair in paper.pairs:
+        for pair, inspection in scored_pairs:
             label = self._normalize_pair_label(pair.question_label)
+            question_text = (inspection.get("question_text") or "").strip()
+            answer_text = (inspection.get("answer_text") or "").strip()
             user_parts.append({"type": "text", "text": f"QUESTION {label}"})
+            if question_text:
+                user_parts.append({"type": "text", "text": f"Recognized question text: {question_text}"})
             user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
             user_parts.append({"type": "text", "text": f"ANSWER {label}"})
+            if answer_text:
+                user_parts.append({"type": "text", "text": f"Recognized answer text: {answer_text}"})
             user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.answer_pdf)}"}})
 
         resp = create_chat_completion(
@@ -222,20 +321,107 @@ class AutoGraderEntry:
             temperature=0.0,
         )
         raw_text = resp.choices[0].message.content or ""
-        scores = self._parse_score_map(raw_text)
+        scored_map = self._parse_score_map(raw_text)
+        for pair, _inspection in scored_pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            if label not in scored_map:
+                scored_map[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": "The scorer did not return a result for this pair",
+                }
+                continue
+            inspection = inspect_by_label.get(label, {})
+            if inspection.get("question_text") and "question_text" not in scored_map[label]:
+                scored_map[label]["question_text"] = inspection.get("question_text")
+            if inspection.get("answer_text") and "answer_text" not in scored_map[label]:
+                scored_map[label]["answer_text"] = inspection.get("answer_text")
+        scores.update(scored_map)
         self._scores[paper_id] = scores
         return scores
 
-    async def pair_and_score_paper(self, paper_id: str, question_source: str | Path, answer_source: str | Path) -> dict[str, Any]:
-        """Pair one question paper with one answer paper and score all pairs in a single LLM call."""
-        record = await self.pair_paper(paper_id, question_source, answer_source)
-        scores = await self.score_paper(paper_id)
+    async def score_question_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
+        """Score a question-only paper by deriving reference answers from the questions."""
+        paper = self._papers.get(paper_id)
+        if paper is None or not paper.pairs:
+            self._scores[paper_id] = {}
+            return {}
+
+        system_msg = (
+            "You are grading from a question paper when no separate answer paper was provided. "
+            "For each question image, transcribe the question, solve it yourself, and apply any user-supplied grading criteria. "
+            "If the image includes a visible student answer or worked response, grade that response against your derived reference answer. "
+            "If no student answer is visible, return the full-credit reference answer and assign full credit for the derived correct answer. "
+            "Determine the maximum points from the question or criteria when possible. If max points are explicit or inferable, use mode=absolute with score and max_score. "
+            "If max points are unavailable, use mode=percentage with score from 0 to 100. "
+            "If the question cannot be read or solved reliably, use mode=manual_review, score=null, manual_review=true, and a short reason. "
+            "Return ONLY valid JSON with this shape: "
+            "{\"scores\":{\"1\":{\"score\":10,\"max_score\":10,\"mode\":\"absolute\",\"question_text\":\"...\",\"answer_text\":\"...\",\"reason\":\"...\"}}}."
+        )
+        user_parts: list[dict[str, Any]] = [
+            {
+                "type": "text",
+                "text": (
+                    "No separate answer file was provided. For each question, read the image, solve the problem, "
+                    "and return a score object. Put your derived reference answer or graded visible answer in answer_text."
+                ),
+            }
+        ]
+        criteria = (grading_criteria or "").strip()
+        if criteria:
+            user_parts.append({"type": "text", "text": f"GRADING CRITERIA:\n{criteria}"})
+
+        for pair in paper.pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            user_parts.append({"type": "text", "text": f"QUESTION {label}"})
+            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
+
+        resp = create_chat_completion(
+            model="gpt-5.2",
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_parts},
+            ],
+            temperature=0.0,
+        )
+        raw_text = resp.choices[0].message.content or ""
+        scores = self._parse_score_map(raw_text)
+        for pair in paper.pairs:
+            label = self._normalize_pair_label(pair.question_label)
+            if label not in scores:
+                scores[label] = {
+                    "score": None,
+                    "mode": "manual_review",
+                    "max_score": None,
+                    "manual_review": True,
+                    "reason": "The scorer did not return a result for this question",
+                }
+        self._scores[paper_id] = scores
+        return scores
+
+    async def pair_and_score_paper(
+        self,
+        paper_id: str,
+        question_source: str | Path,
+        answer_source: str | Path | None = None,
+        grading_criteria: str | None = None,
+    ) -> dict[str, Any]:
+        """Score a paper, with a separate answer paper when available."""
+        if answer_source is None:
+            record = await self.pair_question_paper(paper_id, question_source)
+            scores = await self.score_question_paper(paper_id, grading_criteria)
+        else:
+            record = await self.pair_paper(paper_id, question_source, answer_source)
+            scores = await self.score_paper(paper_id, grading_criteria)
         return {
             "paper_id": record.paper_id,
             "pair_count": len(record.pairs),
             "temp_dir": record.metadata.get("temp_dir"),
             "pairs": [pair.question_label for pair in record.pairs],
             "scores": scores,
+            "grading_mode": record.metadata.get("grading_mode", "question_answer"),
         }
 
     def get_paper(self, paper_id: str) -> PaperQuestionAnswerPairs:
@@ -252,11 +438,12 @@ async def _run_cli() -> None:
     parser = argparse.ArgumentParser(description="Pair a question paper with its answer paper and save temp crops.")
     parser.add_argument("--paper-id", required=True, help="Paper identifier")
     parser.add_argument("--question", required=True, help="Question paper image or PDF path")
-    parser.add_argument("--answer", required=True, help="Answer paper image or PDF path")
+    parser.add_argument("--answer", help="Optional answer paper image or PDF path")
+    parser.add_argument("--grading-criteria", default=None, help="Optional grading criteria text")
     args = parser.parse_args()
 
     entry = AutoGraderEntry()
-    result = await entry.pair_and_score_paper(args.paper_id, args.question, args.answer)
+    result = await entry.pair_and_score_paper(args.paper_id, args.question, args.answer, args.grading_criteria)
     print(
         json.dumps(
             result,
