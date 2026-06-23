@@ -84,13 +84,14 @@ class QuestionDetector:
         system_msg = (
             "You are analyzing a scanned exam page. Choose the best orientation where text is upright and readable, "
             "then detect all question regions on that chosen orientation. Ignore page footer/page number bands. "
+            "Each region must include the full visible question text and any answer/work area for that question; never return a very thin or blank region. "
             "Return ONLY valid JSON with this shape: "
             "{\"best_orientation\": \"r0|r90|r180|r270\", \"questions\": [{\"label\": \"a\", \"top_percent\": 0.0, \"bottom_percent\": 0.0}], \"reason\": \"...\"}."
         )
         user_msg = (
             "You will see four orientations of the same page labeled r0, r90, r180, r270. "
             "Pick the best orientation, then identify each question with top and bottom percentages on that orientation. "
-            "Make the crops complete even if they overlap slightly. Return ONLY JSON."
+            "Make the crops complete even if they overlap slightly. Prefer a slightly tall crop over a crop that cuts off text or answer work. Return ONLY JSON."
         )
 
         content: list[dict[str, Any]] = [{"type": "text", "text": user_msg}]
@@ -133,6 +134,7 @@ class QuestionDetector:
         system_msg = (
             "You are analyzing two scanned pages: one question page and one answer page. "
             "For each page, choose best orientation and detect question boundaries. "
+            "Each region must include the full visible question text and the full answer/work area for that question; never return a very thin or blank region. "
             "Return ONLY valid JSON in this exact shape: "
             "{"
             "\"question_best_orientation\":\"r0|r90|r180|r270\","
@@ -145,7 +147,7 @@ class QuestionDetector:
             "You will receive 8 images in total. First 4 are QUESTION page candidates (r0,r90,r180,r270). "
             "Next 4 are ANSWER page candidates (r0,r90,r180,r270). "
             "Choose best orientation for each page and output per-question regions with labels. "
-            "Do not include footer page number in bottom_percent. Return ONLY JSON."
+            "Do not include footer page number in bottom_percent. Prefer slightly overlapping/taller regions over regions that cut off text or answer work. Return ONLY JSON."
         )
 
         content: list[dict[str, Any]] = [{"type": "text", "text": user_msg}]
@@ -201,6 +203,71 @@ class QuestionSplitter:
         return buffer.getvalue()
 
     @staticmethod
+    def _find_content_vertical_bounds(
+        image: Image.Image,
+        y_start: float,
+        y_end: float,
+        *,
+        white_threshold: int = 245,
+        min_row_density: float = 0.006,
+        min_dark_pixels: int = 4,
+        consecutive_rows: int = 2,
+        horizontal_margin_percent: float = 2.0,
+    ) -> Optional[Tuple[int, int]]:
+        """Find the vertical bounds of visible content inside a candidate crop."""
+        page_width, page_height = image.size
+        top = max(0, min(page_height, int(y_start)))
+        bottom = max(0, min(page_height, int(y_end)))
+        if bottom <= top:
+            return None
+
+        gray = image.crop((0, top, page_width, bottom)).convert("L")
+        width, height = gray.size
+        if width <= 0 or height <= 0:
+            return None
+
+        pixels = gray.load()
+        margin = int(width * (horizontal_margin_percent / 100.0))
+        x_start = max(0, min(width - 1, margin))
+        x_end = max(x_start + 1, min(width, width - margin))
+        scan_width = x_end - x_start
+        active_rows: list[int] = []
+        for row in range(height):
+            dark_count = 0
+            for col in range(x_start, x_end):
+                if pixels[col, row] < white_threshold:
+                    dark_count += 1
+            if dark_count >= min_dark_pixels and (dark_count / scan_width) >= min_row_density:
+                active_rows.append(row)
+
+        if not active_rows:
+            return None
+
+        def expand_to_stable_edge(start_index: int, direction: int) -> int:
+            row = active_rows[start_index]
+            empty_streak = 0
+            while 0 <= row + direction < height:
+                row += direction
+                dark_count = 0
+                for col in range(x_start, x_end):
+                    if pixels[col, row] < white_threshold:
+                        dark_count += 1
+                if dark_count >= min_dark_pixels and (dark_count / scan_width) >= min_row_density:
+                    empty_streak = 0
+                    continue
+                empty_streak += 1
+                if empty_streak >= consecutive_rows:
+                    return row - (direction * consecutive_rows)
+            return row
+
+        content_top = expand_to_stable_edge(0, -1)
+        content_bottom = expand_to_stable_edge(len(active_rows) - 1, 1)
+        if content_bottom <= content_top:
+            return None
+
+        return top + content_top, top + content_bottom
+
+    @staticmethod
     def split_image_by_questions(
         image: Image.Image,
         questions: List[Dict[str, Any]],
@@ -208,14 +275,24 @@ class QuestionSplitter:
         footer_cutoff_percent: float = 98.5,
         top_padding_pt: float = 14.0,
         bottom_padding_pt: float = 14.0,
-        min_crop_height_pt: float = 72.0,
+        min_crop_height_pt: float = 180.0,
         upward_overlap_percent: float = 4.0,
         upward_overlap_max_pt: float = 140.0,
         bottom_question_threshold_percent: float = 80.0,
         bottom_question_extra_up_percent: float = 8.0,
         last_question_extra_up_percent: float = 9.0,
+        visual_trim_enabled: bool = True,
+        visual_padding_pt: float = 24.0,
+        candidate_expand_top_percent: float = 1.5,
+        candidate_expand_bottom_percent: float = 4.0,
+        max_visual_top_shift_pt: float = 48.0,
+        white_threshold: int = 245,
+        min_row_density: float = 0.006,
+        horizontal_margin_percent: float = 2.0,
+        min_visual_content_height_pt: float = 40.0,
+        min_visual_content_ratio: float = 0.08,
     ) -> List[bytes]:
-        """Split a rotated page image into one PDF per question, allowing overlap for completeness."""
+        """Split a rotated page image into one PDF per question, then trim blank vertical margins."""
         if not questions:
             return []
 
@@ -236,6 +313,7 @@ class QuestionSplitter:
         for index, question in enumerate(sorted_questions):
             top_percent = to_float(question.get("top_percent", question.get("vertical_percent", 0.0)), 0.0)
             bottom_percent = question.get("bottom_percent")
+            next_top_percent: Optional[float] = None
 
             if bottom_percent is None:
                 if index + 1 < len(sorted_questions):
@@ -243,14 +321,22 @@ class QuestionSplitter:
                         sorted_questions[index + 1].get("top_percent", sorted_questions[index + 1].get("vertical_percent", 100.0)),
                         100.0,
                     )
+                    next_top_percent = next_top
                     bottom_percent = next_top - 1.0
                 else:
                     bottom_percent = footer_cutoff_percent
             else:
                 bottom_percent = to_float(bottom_percent, footer_cutoff_percent)
+                if index + 1 < len(sorted_questions):
+                    next_top_percent = to_float(
+                        sorted_questions[index + 1].get("top_percent", sorted_questions[index + 1].get("vertical_percent", 100.0)),
+                        100.0,
+                    )
 
             top_percent = max(0.0, min(99.0, top_percent))
             bottom_percent = max(0.0, min(footer_cutoff_percent, bottom_percent))
+            if next_top_percent is not None:
+                bottom_percent = min(bottom_percent, max(top_percent + 1.0, next_top_percent - 0.5))
             if bottom_percent <= top_percent:
                 bottom_percent = min(footer_cutoff_percent, top_percent + 5.0)
 
@@ -266,6 +352,39 @@ class QuestionSplitter:
 
             if index == len(sorted_questions) - 1 and top_percent >= bottom_question_threshold_percent:
                 y_start = max(0.0, y_start - page_height * (last_question_extra_up_percent / 100.0))
+
+            if visual_trim_enabled:
+                expanded_start = max(
+                    0.0,
+                    y_start - page_height * (candidate_expand_top_percent / 100.0),
+                )
+                expanded_end = min(
+                    page_height,
+                    y_end + page_height * (candidate_expand_bottom_percent / 100.0),
+                )
+                if next_top_percent is not None:
+                    next_top_y = max(0.0, min(page_height, (next_top_percent / 100.0) * page_height))
+                    expanded_end = min(expanded_end, max(y_end, next_top_y - bottom_padding_pt))
+
+                content_bounds = QuestionSplitter._find_content_vertical_bounds(
+                    image,
+                    expanded_start,
+                    expanded_end,
+                    white_threshold=white_threshold,
+                    min_row_density=min_row_density,
+                    horizontal_margin_percent=horizontal_margin_percent,
+                )
+                if content_bounds is not None:
+                    content_top, content_bottom = content_bounds
+                    content_height = content_bottom - content_top
+                    candidate_height = expanded_end - expanded_start
+                    if (
+                        content_height >= min_visual_content_height_pt
+                        and content_height >= candidate_height * min_visual_content_ratio
+                    ):
+                        if content_top >= y_start - max_visual_top_shift_pt:
+                            y_start = max(0.0, content_top - visual_padding_pt)
+                        y_end = min(page_height, content_bottom + visual_padding_pt)
 
             if (y_end - y_start) < min_crop_height_pt:
                 y_end = min(page_height, y_start + min_crop_height_pt)
@@ -341,6 +460,15 @@ class QuestionSplitter:
         pdf_bytes = doc.write()
         doc.close()
         return pdf_bytes
+
+    @staticmethod
+    def pdf_first_page_height(pdf_bytes: bytes) -> float:
+        """Return the height of the first PDF page."""
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            return float(doc[0].rect.height)
+        finally:
+            doc.close()
 
 
 class DocumentSplitter:
@@ -461,47 +589,59 @@ class DocumentSplitter:
         else:
             q_doc = fitz.open(stream=question_pdf_bytes, filetype="pdf")
             a_doc = fitz.open(stream=answer_pdf_bytes, filetype="pdf")
-            q_page = q_doc[0]
-            a_page = a_doc[0]
+            try:
+                q_page = q_doc[0]
+                a_page = a_doc[0]
 
-            q_base = Image.open(io.BytesIO(q_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
-            a_base = Image.open(io.BytesIO(a_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
+                q_base = Image.open(io.BytesIO(q_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
+                a_base = Image.open(io.BytesIO(a_page.get_pixmap(dpi=120).tobytes("png"))).convert("RGB")
 
-            q_candidates = {
-                "r0": q_base,
-                "r90": q_base.rotate(90, expand=True),
-                "r180": q_base.rotate(180, expand=True),
-                "r270": q_base.rotate(270, expand=True),
-            }
-            a_candidates = {
-                "r0": a_base,
-                "r90": a_base.rotate(90, expand=True),
-                "r180": a_base.rotate(180, expand=True),
-                "r270": a_base.rotate(270, expand=True),
-            }
+                q_candidates = {
+                    "r0": q_base,
+                    "r90": q_base.rotate(90, expand=True),
+                    "r180": q_base.rotate(180, expand=True),
+                    "r270": q_base.rotate(270, expand=True),
+                }
+                a_candidates = {
+                    "r0": a_base,
+                    "r90": a_base.rotate(90, expand=True),
+                    "r180": a_base.rotate(180, expand=True),
+                    "r270": a_base.rotate(270, expand=True),
+                }
 
-            detected = await QuestionDetector.detect_question_answer_layout_with_llm(
-                q_candidates,
-                a_candidates,
-            )
-            if not detected:
+                q_parts = []
+                a_parts = []
+                for attempt in range(2):
+                    detected = await QuestionDetector.detect_question_answer_layout_with_llm(
+                        q_candidates,
+                        a_candidates,
+                    )
+                    if not detected:
+                        continue
+
+                    q_best = str(detected.get("question_best_orientation", "r0")).lower()
+                    a_best = str(detected.get("answer_best_orientation", "r0")).lower()
+                    q_regions = list(detected.get("question_regions", []))
+                    a_regions = list(detected.get("answer_regions", []))
+
+                    q_selected = q_candidates.get(q_best, q_base)
+                    a_selected = a_candidates.get(a_best, a_base)
+
+                    q_parts = QuestionSplitter.split_image_by_questions_with_labels(q_selected, q_regions)
+                    a_parts = QuestionSplitter.split_image_by_questions_with_labels(a_selected, a_regions)
+
+                    part_heights = [
+                        QuestionSplitter.pdf_first_page_height(pdf_data)
+                        for _label, pdf_data in [*q_parts, *a_parts]
+                    ]
+                    all_parts_are_tiny = bool(part_heights) and all(height <= 190.0 for height in part_heights)
+                    if not all_parts_are_tiny or attempt == 1:
+                        break
+
+                    print("[DocumentSplitter] Detected only tiny crops; retrying layout detection.")
+            finally:
                 q_doc.close()
                 a_doc.close()
-                return []
-
-            q_best = str(detected.get("question_best_orientation", "r0")).lower()
-            a_best = str(detected.get("answer_best_orientation", "r0")).lower()
-            q_regions = list(detected.get("question_regions", []))
-            a_regions = list(detected.get("answer_regions", []))
-
-            q_selected = q_candidates.get(q_best, q_base)
-            a_selected = a_candidates.get(a_best, a_base)
-
-            q_parts = QuestionSplitter.split_image_by_questions_with_labels(q_selected, q_regions)
-            a_parts = QuestionSplitter.split_image_by_questions_with_labels(a_selected, a_regions)
-
-            q_doc.close()
-            a_doc.close()
 
         q_map: Dict[str, List[bytes]] = {}
         a_map: Dict[str, List[bytes]] = {}
