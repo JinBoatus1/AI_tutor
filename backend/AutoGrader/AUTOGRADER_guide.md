@@ -1,13 +1,14 @@
 # Auto Grader
 
-Auto Grader lets you upload a question paper and an answer paper, then returns per-question scores with a single grading request.
+Auto Grader lets you upload a question paper and, optionally, an answer paper, then returns per-question scores with a single grading request.
 
 ## Current UI
 
 The current Auto Grader page contains:
 
 - one upload box for the question paper
-- one upload box for the answer paper
+- one optional upload box for the answer paper
+- one optional Grading Criteria text area
 - one `Start Grading` button
 
 Supported file types for both inputs:
@@ -22,12 +23,13 @@ The backend also accepts other image formats supported by Pillow, but the format
 ## How It Works
 
 1. Upload the question file.
-2. Upload the answer file.
-3. Click `Start Grading`.
-4. The backend pairs the question and answer content.
-5. A single LLM call scores all detected questions.
-6. The page shows each question score.
-7. If every question is graded with an absolute score, the UI also shows the total score.
+2. Optionally upload the answer file.
+3. Optionally enter Grading Criteria.
+4. Click `Start Grading`.
+5. If an answer file is supplied, the backend pairs the question and answer content.
+6. If no answer file is supplied, the backend splits the question paper, derives reference answers, and scores from the question content.
+7. The page shows each question score.
+8. If every question is graded with an absolute score, the UI also shows the total score.
 
 If at least one question falls back to percentage mode, the UI shows only the per-question scores and does not compute a total.
 
@@ -51,8 +53,10 @@ File:
   - A traceable identifier for the submission
 - `question_source: string`
   - Path to the question paper file
-- `answer_source: string`
-  - Path to the answer paper file
+- `answer_source: string | null`
+  - Optional path to the answer paper file
+- `grading_criteria: string | null`
+  - Optional user-supplied grading rules that are included in the scoring prompt
 
 ### Response Fields
 
@@ -62,6 +66,9 @@ File:
   - Echoes the original request id
 - `pair_count: int`
   - Number of matched question-answer pairs
+- `grading_mode: "question_answer" | "question_only"`
+  - `question_answer` when an answer file was provided
+  - `question_only` when the grader derived reference answers from the question paper
 - `temp_dir: string | null`
   - Internal temporary directory for cropped pair PDFs
   - The web API removes this directory after the request finishes
