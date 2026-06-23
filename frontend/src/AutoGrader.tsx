@@ -57,8 +57,8 @@ export default function AutoGrader() {
   const handleSubmit = async () => {
     setError("");
     setResult(null);
-    if (!questionFile || !answerFile) {
-      setError(t("autograder.errBothFiles"));
+    if (!questionFile) {
+      setError(t("autograder.errQuestionFile"));
       return;
     }
 
@@ -140,7 +140,7 @@ export default function AutoGrader() {
           </div>
 
           <div className="autograder-panel">
-            <span className="autograder-panel-label">{t("autograder.answerFile")}</span>
+            <span className="autograder-panel-label">{t("autograder.answerFileOptional")}</span>
             <div className="autograder-file-row">
               <input
                 ref={answerInputRef}
@@ -165,16 +165,36 @@ export default function AutoGrader() {
             </div>
           </div>
 
+          <div className="autograder-panel">
+            <label className="autograder-panel-label" htmlFor="autograder-criteria">
+              {t("autograder.criteria")}
+            </label>
+            <textarea
+              id="autograder-criteria"
+              className="autograder-textarea"
+              value={gradingCriteria}
+              placeholder={t("autograder.criteriaPlaceholder")}
+              onChange={(event) => setGradingCriteria(event.target.value)}
+            />
+          </div>
+
           <button type="button" className="autograder-submit" onClick={handleSubmit} disabled={grading}>
             {grading ? t("autograder.grading") : t("autograder.start")}
           </button>
 
           {error ? <p className="autograder-error-text">{error}</p> : null}
-        </div>
+        </section>
 
         {result ? (
           <section className="autograder-result" aria-labelledby="autograder-result-heading">
-            <h3 id="autograder-result-heading">{t("autograder.results")}</h3>
+            <div className="autograder-result-header">
+              <h3 id="autograder-result-heading">{t("autograder.results")}</h3>
+              <span className="autograder-mode-pill">
+                {result.grading_mode === "question_only"
+                  ? t("autograder.modeQuestionOnly")
+                  : t("autograder.modeQuestionAnswer")}
+              </span>
+            </div>
             <p className="autograder-result-meta">
               {t("autograder.pairsDetected", { count: String(result.pair_count) })}
             </p>
