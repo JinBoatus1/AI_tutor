@@ -1,0 +1,333 @@
+import { useMemo, useRef, useState } from "react";
+import "./Grades.css";
+import { computeStanding, goalSeek, type Course } from "./grades/mockEngine";
+import { demoCourse, emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
+import { loadSavedCourse, saveCourse } from "./grades/gradesStorage";
+import RubricEditor from "./grades/RubricEditor";
+import { useLocale } from "./i18n/LocaleContext";
+
+/**
+ * /grades — "My Course" (Lane D, mock-backed).
+ * Built to the locked design (plan-design-review 2026-06-03): state-driven IA,
+ * plain-English rubric editor, pre-listed gradebook with inline edit, goal-seek
+ * ladder + item picker. Numbers come from a CLIENT mock engine so the page is
+ * interactive; the real numbers are server-computed once the backend is wired.
+ */
+type Phase = "firstrun" | "parsing" | "confirming" | "ready";
+
+export default function Grades() {
+  const { t } = useLocale();
+  const [phase, setPhase] = useState<Phase>("ready");
+  const [course, setCourse] = useState<Course>(() => loadSavedCourse() ?? demoCourse());
+  const [editing, setEditing] = useState(false);
+  const courseBeforeEdit = useRef<Course | null>(null);
+
+  const updateCourse = (next: Course) => {
+    setCourse(next);
+    saveCourse(next);
+  };
+
+  const openEdit = () => {
+    courseBeforeEdit.current = course;
+    setEditing(true);
+  };
+
+  const startParse = () => {
+    setPhase("parsing");
+    fakeParseSyllabus().then((c) => {
+      updateCourse(c);
+      setPhase("confirming");
+    });
+  };
+  const startManual = () => {
+    updateCourse(emptyManualCourse());
+    setPhase("confirming");
+  };
+
+  const finishRubricEdit = (final: Course) => {
+    updateCourse(final);
+    courseBeforeEdit.current = null;
+    setEditing(false);
+    setPhase("ready");
+  };
+
+  const cancelRubricEdit = () => {
+    if (courseBeforeEdit.current) updateCourse(courseBeforeEdit.current);
+    courseBeforeEdit.current = null;
+    setEditing(false);
+    setPhase("ready");
+  };
+
+  return (
+    <div className="gr-page">
+      <header className="gr-head">
+        <h1 className="gr-title">
+          {phase === "ready" ? course.name : t("grades.title")}
+          {phase === "ready" && course.term ? (
+            <span className="gr-sub"> <span className="gr-dot">·</span> {course.term}</span>
+          ) : null}
+        </h1>
+        <div className="gr-head-actions">
+          <span className="gr-mockpill">{t("grades.previewMock")}</span>
+          {phase === "ready" && (
+            <>
+              <button className="gr-btn-ghost" onClick={openEdit}>
+                ⚙ {t("grades.editRubric")}
+              </button>
+              <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
+                {t("grades.newCourse")}
+              </button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {phase === "firstrun" && <FirstRun onUpload={startParse} onManual={startManual} />}
+      {phase === "parsing" && <Parsing />}
+      {(phase === "confirming" || editing) && (
+        <RubricEditor
+          course={course}
+          parsed={phase === "confirming"}
+          onChange={updateCourse}
+          onConfirm={finishRubricEdit}
+          onCancel={cancelRubricEdit}
+        />
+      )}
+      {phase === "ready" && !editing && (
+        <>
+          <StandingHero course={course} />
+          <GoalSeek course={course} />
+          <Gradebook course={course} onChange={updateCourse} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () => void }) {
+  const { t } = useLocale();
+  return (
+    <section className="gr-firstrun">
+      <div className="gr-fr-card">
+        <div className="gr-fr-mark">∑</div>
+        <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
+        <button className="gr-btn-primary gr-fr-cta" onClick={onUpload}>
+          {t("grades.uploadSyllabus")}
+        </button>
+        <button className="gr-linkbtn" onClick={onManual}>
+          {t("grades.enterManually")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function Parsing() {
+  const { t } = useLocale();
+  return (
+    <section className="gr-parsing">
+      <div className="gr-spinner" aria-hidden />
+      <p className="gr-parsing-text">{t("grades.parsing")}</p>
+      <p className="gr-parsing-sub">{t("grades.parsingSub")}</p>
+    </section>
+  );
+}
+
+function StandingHero({ course }: { course: Course }) {
+  const { t } = useLocale();
+  const s = useMemo(() => computeStanding(course), [course]);
+  // Split a trailing +/− off the letter so it can render as a small serif superscript.
+  const letter = s.letter ?? "—";
+  const letterMain = letter.length > 1 ? letter.slice(0, -1) : letter;
+  const letterSup = letter.length > 1 ? letter.slice(-1) : "";
+  return (
+    <section className="gr-standing" aria-label={t("grades.standing")}>
+      {s.percent == null ? (
+        <div className="gr-standing-empty">{t("grades.standingEmpty")}</div>
+      ) : (
+        <>
+          <div className="gr-mark">
+            {letterMain}
+            {letterSup && <sup>{letterSup}</sup>}
+          </div>
+          <div className="gr-standing-side">
+            <div className="gr-standing-num">
+              {s.percent.toFixed(1)}<small>%</small>
+            </div>
+            <div className="gr-standing-basis">{t("grades.onGradedSoFar")}</div>
+            <span className="gr-seal">● {t("grades.standing")}</span>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course) => void }) {
+  const { t } = useLocale();
+  const setScore = (catId: string, itemId: string, raw: string) => {
+    const score = raw.trim() === "" ? null : Number(raw);
+    onChange({
+      ...course,
+      categories: course.categories.map((cat) =>
+        cat.id !== catId
+          ? cat
+          : { ...cat, items: cat.items.map((it) => (it.id === itemId ? { ...it, score } : it)) },
+      ),
+    });
+  };
+  const addItem = (catId: string) =>
+    onChange({
+      ...course,
+      categories: course.categories.map((cat) =>
+        cat.id !== catId
+          ? cat
+          : {
+              ...cat,
+              items: [
+                ...cat.items,
+                { id: `${catId}-${Date.now()}`, name: `Item ${cat.items.length + 1}`, score: null, maxScore: 100 },
+              ],
+            },
+      ),
+    });
+
+  return (
+    <section className="gr-card gr-gradebook">
+      <h2 className="gr-sec-label">{t("grades.gradebook")}</h2>
+      {course.categories.map((cat) => (
+        <div className="gr-gb-cat" key={cat.id}>
+          <div className="gr-gb-cat-head">
+            <span className="gr-gb-cat-name">{cat.name}</span>
+            <span className="gr-gb-cat-weight">{cat.weight}%</span>
+          </div>
+          {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
+          {cat.items.map((it) => (
+            <div className="gr-gb-row" key={it.id}>
+              <span className="gr-gb-name">{it.name}</span>
+              <span className="gr-gb-leader" />
+              {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
+              <span className="gr-gb-score">
+                <input
+                  className="gr-gb-input"
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="—"
+                  value={it.score ?? ""}
+                  aria-label={`${it.name} score`}
+                  onChange={(e) => setScore(cat.id, it.id, e.target.value)}
+                />
+                <span className="gr-gb-max">/ {it.maxScore}</span>
+              </span>
+            </div>
+          ))}
+          <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
+            {t("grades.addGrade")}
+          </button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function GoalSeek({ course }: { course: Course }) {
+  const { t } = useLocale();
+  const ungraded = useMemo(
+    () =>
+      course.categories.flatMap((cat) =>
+        cat.items.filter((it) => it.score == null).map((it) => ({ cat, it })),
+      ),
+    [course],
+  );
+  const [selId, setSelId] = useState<string>("");
+  const sel = ungraded.find((u) => u.it.id === selId) ?? ungraded[0];
+  const ladder = useMemo(() => {
+    if (!sel) return [];
+    return course.cutoffs
+      .filter((x) => x.letter !== "F")
+      .slice(0, 4)
+      .map((x) => ({ letter: x.letter, res: goalSeek(course, x.letter, sel.cat.name, sel.it.id) }));
+  }, [course, sel]);
+
+  // Hero line: the highest letter still reachable by scoring on this item.
+  const reachable = ladder.find((r) => r.res.status === "ok");
+  const allLocked = ladder.length > 0 && ladder.every((r) => r.res.status === "locked");
+  const bestLocked = ladder.find((r) => r.res.status === "locked");
+  const targetLetter = reachable?.letter ?? ladder[0]?.letter ?? "A";
+
+  return (
+    <section className="gr-card gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
+      <hr className="gr-rule" />
+      <div className="gr-sec-label">
+        <span>{t("grades.pathTo", { letter: targetLetter })}</span>
+        {sel && ungraded.length > 1 ? (
+          <label className="gr-goal-on">
+            {t("grades.on")}
+            <select value={sel.it.id} onChange={(e) => setSelId(e.target.value)} aria-label="Upcoming item">
+              {ungraded.map((u) => (
+                <option key={u.it.id} value={u.it.id}>
+                  {u.it.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : sel ? (
+          <span className="gr-sec-aside">
+            {sel.it.name} {t("grades.remaining")}
+          </span>
+        ) : null}
+      </div>
+
+      {!sel ? (
+        <p className="gr-goal-done">{t("grades.allGraded")}</p>
+      ) : (
+        <>
+          <div className="gr-path">
+            {reachable ? (
+              <>
+                <span className="gr-path-q">{t("grades.youNeed")}</span>
+                <span className="gr-path-num">
+                  {reachable.res.needed!.toFixed(1)}
+                  <small> / {sel.it.maxScore}</small>
+                </span>
+                <span className="gr-hand">
+                  {reachable.res.needed! <= sel.it.maxScore * 0.7 ? t("grades.totallyDoable") : t("grades.youGotThis")}
+                </span>
+              </>
+            ) : allLocked ? (
+              <>
+                <span className="gr-path-q">{t("grades.alreadyAt")}</span>
+                <span className="gr-path-num">{ladder[0].letter}</span>
+                <span className="gr-hand">{t("grades.lockedIn")}</span>
+              </>
+            ) : (
+              <>
+                <span className="gr-path-q">{t("grades.onTrackFor")}</span>
+                <span className="gr-path-num">{bestLocked?.letter ?? targetLetter}</span>
+                <span className="gr-hand">✎</span>
+              </>
+            )}
+          </div>
+
+          <ul className="gr-goal-list">
+            {ladder.map(({ letter, res }) => (
+              <li className="gr-goal-row" key={letter}>
+                <span className="gr-goal-letter">{letter}</span>
+                <span className="gr-goal-leader" />
+                {res.status === "ok" ? (
+                  <span className="gr-goal-need">
+                    {t("grades.scoreOn", { score: res.needed!.toFixed(1), item: sel.it.name })}
+                  </span>
+                ) : res.status === "locked" ? (
+                  <span className="gr-goal-locked">{t("grades.alreadyLockedIn")}</span>
+                ) : (
+                  <span className="gr-goal-unreach">{t("grades.outOfReach")}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}

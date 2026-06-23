@@ -1,0 +1,55 @@
+threshold for epidemic spread on a grid. We do not address modeling, which is very application dependent. 
+We care about w hat happens next. You ask questions. Here are a few interesting questions.
+1. Given the initial infection, who will ultim ately get infected?
+2. W hat is the fewest initial infections needed to ultim ately infect the whole community?
+3. If you had a few vaccines, who should you immunize to minimize the ultim ate infection?
+4. Given the current observed state of the epidemic, can one determ ine the “points of entry 
+defined as the 
+smallest set of initially infected people th at could have produced the observed infections?
+do get answers, one must analyze the model, and th at is where discrete m athem atics enters.
+E xercise 1.2
+Can you infect the entire 7 x 7  grid, starting with an initial infection of just 6 people?
+Before we switch gears, observe th at our model for EBOLA spread can apply to other contexts: virus spread 
+in a computer network; company-defaults in an economic crisis; adoption of a technology in a social network.
+1.2 
+Speed Dating
+You analyze disease spread in your spare time, but your real job is to run a speed-dating club. Every night 
+you get 16 people, 8 boys and 8 girls. Anyone can date any other person. Here is how the night plays out. 
+You have four tables, and there are 4 rounds of speed dating. In each round, 4 people sit at each table to 
+“speed date” in a group setting. Round 1 of speed dating is shown below. The letters are the first initial of 
+the clients. In round 1, A meets B , C  and D\ B  meets A , C  and D\ and so on.
+® 
+® 
+© 
+@
+® ^ ®  
+© ^ ®  
+® ^ ®
+© 
+© 
+® 
+®
+You succeed if you hook uj) many couples, so you want everyone to meet as many people as possible during 
+the night. T h at’s the model. Here are some interesting (piestions.
+1. W hat does “.. .m eet as many people as possible ..."  mean? Do you care about the average number of 
+encounters your clients had or the client who had the fewest encounters?
+2. Can one efficiently configure the rounds so that everyone meets at least 10 peo[)le?
+.3, W hat would hapi)en if you randomly assigned clients to tables in each round?
+Tinker a little. Can yon come up with good ways to configure the 4 rounds of speed-dating. See if you can 
+hgure out why I am so confident th at no m atter how much you tinker, no one will meet more than 12 people. 
+1 can also say that if you configured the rounds randomly, everyone would expect to meet about !) people, so 
+random is not that bad. You cannot beat 12 for anyoiii', and random  gets yt)u to about 9 for ew ryone.
+1.3 
+Friendship Networks and Ads
+Six ])eople Alice (.4). Bob (Zi). Cliarles (C), David {D). Edward {E) and Fiona {F) form a 
+friendship or social network. Circles are the people and tlii' links arc the friendships Ix'tween 
+l)airs of p('oplc. Two p('oplc, i.e. circles, an' friends if tlu'y are coniu'cted by a line. \'ou might 
+recognize the friendship cli(iiies b('tweeu j.-l.C ,/)} and { D , B . K ]  whili' /•' looks likt' a loner.'
+W e  can visually analyze our small friendship lU'twork, but what about an online social network with a 
+billion people.^ \\c  ccrtaiiily can I draw it on this jiage. So how would you gii about identifying all the large 
+Iricndsliii) cli(|iies? This tiiriis out to be a vi'iy iiitcresting challcngi', but why do wi' care?
+'In n tri('inlslii|) clicinc, ('vcrvdnc is trirnils wilh cvcrx(imi'-cIsc.
+1. A T a s t e  o f D i s c r e t e  M a t h e m a t ic s_______________________________________ 
+ 
+ 
+1.2. S p e e d  D a t in g

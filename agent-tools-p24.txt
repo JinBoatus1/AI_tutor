@@ -1,0 +1,60 @@
+An advertiser who wants to m arket a now sm artphone may try to convince David (D) to adopt the device 
+in the hopes th a t everyone in D avid’s friendship cliques m ight also buy the device. T h at would be a huge 
+payoff. To make such advertising dream s into realities, we need to model social networks in a way th at can be 
+represented on a com puter, and find all the large friendship-cliques or social “communities” so the advertiser 
+can identify whom to target. Finding the large cliques is a tough discrete m athem atics problem.
+1.4 
+Modeling Computers
+You’ve now seen some flavors of discrete m athem atics. Com puter scientists use discrete m athem atics to model, 
+analyze and solve real world problems. The sum m it of our adventure is going to be a grand model, a model 
+of the digital com puter 
+a model of computing. We w ant a realistic model th a t captures your desktop as well 
+as sm artphone, G PU  or fitbit. B ut, it should be simple enough to analyze, for we have deep questions to ask.
+1. W hat can we com pute?
+2. W hat can’t we com pute?
+3. Are there things we can com pute in principle, but it takes too long?
+In answering these questions, we will journey through the world of discrete m athem atics. 
+d 
+d 
+d
+W hat is com puting? L et’s get a feel for it using a domino puzzle. The top and bottom  
+entry in each of the three dominos d i , d 2 ,ds on the right is a binary string. A sequence 
+of dom inoes produces a combined domino in which the top string is the concatenation of 
+all the top strings in order, and similarly for the bottom  string. For example,
+1. A T a s t e  o f  D i s c r e t e  M a t h e m a t i c s _______________ 
+M o d e l i n g  C o m p u t e r s
+0
+oT no
+100
+llil)
+dsdids 
+—
+TTojfo pio'
+iJ b o o J b i .
+which gives the combined domino
+1100110
+1110011
+To solve the domino puzzle, find a sequence of dominos for which the combined top and bottom  strings match. 
+R epetition of dom inos is allowed and you need not use all dominos. In this case, you can verify th a t d3d 2d3d\ 
+solves the puzzle. T h a t’s nice, but w hat does a simple kids’ puzzle have to do with computing? Could you 
+write a program  to solve the domino puzzle? Your program  would read in a text file where each row of the 
+file describes a domino, two com m a separated binary strings. Your program  should output a sequence of 
+dominos which solves the puzzle, or say it can’t be done. Now, does th a t look like a com puting problem to 
+you, som ething th a t could be on a program m ing assignm ent?
+C h a lle n g e . I’m feeling sly and evil. A prize of $1,000 inflation adjusted goes to the first correct 
+program  th a t solves the domino puzzle for any input file of dominos. There are two catches.
+(i) Your program  m ust stop and o utput the correct answer no m atter w hat the input domino file.
+(ii) You m ust give a proof th a t your program  is correct.
+We can’t rely on intuition to say w hat is and is not com puting. We need a precise model. Stay tuned.
+1.5 
+Proof
+It is H um an to  seek proof, to ask why. If your neighbor says evacuate because of hurricanes, wouldn t you 
+seek verification? If you claim to  have a perpetual m otion machine, I won’t take you at your word. We each 
+have different thresholds to be convinced of something. In life, a few true instances are often enough - that 
+is inductive proof. The sun has risen every morning. T h a t’s enough for us earthy beings to conclude that 
+the sun will always rise. Logically, a few cases of the sun having risen does not prove “The sun rises every 
+m orning.” It only m eans the statem ent is not obviously false. In m athem atics, we have the same urge for 
+verification, b u t our expectations are high. We require deductive proof.
+In the speed-dating ritual on page 8, nobody m eets more than 12 people. Here is a jiroof. In any round a 
+person m eets at m ost 3 new people. So, after 4 rounds they meet at most 4 x 3 =  12 new people. Aren t you 
+utterly convinced? The beauty of deductive proof is th a t it leaves no room for doubt.

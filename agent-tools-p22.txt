@@ -1,0 +1,52 @@
+Chapter 1
+Go down deep enough into anything and you will find mathematics.
+-  Dean Schlicler
+If you don't believe mathematics is simple, it is only because you don’t 
+realize how complicated life is. 
+- John von Neumann
+To ask the right question is harder than to answer it. - Georg Cantor
+Learning is a treasure that follows its owner. 
+- Chinese Proverb
+A Taste of Discrete Mathematics
+1: Wheting the appetite: epidemics; speed-dating; and, friendship networks.
+Discrete m athem atics deals w ith “objects th a t we count.” W hen you cook your favorite Thai dish, you perform 
+“discrete” steps in a sequence. We can count those steps. W hen delegates sit at a banquet, each “discrete” 
+delegate sits at a single “discrete” seat. Processes th a t take place in well defined steps, involving objects that 
+come in indivisible units are the focus of discrete m athem atics. The most famous discrete object is the digital 
+com puter which executes instructions in sequential steps and uses a discrete scratch-paper called RAM to 
+store interm ediate results during its calculations. If th a t is not enough reason to study the subject, then for 
+beauty’s sake do it. Let us begin w ith some examples of discrete m athem atics in the real world.
+1.1 
+M odeling Epidemics
+O utbreaks of a deadly virus EBOLA recur every now and then. The nam e of the virus is 
+not im portant. People live on a grid, think of a chess board w ith only white squares. Each 
+grid square is a person. Adjacent squares th a t share a side are neighbors. Initially, some 
+people are infected, in gray. Infection is perm anent and if at least two of your neighbors 
+are infected today, then tom orrow  you will be infected. W ho will ultim ately get infected? 
+For example, will the square shaded red eventually get infected on the 7 x 7  grid shown? 
+Let us tinker. Tinkering is an essential part of discrete m athem atics. So. starting from 
+the initial gray infections, let’s see how the infection spreads over a few days. On each 
+day, the previous infections are in black and the new infections are in gray.
+■
+■
+■
+■
+■
+■
+■
+day 1
+day 2
+day 3
+day 4
+day 5
+dav 6
+day 7
+day 8
+P o p  Q uiz 1.1
+Continue to tinker with the epidemic spread above. Does the red square eventually get infected?
+The epidemic spread is indeed a discrete process. People are either infected or not. Time is discretized into 
+days. We identified the actors as people living on a grid and the process dynamics -  at least two of youi 
+neighbors m ust be infected to infect you. These are modeling assum ptions. Modeling assum ptions are critical, 
+and you may argue w ith them . People may not live on a grid. Perhaps one neighbor being infected suffices to 
+infect you. A good model is more likely to give correct conclusions. The beginning of a discrete m athem atical 
+analysis is always a model of the phenom enon you are analyzing. In our case, the model was a 2-contact

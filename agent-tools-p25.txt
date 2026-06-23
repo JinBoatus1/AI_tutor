@@ -1,0 +1,56 @@
+1. A T a s t e  o f  D i s c r e t e  M a t h e m a t i c s
+1 .5 . P r o o f
+B ecom ing G o o d  a t D isc re te  M a th . You’re no stranger to reasoning in real life. You can look at a 
+rental contract and determine when you can break the lease w ithout penalty. M athem atics, reasoning about 
+abstract objects, is similar yet seems difficult. Don’t fret. You had a lifetime of training for everyday reasoning. 
+W ith similar training, you can build stam ina for m athem atics. But you must be diligent. M athem atics is no 
+spectator sport. D on't "read” or “study”. Do\ Work the examples, exercises and problems. W rite in the book. 
+Annotate definitions and theorems with pictures or simple examples. Make sure you understand w hat is being 
+said. No one speed reads m athem atics. Even to those fluent in the language, it is a foreign tongue.
+In mathematics, if you’re missing something, you’re missing everything. Work the text, quizzes 
+and exercises, with pencil and paper in hand. You m ust agree w ith the sm allest detail.
+It is worth showcasing the recurring workflow an expert uses to solve a problem. Memorize it.
+1: Model the problem you are trying to solve using a discrete m athem atical object. 
+2: Tinker with easy cases to understand the model. T in k e rin g  is e sse n tia l.
+3: Based on the tinkering, formulate a conjecture about your problem model.
+4: Prove the conjecture and make it a theorem. You now know som ething new.
+The novice builds the model and stares at it w ithout knowing w hat to prove, because of a failure to tinker.
+E x ercise 1.3 [A Sisyphean Puzzle to  T eethe On]
+Zeus punished King Sisyphus of Corinth to an eternity of rolling a boulder up a hill 
+only to see it roll down when near the top. Sisyphean tasks are laborious yet futile.
+Three boxes start with 100, 200 and 300 boulders, the configuration (100,200,300).
+A move places a stone from one box into another. For example, moving a stone 
+from the box with 200 to the box with 100 gives configuration (101,199,300).
+Each move gains or loses gold coins and debt is allowed. The gain is larger for a 
+move from a box with many stones to a box with few stones. Specifically,
+gain = ^  stones left in originating box (after move) — #  stones in destination box (before move).
+Here is a sequence of moves with the corresponding payments.
+start configuration 
+end configuration 
+gain
+(100.200.300) 
+(101,199,300) 
+199 - 100 = +99
+(101.199.300) 
+(101,198,301) 
+198 -  3 0 0 = -1 0 2
+(101.198.301) 
+(102.198,300) 
+300- 101 =+199
+The profit for these three moves is +196 coins (= 99 - 102 + 199). Sisyphus can move stones, but must 
+return to the start configuration. How much can Sisyphus profit? Can you prove it?
+M a th e m a tic s a n d  ‘"P artial C re d it”. 1 licv doii t mcsli well, lii scIiodI, i>artial r redit is a learuiug-aiile. It s 
+comforting to know you're close to a solution, and partial credit delivers the message. .Mathematics is not so 
+forgiving. A proof is right or wrong. There's no almost |)roven. Com puter programs are m athem atical objects 
+I iinning on inathematical de\’ices. 
+program works or it doc'sn t. It a builder makes one wrong join the whole 
+structure can fall. ’\o n  don t g(>t .(-crt'dit tor sending soiiK'one to the moon but forgetting to bring them  back. 
+A in-ograin that mostly works is a cata.strophe waiting to happen. Check ont Therac-25 on W ikipedia;
+"Because of concurrent programming errors, it sometimes gave its patients radiation doses 
+that were hundreds of times greater than normal, resulting in death or serious injury."
+W ho cares if Therac-25 had one bug or 17 bugs'.’ Should we be lenimit because Therac-25 worked 99 9'T of the 
+time, only failing in ran- boundary ca.ses'.’ Then- is a fundam ental ditlereiuv lu-tween algorithm s that alwavs 
+work an.l henristics which often work, but without guarant.v. bih- docs not give credit for partial solutions 
+Critical coinpntm- sy.steins from trafli.- control to robotic surgerv to self-driving cars must fullv work all 
+the tiiiK-. otherwi.se people will sulfer. Take the precaution to proiH yonr program works O thers relv on it
+H)

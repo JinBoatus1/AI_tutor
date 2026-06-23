@@ -1,0 +1,63 @@
+Obvious is the most dangerous word in mathematics. 
+E . T . D oll
+A heavy warning used to be given that pictures are not rigorous; 
+this has never had its bluff called and has permanently frightened its 
+victims into playing for safety. 
+-  John E . Littlewood
+Few things are harder to put up with than a good example.
+-  Mark Twain
+Chapter 4
+Proofs
+1: Iniplication; if . .., then ...
+2: P ro o f p atto rn s: direct [iroof; c o n trap o sitio n ; co n trad ictio n ; proofs ab o u t .sc'ts.
+A coniiiioii task is to reason from known facts and deduce soim'tliing new.
+It rained last night (fact); the grass is wet (“dr'dueed”).
+M athem aticians are a curiotis lot who live in an abstract world and reason about facts that art- not known to 
+be true. W hat rloes th a t m ean? Com iiare w hat we just deducc'd above with the following statm nent.
+IF it r a in e d  la s t n ig h t, TtlF.N t h e  gra.ss is w et.
+T his claim connects two facts. 'The connection is useful even though, at this moment, we have no facts. One 
+day, you may leaim th a t it rained last night and can infer th at the grass is wet. Hcai' is a nuire useful exanipk'. 
+I F  one can quickly find the largest friend-cliriue in a friendship network, I ' l ll l N one can (luickly 
+assign non-conflicting freciuencies to radio stations using a minimum numlx'r of freciuencies.
+Is this claim true? Yes. Is it useful? Not yet! If you discover a way to (piickly find the larg<\st friend-cliciue,
+only then can you assign 
+radio frequencies efficiently. We wish to jirove imiilicaf ions, p 
+q for arbitrary
+propositions p and </, even if the imiilicatiou is not of immediate' use rciusoning in the absi-nce 
+of facts.
+P o p  Q uiz 4.1
+Identify p and q in the following implications p ^  g.
+(a) If n is greater than 2 and even, then n is the sum of two primes,
+(b) If X and y are rational, then x + y \s rational.
+(c) 
+If ax^ +bx + c = 0 and a ^  0 then x = ( —6 + 
+— 4ac)/2a or a: = {—b — 
+-  Aac)/2a.
+4.1 
+Direct Proof
+We already saw a proof teclmiciue for im plication. 'The only case wlu'ie p -A (j is fal.se' is when p is tn u ' and (/ 
+is false. To show p 
+q is true, show th a t this counterexam ple cannot happen. Conside-r f lu' ('xaniple
+I F  X  and y are rational, r i l l ' . N  x  -F y is rational.
+This is the statem ent p 
+q w ith p = “:/• and y are rational" and q = "x + y is rational". We want to show 
+th a t p is true and q is false cannot happen. Supiiose p is true. W hat does th at mean? It iiK'aus x and y an' 
+ratios, x  = a/b 
+and y =  c/d, where a,c € Z  and b,d G N. Wc' now gc't an exjirr'.ssion tor ./■ + y,
+a 
+r 
+ad + be
+X  +  V  
+=  
+T  
++  -  =  
+—
+P T '  ■
+b 
+d 
+bd
+Observe th a t x  + y is a ratio of an integer ad +  be and a natural numlx'r bd. 
+1 hat is x +  y is rational and q 
+is true. The case w ith p being true and q being false can’t occur, .so tlie implication must be true'. Our prool 
+above is called direct proof, 'i'o show p being true and q bc'ing false cannot occur togc'tlu'r, assume' p is H  ue 
+and show q m ust be true. T his proves the imi)lic:ation. Here is the formal proof. Pay attc'iition to tlu' sb'i.s.

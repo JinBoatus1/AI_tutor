@@ -1,0 +1,460 @@
+Obvious is the most dangerous word in mathematics. 
+E . T . D oll
+A heavy warning used to be given that pictures are not rigorous; 
+this has never had its bluff called and has permanently frightened its 
+victims into playing for safety. 
+-  John E . Littlewood
+Few things are harder to put up with than a good example.
+-  Mark Twain
+Chapter 4
+Proofs
+1: Iniplication; if . .., then ...
+2: P ro o f p atto rn s: direct [iroof; c o n trap o sitio n ; co n trad ictio n ; proofs ab o u t .sc'ts.
+A coniiiioii task is to reason from known facts and deduce soim'tliing new.
+It rained last night (fact); the grass is wet (“dr'dueed”).
+M athem aticians are a curiotis lot who live in an abstract world and reason about facts that art- not known to 
+be true. W hat rloes th a t m ean? Com iiare w hat we just deducc'd above with the following statm nent.
+IF it r a in e d  la s t n ig h t, TtlF.N t h e  gra.ss is w et.
+T his claim connects two facts. 'The connection is useful even though, at this moment, we have no facts. One 
+day, you may leaim th a t it rained last night and can infer th at the grass is wet. Hcai' is a nuire useful exanipk'. 
+I F  one can quickly find the largest friend-cliriue in a friendship network, I ' l ll l N one can (luickly 
+assign non-conflicting freciuencies to radio stations using a minimum numlx'r of freciuencies.
+Is this claim true? Yes. Is it useful? Not yet! If you discover a way to (piickly find the larg<\st friend-cliciue,
+only then can you assign 
+radio frequencies efficiently. We wish to jirove imiilicaf ions, p 
+q for arbitrary
+propositions p and </, even if the imiilicatiou is not of immediate' use rciusoning in the absi-nce 
+of facts.
+P o p  Q uiz 4.1
+Identify p and q in the following implications p ^  g.
+(a) If n is greater than 2 and even, then n is the sum of two primes,
+(b) If X and y are rational, then x + y \s rational.
+(c) 
+If ax^ +bx + c = 0 and a ^  0 then x = ( —6 + 
+— 4ac)/2a or a: = {—b — 
+-  Aac)/2a.
+4.1 
+Direct Proof
+We already saw a proof teclmiciue for im plication. 'The only case wlu'ie p -A (j is fal.se' is when p is tn u ' and (/ 
+is false. To show p 
+q is true, show th a t this counterexam ple cannot happen. Conside-r f lu' ('xaniple
+I F  X  and y are rational, r i l l ' . N  x  -F y is rational.
+This is the statem ent p 
+q w ith p = “:/• and y are rational" and q = "x + y is rational". We want to show 
+th a t p is true and q is false cannot happen. Supiiose p is true. W hat does th at mean? It iiK'aus x and y an' 
+ratios, x  = a/b 
+and y =  c/d, where a,c € Z  and b,d G N. Wc' now gc't an exjirr'.ssion tor ./■ + y,
+a 
+r 
+ad + be
+X  +  V  
+=  
+T  
++  -  =  
+—
+P T '  ■
+b 
+d 
+bd
+Observe th a t x  + y is a ratio of an integer ad +  be and a natural numlx'r bd. 
+1 hat is x +  y is rational and q 
+is true. The case w ith p being true and q being false can’t occur, .so tlie implication must be true'. Our prool 
+above is called direct proof, 'i'o show p being true and q bc'ing false cannot occur togc'tlu'r, assume' p is H  ue 
+and show q m ust be true. T his proves the imi)lic:ation. Here is the formal proof. Pay attc'iition to tlu' sb'i.s.
+
+---
+4. P r o o f s
+4 .1 . D i r e c t  P r o o f
+T h e o re m  4.1. If x, y G Q, then x  + y £ Q.
+Proof. 
+We prove the theorem using a direct proof.
+1: Assume that x , y  g Q, th a t is x and y are rational.
+2: Then, x = ajb and y — c/d iov a,c G'L and 6 , d G N.
+3: Then x + y = {ad +  bc)/bd.
+4: Since ad + he G Z  and bd G N, {ad + bc)/bd is rational. 
+5: Thus, we conclude (from steps 3 and 4) th at x +
+G <Q
+(That’s what “x and y are rational” means.)
+(High-school algebra.)
+A proof is a m athem atical essay, and, as with a literary essay, a proof m ust be well w ritten. The goal of a 
+proof is to convince a reader of a theorem. A badly w ritten proof th a t leaves a reader w ith some doubts has 
+failed. Adhering to a structure in a proof is a good idea. Always start w ith the word “P ro o f’ (surprise ^ )  
+and tell the reader when the proof is over using the end of proof symbol 
+To begin your proof, state the 
+method you are using, in this case direct proof. The rem aining steps are summarized in the tem plate below.
+P ro o f T e m p la te  I: D ire c t p ro o f o f a n  im p lic a tio n  p q -  
+Proof We prove the implication using a direct proof.
+1: Start by assuming th at the statem ent claimed in p is true.
+2: Restate your assum ption in m athem atical terms.
+3: Use m athem atical and logical derivations to relate your assum ption to q. 
+4: Argue th at you have shown th a t q m ust be true.
+5: End by concluding th at q is true.
+E xam ple 4.2. Let x be any real number, i.e. x G R.
+IF 
+-  1 is divisible by 3. then 4^^+^ -  1 is divisible 
+by 3.
+This is the claim p ^  q with p =  “4^” — 1 is divisible by 3” and q — 
+••4'^+^ — 1 is divisible by 3”.
+Proof 
+Me prove the claim using a direct proof.
+1; Assume that p is true, th at is 
+— 1 is divisible by 3.
+2: This means that 4^^ -  1 =  3A: for an integer k. or th at 4-^ =  3A- -|- 1.
+3: Observe that 4'^+' =  4 • 4‘”, and since 4'' =  3A -I- 1. it follows that
+4'''+' =  4 - (3A--b 1) =  12A--f 4.
+Iherefore 4''+* -  1 = 12A' +  3 = 3(4A -|- 1). which is a multiple of 3 as 4A -I- 1 is an integer.
+4: Since 4'’+' -  1 is a multiple of 3. we have shown that 4' + ‘ -- 1 is divisible by .3.
+5: 'I'herefore, tlu' stateiiK'nt claimed in q is true.
+common mistake made aftc'r a direct proof is to think tliat p is true. ,\o! Me made a k)cal assumption that 
+p is tnu> inside the proof as our way of prcndng the implication. .Aftc'r our proof, wi' no longer can assume 
+I “ 1 is divisible' by .5. C an w(' claim 4' + ' - 1 is divisilik' by .3.^ No! Is .r an integi'i .’ Me don t know! None 
+ol tlu'sc' tilings arc' sjiecilied in I hc' claim. Only the' iinplication
+{ V  
+1 is divisible by 3) -> (4' + ' 
+1 is divisible by 3)
+is tiiie. If von have' an ./•
+,,3.22.... 
+I
+\ log,(22)
+2.22!) ■ • • lor which 4 ' 
+1 
+21 is divisible' by if now you conclude
+87 is divisible by ,3. The' im|)lication allows you to deduce' this ne'w fae l. 
+□
+As yon bc'coine a professional matlu'inal ician. von might re'lax the' formal strue'tnre e.f a preH.f. making it uun'e 
+str.'amlined. l liere aiv dill.T.'nt t.'clmicine's aiiel style's, but the' goal is always the same, to conviiiev the re'ade'r 
+ol some' c laim. It is the'r.'lore' imi.ortant to conve'v the' iek'a at the lu'art of the proof, abewe almost anything 
+else', Alwavs b.'ar in mind that the' pro..! will be' ivad by a human. Ib'l,. your re'ad.'r to fe.lk.w your proof.
+
+---
+4 . P r o o f s
+•'1.1. D i r e c t  P r o o f
+Guidelines for W riting Readable and Good Proofs 
+(I) S ta te  you r stra teg y . S tart w ith the type of proof, e.g. direct proof. Break 
+long proofs into p arts and tie up the parts at the end. Even if it is obvious, 
+don’t leave tying up to the reader. The reader m ust have no doubts.
+(II) H ave a  log ica l flow . Recall how hard it is to follow movies th a t jum p 
+betw een story lines or back and forth in time. A reader follows a proof 
+linearly, from beginning to end.
+(III) K eep  it sim p le. A proof is an essay w ith equations to justify steps, not 
+a sequence of equations w ith a few words sprinkled here and there. At the 
+h eart of a proof is an idea. Make the idea clear. Avoid overload of symbols 
+and new notation unless it’s absolutely necessary.
+(IV) J u stify  you r ste p s. T he reader m ust have no doubts. Avoid phrases like 
+“I t’s obvious t h a t . . . ” If it is so obvious, give a short explanation. Be honest 
+in your proof. D on’t try  to hide anything.
+(V) E n d  you r p roof. Explain why w hat you set out to show is true.
+(VI) R ea d  you r p roof. Finally, check correctness. Edit. Simplify.
+“For all.” 
+In Exam ple 4.2, nothing was said about x. The argum ent was general, in th at it applied to any x. 
+In the derivation, x  was ju st a place holder for a number. We could substitute any number for x. Thus, the 
+im plication is true for all x G R. We could define a com pound predicate
+P{x) : “ IF 
+-  1 is divisible by 3, t h e n  4^'+^ -  1 is divisible by 3”
+and we proved Vx S E  : P{x). This is one way to prove a universally quantified claim.
+P r o o f T em p la te II: P ro v in g  Vx € P  : P{x) u sin g a gen eral x. 
+Proof. 
+We prove P{x) for a general (arbitrary) element x € V.
+1: S tart by assum ing th a t x is an arbitrary element of V.
+2: M athem atically determ ine properties x m ust have because it is in D. 
+3; Use valid derivations to show th a t P (x ) is true for this generic x.
+4: Since P{x) is true for arbitrary x € P , conclude Vx G P  : P (x).
+A note on style and difficulty. You don’t have to num ber the steps in a proof, but all the steps should be there. 
+We num bered the steps so you can com pare a proof w ith a proof tem plate. A proof can be easy or hard, but 
+all the key 
+steps m ust be there in either case. W hat makes a proof hard? In Proof Tem plate II, steps 1 and
+4 are easy. 
+Step 2 is som ew hat non-trivial, in th a t you may have to think a little about w hat properties you
+can infer of elem ents in the dom ain P . Step 3 is likely to be the hard one, to use m athem atical and logical 
+derivations to show w hat you w ant and creativity is often required.
+E x a m p le 4.3. For all pairs of odd integers m, n, the sum rn + n is an even integer. Before proving this claim, 
+let’s make it precise by first defining the sets of even and odd integers.
+E  =  {n|n = 2 k ; k G  Zj; 
+O = {n\n = 2k + h k €  Z}:
+O ur claim is V(m, n) e O'^ : m  + n £ E. Note, 
+( P  ju st means pairs of elements from O. ( P  is tnpples, etc.
+P roof 
+We prove th a t rn +  n  G P  for general odd integers m  and n .
+1: To begin let m  G O and n G O be arbitrary odd integers.
+2: Since m  and n are odd, there are integers k and i  for which m  = 2k + I and n = 2i + I.
+3: We need to show th a t m  +  n  is even. Indeed, we have th at
+m  +  n =  2fc +  1 +  2£ +  1 =  2fc +  2£ +  2 =  2 ■ (/c +  £ +  1).
+Since A: +  £ +  1 is an integer, m  +  n  is twice an integer and hence m  +  n is even.
+4; Since m  +  n  is even for arbitrary odd m  and n, V(rn, n) G O'^ : rn +  n G P .
+4 3
+
+---
+4. P r o o f s
+4 .1 . D i r e c t  P r o o f
+“A ll” v e r s u s  “ I F . . .  T H E N .. . ” The two statem ents below are saying the same thing.
+p : ALL cars have 4 wheels.
+9 ; IF .T is a car, t h e n  x has 4 wheels.
+For this equivalence to hold, it is critical th at the condition “x is a car,” in the iF-statem ent, m atches exactly 
+the condition for membership in the set “cars”, the domain to which ALL refers. 
+Define this dom ain as 
+P  =  {.T I X is a car}. Our two statem ents are;
+p : Vx e P  ; “x has 4 wheels” 
+q : “x is a car” ->• “x has 4 wheels”
+Proposition p is universally quantified; q is an implication. If q is false, some car does not have 4 wheels and 
+p is false. If q is true, every car has 4 wheels and p is true. Either p and q are both true, or both false. If 
+you prove p then you have also proven q and vice versa. The universal statem ent and the im plication are 
+equivalent. Both are used frequently and interchangeably. Here is the formal statem ent of this equivalence.
+For predicates P{n) and Q{n), define a dom ain P  =  {n | P (n ) is true}. Then, 
+Vn e P  ; Q{n) 
+and 
+P{n) 
+Q{n)
+are equivalent statem ents. If you prove one, you have proved both.
+E xercise 4.2
+Use direct proof to prove the following claims.
+(a) If a is divisible by b and b is divisible by c, then a is divisible by c.
+(b) For all real numbers x, y, \x + y\ < |x| + |?/| (| • | is the absolute value).
+(c) The product of any 4 consecutive integers is divisible by 8 .
+4.1.1 
+Disproving Implication
+To disprove the implication P{n) 
+Q (n), you only need one special n , for which both P{n„) is true and 
+Q(n*) is false. For such a counterexample n*, P (n ,) -> Q(n») is false. Let us disprove the im plication
+IF X  >  0 . THEN X- >  0 .
+Our counterexamjjle is .r* =  0. for which x* > 0. but .r*’ < 0. A single counterexam ple suffices.
+E x a m p le 4.4. We illustrate the difference between jiroving and disproving an im plication.
+(i) D isprove: IF 
+> y'^. THEN x  > y. The im p lic a tio n  is false.
+Proof. 
+'I'o disjirove .r'^ > y~ 
+x  > y. consider the counterexam ple x = - 2  and y = 1. Lhen. x" =  4 and
+y^ = 1. and so .x^ > y~ is true. But x < y. and so x > y is false. A single counterexam ple suthces. 
+■
+(ii) 
+P ro v e: i f  x ‘^ > y^ and x > 0, 'riiKN x > y. 'I'he implication is true.
+Proof. 
+W’v use a diri'ct jiroof. Assmiu' that .v’ > y ’ and x > 0. There are two cases.
+Case I [y < 0). 
+Trivially, x -- y > 
+0 Ix'cause x > 0.
+Case 2 (// > 0). 
+From .r~ > 
+we get ,r'- -  //- > 0, or [x -  y){x + y) > 0. Since x  > I) and y > 0,
+./■ -F y > 0 . Hence x -  y > 0 . or ('ls(' tlu' product can't be positive.
+In both eases x - y > 0 as was to he shown. 
+g
+I hedisiaoof in (i) is short and easy; you lind a singli'counteri'xam ple. TIu' proof in (ii) is long and complicated. 
+Disiiroving an ini|)lieation is "easy"; |)roving is hard. The proof in (ii) used eases, a common tactic. W hen you 
+use eases, it is iuiiiortant to consider all possible' case's. He'ie'. tlie're are emly twei peissible ca.se's. y < 0 auel 
+y > (I. I’le'ase' re'-re'ael thi'se' twee |)ie)e)fs te> appre'e-iate' the' eliife're'ue-e' in their nature'. 
+□
+P o p  Q uiz 4.3
+For a predicate Q{ii). how do you disprove the statement Vn G P : Q(n).
+
+---
+4. P r o o f s
+4 .2 . P r o o f  b y C o n t r a p o s i t i o n
+4.2 
+Proof by Contraposition
+To prove p ^  q, you show th a t the counterexam ple p is true and q is false can’t occur. In a direct proof, you 
+assume p and prove q. Instead, one could start by assuming q to be false and show th a t p cannot be true, 
+which also m eans p being true and q being false cannot happen. Let us use this m ethod to show
+IF x'^ is even, t h e n  x  is even.
+To show (.T^ is even) 
+{x is even) using the new approach, first assume x is not even [q is false). Now show
+th a t 
+is not even {p m ust be false). If x  is not even, then x is odd and x =  2fc +  1 for some integer k. Then,
+=  {2k + i f  =  4 / t 2  +  4A- +  1 =  2{2k'^ + 2k) + l =  2 i + l ,
+where ( ^  2k'^ + 2k is an integer. T h at is, when x  is not even, 
+is also not even. 
+We have proved the
+im plication. This m ethod of proof is called proof by contraposition.
+P r o o f T em p la te III: P r o o f o f p —> 
+by C on trap osition .
+Proof. 
+We prove the theorem  using contraposition.
+1: S tart by assum ing th a t the statem ent claimed in q is false.
+2: R estate your assum ption in m athem atical terms.
+3: Use m athem atical and logical derivations to relate your assum ption to p. 
+4: Argue th a t you have shown th a t p m ust be false.
+5: End by concluding th a t p is false.
+Such an odd nam e, contraposition. The nam e comes from the contrapositive of the statem ent p —> 9, which is 
+the statem ent ->9 -> -,p. The next exercise will illum inate m atters.
+E x ercise 4.4
+(a) Use a truth-table to show that p 
+9 * = - 1 9  —> ->p. That is, an implication and its contrapositive are 
+logically equivalent. Either both are true or both are false and proving one proves the other.
+(b) Give the contrapositive statement.
+(i) 
+IF it rained last night t h e n  th e grass is w et. (ii) if the mall is crowded, t h e n  you stay at home.
+(c) Give the contrapositive statement and a proof by contraposition of the implication.
+(i) 
+IF X, ?/ > 0 and xy > 100 t h e n  x > 10 or p > 10. (ii) if r is irrational, t h e n  y/r is irrational.
+Since p ->• 9 and the contrapositive ->9 
+~^p are logically equivalent, proving one also proves the other. Let
+us exam ine how we would prove the contrapositive ~^q —>• -ip, using a direct proof. We start by assuming that 
+-^9 is true, or th a t 9 is false. We then show th a t ^ p  m ust be true, i.e.. p must be false. But, this is exactly 
+w hat a proof by contraposition does. Proof by contraposition is a direct proof of the contrapositive.
+4.3 
+Equivalence: If and Only If
+Equivalence is stronger th an  im plication. Jam es likes all apples. Jam es likes only apples. We conclude that
+“Jam es likes x ” and “ x  is an apple” are equivalent statem ents, for either both are true or both are false:
+James likes x  is true means x  must be an apple 
+(he likes only apples).
+X is an apple is true means James must like x  
+(he likes all apples).
+James likes x  is false means x  cannot be an apple 
+(he likes all apples).
+X is an apple is false means James cannot like x  
+(he likes only apples).
+We use the IF AND ONLY IF connector for equivalent statem ents th a t are either both true or both false.
+Jam es likes x  IF AND ONLY IF x  is an apple.
+The symbol for IF AND ONLY IF is •(+. Equivalence, p IF AND ONLY IF 9. is w ritten p 
+9.
+The tru th -tab le for IF AND ONLY IF is on the right. For p IF AND o n l y  i f  9 to be 
+true, p and 9 m ust both be true or both be false: when both are true, p -a 9 is tiue,
+45
+p
+(1
+P ^ q
+F
+F
+T
+F
+T
+F
+T
+F
+I’
+r
+'I'
+I'
+
+---
+when both are false, -^p 
+~^q is true, i.e. the contrapositive g -> p is true.^
+p  o
+ g  
+( p  - t  g )  A  ( g  - o  p ) .
+P o p  Q uiz 4.5
+Use truth-tables to verify p 
+q = (p 
+g) A (g 
+p).
+To prove an i f  
+a n d  o n l y  if  claim, you prove each implication. Here is an example.
+Integer x  is divisible by 3 IF AND o n l y  i f  
+is divisible by 3.
+Proof. 
+The proof has two main steps, one for each implication:
+(i) Prove: IF x is divisible by 3, THEN 
+is divisible by 3.
+We use a direct proof. Assume x  is divisible by 3, so x =  3k for some k £ Z. Then, x^ =  9k^ = 3 • (3fc^),
+which is clearly a multiple of 3. So, x^ is divisible by 3, as was 
+to be shown.
+(ii) Prove: IF x^ is divisible by 3, THEN x is divisible by 3.
+We use contraposition. Assume x is not divisible by 3. There are two cases for x,
+Case 1: x -  3k + 1 -> x^ =  3k{3k +  2) +  1 (1 more than a multiple of 3).
+Case 2: X  -  3k + 2 
+x^ = 3{3k‘^ +  4A; +  1) +  1 (1 more than a m ultiple of 3).
+In both cases, x^ is not divisible by 3, as was to be shown. 
+■
+Always 
+remember th at an IF a n d  o n l y  i f  proof contains the proofs of two implications. Each im plication
+may be proved in different ways. In our proof above, we used direct proof and contraposition.
+4. P r o o f s  
+4, 4 . I^r o o f  b y C o n t r a d i c t i o n  ( R e d u c t i o  a d  A b s u r d u m )
+P ro o f T e m p la te  IV : P ro v in g  i f  a n d  o n l y  i f , p fa g.
+Proof
+1: Prove p ^  q using a proof m ethod for implications (forward step).
+2: Prove q ^  p using a proof m ethod for implications (backward step).
+D efin itio n s a n d  E q u iv alen ce. A definition gives an alternative but equivalent description of a concept. 
+The IF a n d  o n l y  if connector is often used in definitions. Here are some examples.
+U S citize n  You are a US citizen IF AND ONLY IF you were born on US soil.
+S et e q u a lity  Sets A and B  are equal IF AND ONLY IF A C  H  and B  C  A.
+P a ra lle l Two line segments on a plane are iiarallel IF AND ONLY IF after extending both 
+segments to infinity in both directions there is no intersection.
+You cannot disimte a definition. You may prefer a different one. for example the US government defines US 
+citizen differently, but a definition is the author's choice. Definitions give a more convenient way to describe 
+something. ‘These lines are ])araller’ is sinijiler than "these lines when extended to in h n ity ..."  Introduce 
+(k'finitions only to lu'lp with clarity. Too many definitions can be counter productive.
+E x ercise 4.6
+(a) Here is an erroneous definition of parallel in 2-dimensions: Two line segments are parallel 
+IF  a n d  o n l y
+IF  they do not intersect. Draw line segments that are parallel according to this definition, 
+but not
+parallel according to the correct definition in the text.
+(b) Give a definition for parallel in 3 dimensions:
+(c) Give a definition of isosceles (you don’t need to define "triangle").
+4.4 
+Proof by Contradiction (Reductio ad Absurdinn)
+A coiil radicl ion is somelliiiig that is false: somelliiiig tliat sounds F IS H Y , h'or I'xainple:
+1 
+2: 
+ii~ < II (for iiib'gi't ii): 
+|.r| < ,r: 
+/> A q>.
+' I lie syiiilml < > c.iii lie iiilci'i)rcl('(I as a iiii'igiiiK (iI p o  c; and p < 
+,/ (i.e. pf },/) to ;i < > p.
+Hi
+
+---
+4. P r o o f s
+4 . 4 .  I’ r o o f  b y C o n t r a d i c t i o n  ( R e d u c t i o  a d  A b s u r d u m )
+Clearly 1 / 2 ,  
+>  n and |;r| >  x  (higli-scliool niatli). The last, p A -^p, is the classical contradiction; no
+m atter w hether p is true or false, p A -np is false. If yon show a < b, and subseciuently a > b, then something
+m ust be F IS H Y  in your derivations because a <  b and a > b  cannot both hold. You derived a contradiction.
+In m athem atics, yon cannot derive contradictions (falsehoods). This fact leads us to a very useful m ethod of 
+proof. Let us see this m ethod of proof in action by revisiting the proof th a t y/2 is not rational.
+1; A ssu m e  \/2  is ra tio n a l.
+2: This m eans \/2 =  a*/5* for a sm allest possible denom inator h*.
+3; a »  a n d  6 ,  h a v e  n o  c o m m o n  f a c t o r s  (6* is the smallest possible denom inator).
+4: So, 2 =  al/b'l 
+al — 2bl, or a* is even. Hence, a , is even, a* =  2k.
+5: Therefore, Ak^ =  2b1 and so h* =  2/c^, or b1 is even. Hence, 6, is even.
+6; a« a n d  b , h a v e  th e  c o m m o n  fa c to r 2 (F IS H Y )
+Steps 3 and 6 contradict each other. T h a t’s F IS H Y . Now for the crux of the m atter.
+|well-ordering| 
+we proved this]
+P rin c ip le  o f C o n tra d ic tio n . If you derive (using valid steps) a F IS H Y  
+conclusion, at least one assum ption in the derivation m ust be F IS H Y .
+Step 6 in the proof is a F IS H Y  conclusion obtained via steps 2-5 which are all valid. By the principle of 
+contradiction, at least one assum ption is F IS H Y  (false), and it can only be the assum ption in step 1 th at \/2 
+is rational. This m eans th a t \/2  m ust not be rational. And. we have proved it via a contradiction.
+P r o o f  T e m p la te  V : P r o o f  b y  C o n tra d ic tio n  t h a t p is tru e . 
+Proof.
+1: To derive a contradiction, assume th at p is false.
+2: R estate your assum ption in m athem atical term s.
+3: Derive a F IS H Y  statem ent -  a contradiction th a t must be false. 
+4: Therefore, the assum ption in step 1 is false, and p is true.
+C ontradiction is powerful because the assum ption in step 1 gives som ething to work with. Assuming -\/2 is
+rational, gives a starting point for deriving th a t \/2 is not rational.
+E x a m p le 4.5. Let a, b be integers. Prove th a t a? -  Ab 
+2.
+Proof. 
+To derive a contradiction, assum e th a t 
+-  Ab = 2. Then, 
+=  2 +  46 =  2(1 +  26) is even, so a is
+even. This m eans a ^ 2 k  for an integer k. Therefore, { 2 k f  -  46 =  2. 
+Divide both sides by 2 to get
+2(fc2 - 6) =  1,
+which is F IS H Y : the LHS is even but the RHS is odd. Therefore, 
+-  46 /  2. 
+■
+E x ercise 4 .7
+Prove the following by contradiction.
+(a) Let m , n  e Z. Prove that 21m +  9n /  1.
+(b) Let x ,y  be positive real numbers. Prove that x + y >
+(c) Let m , n  e Z  with m f + rtf divisible by 4. Then, m  and n are not both odd.
+E x a m p le 4 .6 . You can use contradiction to prove any claim, even claims inside another proof. Let a ,6. r  be
+real num bers. If a >  c and 6 >  c, then m ax(a, 6) — c >  0.
+Proof. 
+We use direct proof. Assume a > c and b > c. We show niax(a, 6) — c > 
+0.
+1: To derive a contradiction, a ssu m e m ax(a, 6) -  c 
+< 0, which means c >  m ax(a, 6).
+2: 
+Since c >  m ax(a, 6), c >  a (because m ax(a, 6) >  a).
+3: 
+Therefore c <  a and c >  a (a very F IS H Y  contradiction).
+4: O ur assum ption in step 1 m ust be false, l h a t  m eans m ax(a, b) — c > 0
+We used contradiction inside a direct proof, a powerful m ethod w orth sum m anzm g.
+47
+
+---

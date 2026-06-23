@@ -1,25 +1,32 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { API_BASE, apiBlockedByMixedContent } from "./apiBase";
 import Home from "./Home";
 import AutoGrader from "./AutoGrader";
 import LearningModel from "./LearningModel";
 import MyLearningBar from "./MyLearningBar";
 import UserProfile from "./UserProfile";
+import Grades from "./Grades";
 import SignInModal from "./SignInModal";
+import Sidebar from "./components/Sidebar";
+import OnboardingTour from "./components/OnboardingTour";
+import { OnboardingProvider } from "./context/OnboardingContext";
 import { useAuth } from "./context/AuthContext";
 
 import "./App.css";
 
-function App() {
+function AppShell() {
   const showDeployWarning = apiBlockedByMixedContent();
-  const { user, loading, logout, setShowSignIn } = useAuth();
+  const { user, loading, setShowSignIn } = useAuth();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   return (
-    <Router>
-      <div className="app-container">
-        {showDeployWarning ? (
+    <div className={`app-container${isHome ? " app-container--home" : ""}`}>
+      {!isHome && <Sidebar />}
+      <div className="app-main">
+        {!isHome && showDeployWarning ? (
           <div className="deploy-config-banner" role="alert">
             <p>
               <strong>Mixed content blocked:</strong> This site is served over HTTPS, but the configured
@@ -28,7 +35,7 @@ function App() {
             </p>
           </div>
         ) : null}
-        {!loading && !user && !bannerDismissed && (
+        {!isHome && !loading && !user && !bannerDismissed && (
           <div className="auth-prompt">
             <div className="auth-prompt-inner">
               <div className="auth-prompt-content">
@@ -50,50 +57,6 @@ function App() {
             </div>
           </div>
         )}
-        <nav className="navbar" aria-label="Main navigation">
-          <Link to="/" className="nav-brand">
-            <span className="nav-brand-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-              </svg>
-            </span>
-            <span className="nav-brand-text">AI Tutor</span>
-          </Link>
-          <div className="nav-buttons">
-            <Link to="/" className="btn-nav">Home</Link>
-            <Link to="/autograder" className="btn-nav">Auto Grader</Link>
-            <Link to="/learning" className="btn-nav btn-nav--learning">Learning Mode</Link>
-            <Link to="/profile" className="btn-nav" onClick={(e) => {
-              if (!user && !loading) {
-                e.preventDefault();
-                setShowSignIn(true);
-              }
-            }}>My profile</Link>
-          </div>
-          <div className="nav-auth">
-            {loading ? null : user ? (
-              <div className="nav-user-card">
-                {user.photoURL && (
-                  <div className="nav-avatar-wrap">
-                    <img src={user.photoURL} alt="" className="nav-avatar" referrerPolicy="no-referrer" />
-                  </div>
-                )}
-                <span className="nav-user-name">
-                  {user.isAnonymous ? "Guest" : (user.displayName || user.email)}
-                </span>
-                <button className="nav-signout-btn" onClick={logout}>Sign out</button>
-              </div>
-            ) : (
-              <button className="nav-avatar-empty" onClick={() => setShowSignIn(true)} aria-label="Sign in">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </button>
-            )}
-          </div>
-        </nav>
 
         <div className="content">
           <Routes>
@@ -102,11 +65,23 @@ function App() {
             <Route path="/learning" element={<LearningModel />} />
             <Route path="/learning-bar" element={<MyLearningBar />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/grades" element={<Grades />} />
           </Routes>
         </div>
 
         <SignInModal />
+        <OnboardingTour />
       </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <OnboardingProvider>
+        <AppShell />
+      </OnboardingProvider>
     </Router>
   );
 }
