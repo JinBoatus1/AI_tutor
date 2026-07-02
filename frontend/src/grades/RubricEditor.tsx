@@ -1,7 +1,10 @@
 import { useState } from "react";
-import type { Category, Course, Cutoff, Rule } from "./mockEngine";
-import { weightsSum } from "./mockEngine";
+import type { Category, Course, Cutoff, Rule } from "./types";
 import { useLocale } from "../i18n/LocaleContext";
+
+// Editor-only helper: sum of category weights, for the live "should be 100%" hint.
+// This is UI validation feedback, not authoritative grade math (which is server-side).
+const weightsSum = (course: Course): number => course.categories.reduce((s, c) => s + c.weight, 0);
 
 /* The plain-English rubric rule picker (design D4). Editing is mock-local;
    on Confirm the parent persists. Maps 1:1 to the engine's three rules. */

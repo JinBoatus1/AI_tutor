@@ -107,6 +107,10 @@ const EN = {
   "progress.collapse": "Collapse",
 
   "grades.title": "Grades",
+  "grades.signInTitle": "Sign in to track your grades",
+  "grades.signInBody": "Your grades are saved to your account so they sync across your devices.",
+  "grades.signInCta": "Sign in",
+  "grades.loading": "Loading your course…",
   "grades.previewMock": "Preview · mock data",
   "grades.editRubric": "Edit rubric",
   "grades.newCourse": "+ New course",
@@ -410,6 +414,10 @@ const ZH: Record<MessageKey, string> = {
   "progress.collapse": "收起",
 
   "grades.title": "成绩",
+  "grades.signInTitle": "登录以追踪你的成绩",
+  "grades.signInBody": "成绩会保存到你的账户，并在各设备之间同步。",
+  "grades.signInCta": "登录",
+  "grades.loading": "正在加载你的课程…",
   "grades.previewMock": "预览 · 模拟数据",
   "grades.editRubric": "编辑评分规则",
   "grades.newCourse": "+ 新建课程",
@@ -711,6 +719,10 @@ const ES: Record<MessageKey, string> = {
   "progress.collapse": "Contraer",
 
   "grades.title": "Calificaciones",
+  "grades.signInTitle": "Inicia sesión para registrar tus calificaciones",
+  "grades.signInBody": "Tus calificaciones se guardan en tu cuenta y se sincronizan entre dispositivos.",
+  "grades.signInCta": "Iniciar sesión",
+  "grades.loading": "Cargando tu curso…",
   "grades.previewMock": "Vista previa · datos simulados",
   "grades.editRubric": "Editar rúbrica",
   "grades.newCourse": "+ Nuevo curso",
