@@ -23,6 +23,10 @@ from AutoGrader.public_api import AutoGraderGradeRequest, grade_paper_once
 
 from auth import verify_token
 import database
+import grade_store
+import grades_serde as g_serde
+import grades_math as g_math
+import grades_report as g_report
 
 try:
     from memory import open_memory, Status
@@ -1223,6 +1227,63 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
     bar["textbook_id"] = tid
     sbs.save_bar(sid, bar, tid)
     return bar
+
+
+# ============================================================
+# Course Grade Tracker endpoints (requires auth — server-only, D3)
+# ============================================================
+# Persistence: grade_store (Mongo-primary + file-fallback), the rich wire course
+# stored verbatim. Compute: grades_report.standing_and_ladder (pure). The server is
+# authoritative for all grade math — never trust client-computed numbers.
+
+class GradeSaveBody(BaseModel):
+    course: Dict[str, Any]
+
+
+class GradeStandingBody(BaseModel):
+    course: Dict[str, Any]
+    unknownItemId: Optional[str] = None
+
+
+@router.get("/api/grades")
+async def get_grades(authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"course": grade_store.load_course(email)}
+
+
+@router.put("/api/grades")
+async def put_grades(body: GradeSaveBody, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        projected = g_serde.course_from_wire(body.course)
+    except g_serde.SerdeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid course: {e}")
+    warnings = g_math.validate_rubric(projected)  # non-blocking; UI shows these
+    stored = grade_store.save_course(email, body.course)
+    return {"course": stored, "warnings": warnings}
+
+
+@router.delete("/api/grades")
+async def delete_grades(authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"deleted": grade_store.delete_course(email)}
+
+
+@router.post("/api/grades/standing")
+async def grades_standing(body: GradeStandingBody, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        return g_report.standing_and_ladder(body.course, body.unknownItemId)
+    except g_serde.SerdeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid course: {e}")
 
 
 # ============================================================
