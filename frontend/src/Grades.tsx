@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./Grades.css";
 import type { Course, LadderRow, Standing, StandingResp } from "./grades/types";
 import { emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
-import { fetchCourse, saveCourse, fetchStanding } from "./grades/gradesStorage";
+import { fetchCourse, saveCourse, fetchStanding, importLegacyCourseIfAny } from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
 import { useLocale } from "./i18n/LocaleContext";
 import { useAuth } from "./context/AuthContext";
@@ -56,22 +56,25 @@ function GradesAuthed({ token }: { token: string }) {
   const courseBeforeEdit = useRef<Course | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initial load from the server. No course yet -> first-run.
+  // Initial load from the server. If the server has no course, try a one-time import of a
+  // course saved to localStorage while logged out (T7); otherwise first-run.
   useEffect(() => {
     let alive = true;
-    fetchCourse(token)
-      .then((c) => {
+    (async () => {
+      try {
+        let c = await fetchCourse(token);
+        if (!c) c = await importLegacyCourseIfAny(token);
         if (!alive) return;
         setCourse(c);
         setPhase(c ? "ready" : "firstrun");
-        setLoaded(true);
-      })
-      .catch(() => {
+      } catch {
         if (!alive) return;
         setCourse(null);
         setPhase("firstrun");
-        setLoaded(true);
-      });
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    })();
     return () => {
       alive = false;
     };

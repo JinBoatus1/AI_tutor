@@ -78,3 +78,17 @@ export function clearLegacyLocalCourse(): void {
     /* ignore */
   }
 }
+
+/**
+ * One-time import-on-login (T7): if a course was saved to localStorage while logged out,
+ * push it to the server and clear it. Call ONLY when the server has no course yet (so we
+ * never clobber server data). Clears local storage only after a successful save, so a
+ * failed PUT retries on the next login. Returns the imported course, or null if none.
+ */
+export async function importLegacyCourseIfAny(token: string): Promise<Course | null> {
+  const local = readLegacyLocalCourse();
+  if (!local) return null;
+  await saveCourse(token, local); // throws on non-2xx -> localStorage NOT cleared, retried later
+  clearLegacyLocalCourse();
+  return local;
+}

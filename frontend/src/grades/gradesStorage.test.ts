@@ -1,6 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchCourse, saveCourse, deleteCourse, fetchStanding } from "./gradesStorage";
+import {
+  fetchCourse,
+  saveCourse,
+  deleteCourse,
+  fetchStanding,
+  importLegacyCourseIfAny,
+} from "./gradesStorage";
 import type { Course } from "./types";
+
+const LEGACY_KEY = "aiTutorGradesCourseV1";
+
+function stubLocalStorage(seed?: Record<string, string>) {
+  const store = new Map<string, string>(Object.entries(seed ?? {}));
+  vi.stubGlobal("localStorage", {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => store.clear(),
+  });
+  return store;
+}
 
 const course: Course = {
   name: "Discrete Math",
@@ -87,5 +106,31 @@ describe("gradesStorage API client", () => {
     vi.stubGlobal("fetch", fetchSpy);
     await fetchStanding("tok", course);
     expect(JSON.parse(lastInit(fetchSpy).body as string).unknownItemId).toBeNull();
+  });
+});
+
+describe("importLegacyCourseIfAny (T7 one-time import-on-login)", () => {
+  it("returns null and skips the network when there is no local course", async () => {
+    stubLocalStorage();
+    const imported = await importLegacyCourseIfAny("tok");
+    expect(imported).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("PUTs the local course then clears localStorage", async () => {
+    const store = stubLocalStorage({ [LEGACY_KEY]: JSON.stringify(course) });
+    const imported = await importLegacyCourseIfAny("tok");
+    expect(imported?.name).toBe("Discrete Math");
+    expect(lastInit(fetchSpy).method).toBe("PUT");
+    expect(JSON.parse(lastInit(fetchSpy).body as string)).toEqual({ course });
+    expect(store.get(LEGACY_KEY)).toBeUndefined(); // cleared after success
+  });
+
+  it("does NOT clear localStorage when the PUT fails (retries next login)", async () => {
+    fetchSpy = mockFetch(500, {});
+    vi.stubGlobal("fetch", fetchSpy);
+    const store = stubLocalStorage({ [LEGACY_KEY]: JSON.stringify(course) });
+    await expect(importLegacyCourseIfAny("tok")).rejects.toThrow(/500/);
+    expect(store.get(LEGACY_KEY)).toBeDefined(); // preserved for retry
   });
 });
