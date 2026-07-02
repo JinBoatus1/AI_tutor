@@ -647,6 +647,16 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 system_content += sbs.build_bar_prompt(bar, user_email)
             except Exception as e:
                 print(f"[StudentBar] update failed: {e}")
+            # Grade standing (server-only, D8): compact one-liner so the tutor can answer
+            # "what do I need on the final?". Guarded in its OWN try/except — a slow or
+            # throwing grade read must never break chat or the student_bar prompt above.
+            if user_email:
+                try:
+                    saved_course = grade_store.load_course(user_email)
+                    if saved_course:
+                        system_content += g_report.build_standing_prompt(saved_course)
+                except Exception as e:
+                    print(f"[Grades] standing injection skipped: {e}")
         section_hint = client_section_hint or lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
 

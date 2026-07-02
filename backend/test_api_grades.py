@@ -181,3 +181,77 @@ def test_standing_unknown_item_400(monkeypatch):
         "/api/grades/standing", json={"course": _course(), "unknownItemId": "nope"}, headers=AUTH
     )
     assert resp.status_code == 400
+
+
+# --------------------------------------------------------------------------- #
+# T5 injection + T4 CRITICAL regression on /api/chat
+#
+# The whole tutor/topic/section/confidence machinery is stubbed so the route runs
+# offline. build_bar_prompt returns a sentinel so we can prove the student_bar prompt
+# still lands even when the grade read throws.
+# --------------------------------------------------------------------------- #
+import learning_resources  # noqa: E402
+import grade_store  # noqa: E402
+import student_bar_store as sbs_mod  # noqa: E402
+from contextlib import nullcontext  # noqa: E402
+
+
+def _chat_client(monkeypatch, *, email="u@e.com"):
+    captured = {}
+
+    def fake_tutor(messages, **kwargs):
+        captured["system"] = messages[0]["content"]
+        return "CANNED ANSWER"
+
+    monkeypatch.setattr(api_routes, "verify_token", lambda auth: email if auth else None)
+    monkeypatch.setattr(api_routes, "_is_simple_definition_question", lambda m: False)
+    monkeypatch.setattr(api_routes, "_should_compute_confidence", lambda *a, **k: False)
+    monkeypatch.setattr(api_routes, "run_tutor_with_optional_memory_tool", fake_tutor)
+    # Neutralize learning_resources network / book state
+    monkeypatch.setattr(learning_resources, "request_book", lambda *a, **k: nullcontext())
+    monkeypatch.setattr(learning_resources, "match_topic_with_llm", lambda m: None)
+    monkeypatch.setattr(learning_resources, "extract_section_from_message", lambda m: None)
+    # Deterministic student_bar with a sentinel prompt (no DB)
+    monkeypatch.setattr(sbs_mod, "load_bar_mongo", lambda e, t: {})
+    monkeypatch.setattr(sbs_mod, "update_bar_from_message_on_bar", lambda bar, *a: bar)
+    monkeypatch.setattr(sbs_mod, "save_bar_mongo", lambda *a, **k: None)
+    monkeypatch.setattr(sbs_mod, "build_bar_prompt", lambda bar, email: "[[BAR]]")
+
+    app = FastAPI()
+    app.include_router(api_routes.router)
+    return TestClient(app), captured
+
+
+def test_chat_injects_grade_standing_when_course_saved(monkeypatch):
+    """T5: a saved course -> the tutor system prompt carries the standing line."""
+    client, captured = _chat_client(monkeypatch)
+    monkeypatch.setattr(grade_store, "load_course", lambda email, *a, **k: _course())
+    resp = client.post("/api/chat", json={"message": "how am I doing?"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert resp.json()["reply"] == "CANNED ANSWER"
+    assert "current grade in Discrete Math" in captured["system"]
+    assert "[[BAR]]" in captured["system"]  # bar still injected too
+
+
+def test_chat_survives_throwing_grade_store(monkeypatch):
+    """T4 CRITICAL regression: a throwing grade store must NOT break chat OR the bar."""
+    client, captured = _chat_client(monkeypatch)
+
+    def boom(email, *a, **k):
+        raise RuntimeError("mongo down")
+
+    monkeypatch.setattr(grade_store, "load_course", boom)
+    resp = client.post("/api/chat", json={"message": "how am I doing?"}, headers=AUTH)
+    assert resp.status_code == 200  # chat still replies
+    assert resp.json()["reply"] == "CANNED ANSWER"
+    assert "[[BAR]]" in captured["system"]  # student_bar prompt intact
+    assert "current grade in" not in captured["system"]  # grade injection safely skipped
+
+
+def test_chat_no_grade_injection_when_no_course(monkeypatch):
+    client, captured = _chat_client(monkeypatch)
+    monkeypatch.setattr(grade_store, "load_course", lambda email, *a, **k: None)
+    resp = client.post("/api/chat", json={"message": "how am I doing?"}, headers=AUTH)
+    assert resp.status_code == 200
+    assert "[[BAR]]" in captured["system"]
+    assert "current grade in" not in captured["system"]

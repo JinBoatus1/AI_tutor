@@ -106,3 +106,25 @@ def test_unknown_item_error_is_serde_subclass():
 def test_malformed_course_raises_serde():
     with pytest.raises(gs.SerdeError):
         gr.standing_and_ladder({"name": "X", "categories": {}, "cutoffs": []})
+
+
+# --------------------------------------------------------------------------- #
+# build_standing_prompt (the /api/chat injection fragment)
+# --------------------------------------------------------------------------- #
+def test_standing_prompt_contains_grade_and_name():
+    frag = gr.build_standing_prompt(_course_with_unknown_final())
+    assert "Discrete Math" in frag
+    assert "80.0%" in frag
+    assert "(B)" in frag
+
+
+def test_standing_prompt_empty_when_nothing_graded():
+    course = _course_with_unknown_final()
+    for it in course["categories"][0]["items"]:
+        it["score"] = None  # nothing graded
+    assert gr.build_standing_prompt(course) == ""
+
+
+def test_standing_prompt_raises_on_malformed():
+    with pytest.raises(gs.SerdeError):
+        gr.build_standing_prompt({"name": "X", "categories": {}, "cutoffs": []})

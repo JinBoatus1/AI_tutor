@@ -69,3 +69,28 @@ def standing_and_ladder(
 
     payload["ladder"] = ladder
     return payload
+
+
+def build_standing_prompt(course_wire: Dict[str, Any]) -> str:
+    """A compact one-line grade-standing fragment for the tutor's system prompt.
+
+    Returns "" when nothing is graded yet (no useful standing to inject). Raises
+    grades_serde.SerdeError on a malformed doc — the /api/chat caller wraps this in
+    try/except (D8) so a bad stored course never breaks chat. Deliberately terse and
+    "do not volunteer" so the tutor only uses it when the student asks about grades.
+    """
+    projected = gs.course_from_wire(course_wire)
+    standing = gm.compute_standing(projected)
+    if standing.percent is None:
+        return ""
+    name = ""
+    if isinstance(course_wire, dict) and isinstance(course_wire.get("name"), str):
+        name = course_wire["name"].strip()
+    label = name or "their course"
+    letter = f" ({standing.letter})" if standing.letter else ""
+    return (
+        f"\n\nThe student's current grade in {label} is "
+        f"{standing.percent:.1f}%{letter} on graded work so far. "
+        "If they ask what score they need on an upcoming assignment or exam to reach a target "
+        "grade, use this context and the tracker; do not volunteer their grade unprompted."
+    )
