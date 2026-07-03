@@ -148,7 +148,7 @@ def test_projection_feeds_goal_seek():
 # --------------------------------------------------------------------------- #
 def test_find_wire_item_returns_category_and_max():
     got = gs.find_wire_item(_wire_course(), "e4")
-    assert got == ("Exams", 100.0, None)  # no per-item weight on a rank/uniform course
+    assert got == ("Exams", 100.0, None, False)  # no per-item weight, not a replacer
 
 
 def test_find_wire_item_missing_returns_none():
@@ -219,4 +219,29 @@ def test_fixed_course_projects_and_strips_null_keeping_weights():
 
 def test_find_wire_item_returns_weight_for_goal_seek():
     got = gs.find_wire_item(_fixed_wire(), "t2")  # the ungraded Test 2
-    assert got == ("Tests", 100.0, 15.0)  # (category, max_score, weight)
+    assert got == ("Tests", 100.0, 15.0, False)  # (category, max_score, weight, replacer)
+
+
+# --------------------------------------------------------------------------- #
+# ReplaceLowest rule + replacer flag (T3)
+# --------------------------------------------------------------------------- #
+def test_rule_from_wire_replace_lowest():
+    import grades_serde as gs, grades_math as gm
+    assert gs.rule_from_wire({"kind": "replaceLowest"}) == gm.ReplaceLowest()
+
+
+def test_item_from_wire_carries_replacer_flag():
+    import grades_serde as gs
+    it = gs.item_from_wire({"name": "Final", "score": 90, "maxScore": 100, "weight": 10, "replacer": True})
+    assert it is not None and it.replacer is True and it.weight == 10.0
+
+
+def test_find_wire_item_returns_replacer_flag():
+    import grades_serde as gs
+    course = {"name": "C", "categories": [
+        {"id": "ex", "name": "Exams", "weight": 30, "rule": {"kind": "replaceLowest"}, "items": [
+            {"id": "m1", "name": "M1", "score": 80, "maxScore": 100, "weight": 10},
+            {"id": "fin", "name": "Final", "score": None, "maxScore": 100, "weight": 10, "replacer": True},
+        ]}], "cutoffs": [{"letter": "A", "min": 90}]}
+    found = gs.find_wire_item(course, "fin")
+    assert found == ("Exams", 100.0, 10.0, True)

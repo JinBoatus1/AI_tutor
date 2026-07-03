@@ -52,12 +52,13 @@ def standing_and_ladder(
     found = gs.find_wire_item(course_wire, unknown_item_id)
     if found is None:
         raise UnknownItemNotFound(f"unknownItemId {unknown_item_id!r} not found in course")
-    cat_name, max_score, weight = found
+    cat_name, max_score, weight, is_replacer = found
 
     ladder = []
     for c in sorted(projected.cutoffs, key=lambda c: c.min_pct, reverse=True):
         try:
-            res = gm.goal_seek(projected, c.letter, cat_name, max_score, unknown_weight=weight)
+            res = gm.goal_seek(projected, c.letter, cat_name, max_score,
+                               unknown_weight=weight, unknown_is_replacer=is_replacer)
         except ValueError:
             # Defensive: c.letter always has a cutoff and cat_name exists, so this
             # shouldn't fire — but never let a math edge case 500 the endpoint.

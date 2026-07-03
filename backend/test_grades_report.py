@@ -128,3 +128,20 @@ def test_standing_prompt_empty_when_nothing_graded():
 def test_standing_prompt_raises_on_malformed():
     with pytest.raises(gs.SerdeError):
         gr.build_standing_prompt({"name": "X", "categories": {}, "cutoffs": []})
+
+
+# --------------------------------------------------------------------------- #
+# ReplaceLowest end-to-end through standing_and_ladder (T3)
+# --------------------------------------------------------------------------- #
+def test_standing_and_ladder_replace_lowest_ladder():
+    import grades_report as gr
+    course = {"name": "C", "categories": [
+        {"id": "ex", "name": "Exams", "weight": 100, "rule": {"kind": "replaceLowest"}, "items": [
+            {"id": "m1", "name": "M1", "score": 100, "maxScore": 100, "weight": 20},
+            {"id": "m2", "name": "M2", "score": 50, "maxScore": 100, "weight": 20},
+            {"id": "fin", "name": "Final", "score": None, "maxScore": 100, "weight": 60, "replacer": True},
+        ]}], "cutoffs": [{"letter": "A", "min": 90}, {"letter": "F", "min": 0}]}
+    out = gr.standing_and_ladder(course, "fin")
+    a_row = next(r for r in out["ladder"] if r["letter"] == "A")
+    assert a_row["status"] == "ok"
+    assert abs(a_row["needed"] - 87.5) < 1e-6  # M1=1.0(w20),M2=0.5(w20),Final unknown replacer(w60): 20+80x=90 -> x=0.875
