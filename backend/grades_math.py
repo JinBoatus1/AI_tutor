@@ -81,7 +81,15 @@ class FixedWeights:
     FixedWeights through slot_weights_desc (it has no rule-level weights)."""
 
 
-Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights]
+@dataclass(frozen=True)
+class ReplaceLowest:
+    """Per-item FIXED weights (like FixedWeights) with ONE item flagged `replacer`
+    (the final). The replacer counts in its own slot AND, if it scores higher than
+    the lowest graded non-replacer, that lowest item's fraction is lifted to the
+    replacer's. The weights live on the Items; exactly one Item has replacer=True."""
+
+
+Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights, ReplaceLowest]
 
 
 # --------------------------------------------------------------------------- #
@@ -93,6 +101,7 @@ class Item:
     score: float
     max_score: float
     weight: Optional[float] = None  # only meaningful when the category rule is FixedWeights
+    replacer: bool = False  # only meaningful when the category rule is ReplaceLowest
 
     @property
     def fraction(self) -> float:
@@ -181,8 +190,26 @@ def _used_weight(weights_desc: list[float], n_items: int) -> float:
 # --------------------------------------------------------------------------- #
 # Per-category earned / graded-weight (branches rank-based vs positional fixed)
 # --------------------------------------------------------------------------- #
+def _replace_lowest_slots(slots: list[tuple[float, bool, float]]) -> float:
+    """Earned points for a ReplaceLowest category. Each slot = (weight, is_replacer, fraction).
+    Base = sum(w*frac); then if a replacer is present alongside >=1 non-replacer and scores
+    higher than the lowest non-replacer, that lowest slot is lifted to the replacer fraction."""
+    base = sum(w * f for (w, _r, f) in slots)
+    reps = [(w, f) for (w, r, f) in slots if r]
+    non = [(w, f) for (w, r, f) in slots if not r]
+    if not reps or not non:
+        return base
+    frac_rep = max(f for (_w, f) in reps)
+    w_low, f_low = min(non, key=lambda wf: wf[1])
+    if frac_rep > f_low:
+        return base + w_low * (frac_rep - f_low)
+    return base
+
+
 def _category_earned(cat: "Category") -> float:
     """Points earned in a category from its (graded) items."""
+    if isinstance(cat.rule, ReplaceLowest):
+        return _replace_lowest_slots([(it.weight or 0.0, it.replacer, it.fraction) for it in cat.items])
     if isinstance(cat.rule, FixedWeights):
         # POSITIONAL: each item contributes its OWN weight (no rank sorting).
         return sum((it.weight or 0.0) * it.fraction for it in cat.items)
@@ -192,7 +219,7 @@ def _category_earned(cat: "Category") -> float:
 
 def _category_graded_weight(cat: "Category") -> float:
     """Renormalization base: total weight of the graded slots in a category."""
-    if isinstance(cat.rule, FixedWeights):
+    if isinstance(cat.rule, (FixedWeights, ReplaceLowest)):
         return sum((it.weight or 0.0) for it in cat.items)
     wts = slot_weights_desc(cat.rule, cat.weight)
     return _used_weight(wts, len(cat.items))
@@ -374,6 +401,18 @@ def validate_rubric(course: Course, tol: float = 0.01) -> list[str]:
                     f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
                 )
             n_slots = len(cat.items)  # items ARE the slots here
+        elif isinstance(cat.rule, ReplaceLowest):
+            s = sum((it.weight or 0.0) for it in cat.items)
+            if cat.items and abs(s - cat.weight) > tol:
+                warnings.append(
+                    f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
+                )
+            n_reps = sum(1 for it in cat.items if it.replacer)
+            if cat.items and n_reps != 1:
+                warnings.append(
+                    f"'{cat.name}': replace-lowest needs exactly one item marked as the replacer (got {n_reps})."
+                )
+            n_slots = len(cat.items)
         else:
             n_slots = 0
 

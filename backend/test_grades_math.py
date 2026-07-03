@@ -241,5 +241,72 @@ class TestValidate(unittest.TestCase):
         self.assertIsInstance(validate_rubric(c), list)
 
 
+def _rl_course(final_score, m_scores=(80, 60), weights=(10, 10, 10)):
+    """Exams: 2 midterms + 1 final (replacer). weights are points-of-100. cutoff A=90."""
+    import grades_math as gm
+    items = [
+        gm.Item(name="M1", score=m_scores[0], max_score=100, weight=weights[0]),
+        gm.Item(name="M2", score=m_scores[1], max_score=100, weight=weights[1]),
+        gm.Item(name="Final", score=final_score, max_score=100, weight=weights[2], replacer=True),
+    ]
+    return gm.Course(
+        name="C",
+        categories=[gm.Category(name="Exams", weight=30, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)],
+    )
+
+
+def test_replace_lowest_boost_active():
+    # Final 0.90 > lowest midterm M2 0.60 -> M2 lifted to 0.90.
+    # earned = 10*0.80 + 10*0.90(lifted) + 10*0.90 = 8 + 9 + 9 = 26 ; graded_weight = 30
+    import grades_math as gm
+    s = gm.compute_standing(_rl_course(90))
+    assert s.earned_points == 26.0
+    assert s.graded_weight == 30.0
+    assert s.percent == 26.0 / 30.0 * 100.0
+
+
+def test_replace_lowest_boost_inactive():
+    # Final 0.50 < lowest midterm 0.60 -> no boost.
+    # earned = 10*0.80 + 10*0.60 + 10*0.50 = 8 + 6 + 5 = 19
+    import grades_math as gm
+    s = gm.compute_standing(_rl_course(50))
+    assert s.earned_points == 19.0
+
+
+def test_replace_lowest_no_boost_when_replacer_ungraded():
+    # Only midterms graded (final stripped as null upstream): behaves like fixedWeights.
+    import grades_math as gm
+    items = [
+        gm.Item(name="M1", score=80, max_score=100, weight=10),
+        gm.Item(name="M2", score=60, max_score=100, weight=10),
+    ]
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=20, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    s = gm.compute_standing(course)
+    assert s.earned_points == 8.0 + 6.0  # no boost
+
+
+def test_replace_lowest_only_replacer_graded_no_lowest():
+    import grades_math as gm
+    items = [gm.Item(name="Final", score=90, max_score=100, weight=10, replacer=True)]
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=10, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    assert gm.compute_standing(course).earned_points == 9.0
+
+
+def test_validate_replace_lowest_warns_on_replacer_count():
+    import grades_math as gm
+    items = [gm.Item(name="M1", score=80, max_score=100, weight=10),
+             gm.Item(name="M2", score=60, max_score=100, weight=10)]  # zero replacers
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=20, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    warns = gm.validate_rubric(course)
+    assert any("exactly one" in w for w in warns)
+
+
 if __name__ == "__main__":
     unittest.main()
