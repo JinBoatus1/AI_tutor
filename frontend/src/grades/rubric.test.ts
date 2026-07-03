@@ -12,6 +12,7 @@ import {
   removeCategory,
   removeItem,
   setMode,
+  setReplacer,
   slotCountOf,
   syncSlots,
 } from "./rubric";
@@ -168,5 +169,26 @@ describe("materializeCourse (T3 pre-generate fillable rows)", () => {
     };
     const out = materializeCourse(course);
     expect(out.categories[0].items).toHaveLength(1);
+  });
+});
+
+describe("replaceLowest helpers", () => {
+  it("activeMode maps replaceLowest", () => {
+    expect(activeMode({ kind: "replaceLowest" })).toBe("replaceLowest");
+  });
+  it("setMode replaceLowest seeds weights and flags one replacer (the last row)", () => {
+    let c = cat({ weight: 30, items: [newItem("M1"), newItem("M2"), newItem("Final")] });
+    c = setMode(c, "replaceLowest");
+    expect(c.rule).toEqual({ kind: "replaceLowest" });
+    expect(itemWeightSum(c)).toBeCloseTo(30, 6);
+    expect(c.items.filter((it) => it.replacer)).toHaveLength(1);
+    expect(c.items[2].replacer).toBe(true); // last row defaults to the replacer
+  });
+  it("setReplacer is single-select", () => {
+    let c = cat({ rule: { kind: "replaceLowest" }, items: [newItem("M1"), newItem("M2"), newItem("Final")] });
+    c = setReplacer(c, c.items[0].id);
+    expect(c.items.map((it) => !!it.replacer)).toEqual([true, false, false]);
+    c = setReplacer(c, c.items[1].id);
+    expect(c.items.map((it) => !!it.replacer)).toEqual([false, true, false]);
   });
 });
