@@ -148,7 +148,7 @@ def test_projection_feeds_goal_seek():
 # --------------------------------------------------------------------------- #
 def test_find_wire_item_returns_category_and_max():
     got = gs.find_wire_item(_wire_course(), "e4")
-    assert got == ("Exams", 100.0)
+    assert got == ("Exams", 100.0, None)  # no per-item weight on a rank/uniform course
 
 
 def test_find_wire_item_missing_returns_none():
@@ -171,3 +171,52 @@ def test_course_categories_not_list_raises():
 def test_empty_course_is_valid():
     course = gs.course_from_wire({"name": "Empty", "categories": [], "cutoffs": []})
     assert gm.compute_standing(course).percent is None  # nothing graded
+
+
+# --------------------------------------------------------------------------- #
+# FixedWeights rule + per-item weight (model B)
+# --------------------------------------------------------------------------- #
+def test_rule_fixed_weights():
+    r = gs.rule_from_wire({"kind": "fixedWeights"})
+    assert isinstance(r, gm.FixedWeights)
+
+
+def test_item_weight_parsed():
+    it = gs.item_from_wire({"id": "t1", "name": "Test 1", "score": 90, "maxScore": 100, "weight": 10})
+    assert it.weight == 10.0
+
+
+def test_item_weight_optional_defaults_none():
+    it = gs.item_from_wire({"id": "q", "name": "Q", "score": 5, "maxScore": 10})
+    assert it.weight is None
+
+
+def _fixed_wire():
+    return {
+        "name": "Logic",
+        "term": "Spring 2026",
+        "categories": [{
+            "id": "c1", "name": "Tests", "weight": 50,
+            "rule": {"kind": "fixedWeights"},
+            "items": [
+                {"id": "t1", "name": "Test 1", "score": 100, "maxScore": 100, "weight": 10},
+                {"id": "t2", "name": "Test 2", "score": None, "maxScore": 100, "weight": 15},  # ungraded
+                {"id": "t3", "name": "Test 3", "score": 80, "maxScore": 100, "weight": 25},
+            ],
+        }],
+        "cutoffs": [{"letter": "A", "min": 90}],
+    }
+
+
+def test_fixed_course_projects_and_strips_null_keeping_weights():
+    course = gs.course_from_wire(_fixed_wire())
+    cat = course.categories[0]
+    assert isinstance(cat.rule, gm.FixedWeights)
+    # Test 2 (null score) stripped; graded items keep their weights
+    assert [it.name for it in cat.items] == ["Test 1", "Test 3"]
+    assert [it.weight for it in cat.items] == [10.0, 25.0]
+
+
+def test_find_wire_item_returns_weight_for_goal_seek():
+    got = gs.find_wire_item(_fixed_wire(), "t2")  # the ungraded Test 2
+    assert got == ("Tests", 100.0, 15.0)  # (category, max_score, weight)

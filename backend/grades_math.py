@@ -69,7 +69,19 @@ class RankWeights:
     slot_weights: tuple[float, ...]
 
 
-Rule = Union[Uniform, DropLowest, RankWeights]
+@dataclass(frozen=True)
+class FixedWeights:
+    """Per-item FIXED weights: each item carries its own `weight` (POSITIONAL, not
+    rank-assigned). Item i always contributes `item.weight` points regardless of how
+    it scores relative to siblings — e.g. "three tests weighted 10%, 15%, 25%
+    respectively". The rule itself holds no numbers; the weights live on the Items
+    (see Item.weight). Item weights should sum to the owning category's `weight`.
+
+    Contrast RankWeights, which SORTS weights onto items by score. Do NOT route
+    FixedWeights through slot_weights_desc (it has no rule-level weights)."""
+
+
+Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights]
 
 
 # --------------------------------------------------------------------------- #
@@ -80,6 +92,7 @@ class Item:
     name: str
     score: float
     max_score: float
+    weight: Optional[float] = None  # only meaningful when the category rule is FixedWeights
 
     @property
     def fraction(self) -> float:
@@ -166,6 +179,26 @@ def _used_weight(weights_desc: list[float], n_items: int) -> float:
 
 
 # --------------------------------------------------------------------------- #
+# Per-category earned / graded-weight (branches rank-based vs positional fixed)
+# --------------------------------------------------------------------------- #
+def _category_earned(cat: "Category") -> float:
+    """Points earned in a category from its (graded) items."""
+    if isinstance(cat.rule, FixedWeights):
+        # POSITIONAL: each item contributes its OWN weight (no rank sorting).
+        return sum((it.weight or 0.0) * it.fraction for it in cat.items)
+    wts = slot_weights_desc(cat.rule, cat.weight)
+    return _earned_for_values(wts, [it.fraction for it in cat.items])
+
+
+def _category_graded_weight(cat: "Category") -> float:
+    """Renormalization base: total weight of the graded slots in a category."""
+    if isinstance(cat.rule, FixedWeights):
+        return sum((it.weight or 0.0) for it in cat.items)
+    wts = slot_weights_desc(cat.rule, cat.weight)
+    return _used_weight(wts, len(cat.items))
+
+
+# --------------------------------------------------------------------------- #
 # Cutoffs
 # --------------------------------------------------------------------------- #
 def letter_for(percent: Optional[float], cutoffs: list[Cutoff]) -> Optional[str]:
@@ -191,10 +224,8 @@ def compute_standing(course: Course) -> Standing:
     earned = 0.0
     graded_weight = 0.0
     for cat in course.categories:
-        wts = slot_weights_desc(cat.rule, cat.weight)
-        fracs = [it.fraction for it in cat.items]
-        earned += _earned_for_values(wts, fracs)
-        graded_weight += _used_weight(wts, len(fracs))
+        earned += _category_earned(cat)
+        graded_weight += _category_graded_weight(cat)
     if graded_weight <= 0:
         return Standing(percent=None, letter=None, earned_points=0.0, graded_weight=0.0)
     percent = earned / graded_weight * 100.0
@@ -231,29 +262,46 @@ def goal_seek(
     target_letter: str,
     unknown_category: str,
     unknown_max_score: float,
+    unknown_weight: Optional[float] = None,
 ) -> GoalSeekResult:
     """Minimum score on ONE ungraded item to reach `target_letter`.
 
     Treats every existing item as final (single-unknown solve). The unknown is an
     extra slot in `unknown_category`; its fraction x in [0, 1] is the variable.
+
+    `unknown_weight` is REQUIRED for a FixedWeights unknown category (the ungraded
+    item's own fixed weight); ignored for rank-based rules (weight comes from the rule).
     """
     target_pct = min_pct_for_letter(target_letter, course.cutoffs)
     if target_pct is None:
         raise ValueError(f"no cutoff defined for letter {target_letter!r}")
 
-    # Fixed contribution from every category except the unknown's.
+    # Fixed contribution from every category except the unknown's (branches per rule).
     fixed_other = 0.0
     unknown_cat: Optional[Category] = None
     for cat in course.categories:
         if cat.name == unknown_category and unknown_cat is None:
             unknown_cat = cat
             continue
-        wts = slot_weights_desc(cat.rule, cat.weight)
-        fixed_other += _earned_for_values(wts, [it.fraction for it in cat.items])
+        fixed_other += _category_earned(cat)
     if unknown_cat is None:
         raise ValueError(f"unknown_category {unknown_category!r} not found")
     if unknown_max_score <= 0:
         return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+    # FixedWeights: the unknown item's weight is CONSTANT -> total(x) is linear, no
+    # rank breakpoints. total(x) = fixed_other + (graded fixed items) + w_u * x.
+    if isinstance(unknown_cat.rule, FixedWeights):
+        if unknown_weight is None:
+            raise ValueError("goal_seek on a FixedWeights category requires unknown_weight")
+        base = fixed_other + _category_earned(unknown_cat)  # graded items already fixed
+        w_u = float(unknown_weight)
+        if base >= target_pct:
+            return GoalSeekResult("already_met", 0.0, 0.0, target_letter, target_pct)
+        if w_u <= 0 or base + w_u < target_pct:
+            return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+        x_star = (target_pct - base) / w_u
+        return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
 
     u_wts = slot_weights_desc(unknown_cat.rule, unknown_cat.weight)
     others = [it.fraction for it in unknown_cat.items]
@@ -318,6 +366,14 @@ def validate_rubric(course: Course, tol: float = 0.01) -> list[str]:
                 warnings.append(
                     f"'{cat.name}': drops {cat.rule.k} of {cat.rule.n_slots} slots - nothing would count."
                 )
+        elif isinstance(cat.rule, FixedWeights):
+            # Weights live on the items; they should sum to the category weight.
+            s = sum((it.weight or 0.0) for it in cat.items)
+            if cat.items and abs(s - cat.weight) > tol:
+                warnings.append(
+                    f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
+                )
+            n_slots = len(cat.items)  # items ARE the slots here
         else:
             n_slots = 0
 
