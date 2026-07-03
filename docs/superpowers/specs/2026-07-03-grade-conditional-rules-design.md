@@ -67,10 +67,19 @@ standing.percent = max over schemes of percent_s            (the scheme most fav
   except the single lowest **graded** non-replacer, which contributes `w_low·max(frac_low,
   frac_replacer)` (ties: boost any one — same value); the replacer contributes `w_R·frac_R`.
   Boost applies only when BOTH the replacer and ≥1 non-replacer are graded.
-  `_category_graded_weight` = Σ graded `w_i` (same as fixedWeights).
+  `_category_graded_weight` = Σ graded `w_i` (same as fixedWeights). **This is the ONLY new
+  compute in Phase 2A-1 — no scheme/normalization machinery needed for replace-if-higher.**
+- **Normalization (2A-2 only):** compute `e_cat`/`gw_cat` from the category's **intrinsic
+  relative slot weights** (normalized to sum to 1 within the category), NOT by dividing by
+  `category.weight` (eng-review): a brand-new category can have `category.weight == 0`, and an
+  alternate scheme may reassign a category's weight, so `category.weight` is the wrong divisor —
+  it risks div-by-zero and mis-scales fixed item weights. A category with 0 slots contributes 0
+  to every scheme (guard).
 - **Regression rule (IRON):** with no `weightings` and no `replaceLowest`, `standing`/`goal_seek`
-  are byte-for-byte identical to Phase 1 (the 105-test suite stays green). A single implicit
-  scheme with `max` over one element must reduce to the current path.
+  match Phase 1 **within float tolerance (≤1e-9), not byte-for-byte** (eng-review: the
+  normalization refactor reorders float ops, so exact bit-equality is unrealistic; assert
+  `pytest.approx`). The 105-test suite stays green. A single implicit scheme with `max` over one
+  element must reduce to the current path.
 
 ## goal_seek generalization (the piecewise moat)
 
@@ -81,8 +90,17 @@ denominator regardless of the score. So the renormalization base `graded_weight_
 NOT linear-fractional. What makes it piecewise / multi-branch:
 - `earned_s(x) = Σ_cat W_s[cat]·earned_cat(x)`; only the unknown's category depends on `x`.
 - Ordinary rule ⇒ `earned_cat(x)` linear in `x`.
-- `replaceLowest` with the replacer as the unknown ⇒ **piecewise-linear**, one breakpoint at
-  `x = frac_lowest_graded_nonreplacer` (below it: no boost; above: `+ w_low·(x − frac_low)`).
+- `replaceLowest` ⇒ **piecewise-linear** for ANY unknown in the category (eng-review D3 = full
+  modeling, not the frozen-boost approximation):
+  - **unknown = the replacer** (the common case): one breakpoint at `x = frac_lowest_graded_nonreplacer`
+    (below it: no boost; above: `+ w_low·(x − frac_low)`).
+  - **unknown = a non-replacer** (upcoming midterm, replacer already graded): the boost target is
+    `argmin` over non-replacer fractions, which changes as `x` crosses each other non-replacer's
+    fraction AND `frac_replacer`. Enumerate those candidate breakpoints, solve linearly per piece.
+    Bounded (a handful of items). If the replacer is ungraded too, no boost term (linear).
+- **Selecting the branch requires knowing whether the unknown is the replacer** (eng-review D2):
+  `find_wire_item` returns the item's `replacer` flag, `goal_seek` takes an `unknown_is_replacer`
+  param, and the `/api/grades/standing` route plumbs it through.
 
 For scheme `s` on a given piece, `percent_s(x) = 100·(A_s·x + B_s)/D_s` with `D_s =
 graded_weight_s` constant, so `percent_s(x) ≥ target` solves to one root
@@ -129,14 +147,37 @@ untouched (regression-locked).
 - **Out:** bonus / extra-credit points, conditional-drop (both explicitly deselected in brainstorming).
 - **Out:** multi-course (Phase 2B) and gradebook polish (Phase 2C) — separate sub-projects.
 
-## Task breakdown (for writing-plans to expand)
+## Task breakdown (phased delivery — eng-review D1)
 
-- **T1 (backend core)** — normalize per-category (`e_cat`/`gw_cat`), scheme-max `compute_standing`, `replaceLowest` earned branch. Files: `grades_math.py`, `test_grades_math.py`. Verify: regression (a) + replaceLowest (b) + max-scheme (c).
-- **T2 (backend goal_seek)** — linear-fractional per-piece solver, piecewise for replaceLowest, min-x over schemes. Files: `grades_math.py`, `test_grades_math.py`. Verify: (d).
-- **T3 (serde)** — parse `replaceLowest` + `item.replacer` + `course.weightings` (id-keyed), validate sums. Files: `grades_serde.py`, `test_grades_serde.py`. Verify: (e).
-- **T4 (wire types + rubric helpers)** — `types.ts` additions; `rubric.ts` replacer toggle + scheme add/remove/sync-on-category-change; unit tests. Files: `frontend/src/grades/{types,rubric,rubric.test}.ts`.
-- **T5 (editor UI)** — "Replace lowest" mode + alternate-weighting section. Files: `RubricEditor.tsx`, `Grades.css`, `RubricEditor.test.tsx`, i18n `messages.ts`.
-- **T6 (standing route wiring)** — ensure `/api/grades/standing` passes `weightings`/replacer through (mostly serde-driven; confirm the route + `find_wire_item` handle the new shape). Files: `api_routes.py` (or the grades route module), route test.
+**Phase 2A-1 — replace-if-higher (ships FIRST, its own PR stacked on `feat/grade-backend`):**
+- **T1 (backend, replaceLowest compute)** — `ReplaceLowest` rule dataclass + `Item.replacer` +
+  `_category_earned`/`_category_graded_weight` boost branch. Files: `grades_math.py`,
+  `test_grades_math.py`. Verify: boost-active + boost-inactive hand-calc; replacer-ungraded ⇒
+  no boost; only-replacer-graded ⇒ no lowest; **regression: no-replaceLowest path unchanged (±1e-9)**.
+- **T2 (backend goal_seek, full piecewise — D3)** — piecewise solver for a `replaceLowest`
+  category with ANY unknown; `unknown_is_replacer` param; shared `min-x over pieces` helper (do
+  NOT touch the rank path). Files: `grades_math.py`, `test_grades_math.py`. Verify: unknown=replacer
+  breakpoint two-sided; unknown=non-replacer crossing-lowest breakpoint two-sided; already_met/infeasible.
+- **T3 (serde + route plumbing — D2)** — parse `{kind:"replaceLowest"}` + `item.replacer`;
+  `find_wire_item` returns the `replacer` flag; `/api/grades/standing` passes `unknown_is_replacer`
+  to goal_seek. Files: `grades_serde.py`, `test_grades_serde.py`, the grades route module + route test.
+  Verify: round-trip; goal_seek picks boost math only when the unknown is the replacer.
+- **T4 (wire types + rubric helpers)** — `types.ts` `replaceLowest` + `Item.replacer`; `rubric.ts`
+  replacer single-select toggle (exactly one per category) + mode plumbing; unit tests. Files:
+  `frontend/src/grades/{types,rubric,rubric.test}.ts`.
+- **T5 (editor UI)** — "Replace lowest" scoring mode: custom-weight rows + a per-row replacer radio +
+  hint. Files: `RubricEditor.tsx`, `Grades.css`, `RubricEditor.test.tsx`, i18n `messages.ts`.
+
+**Phase 2A-2 — max-of-weighting (fast-follow, separate PR after 2A-1 lands):**
+- **T6 (backend scheme core)** — per-category `e_cat`/`gw_cat` via **intrinsic relative weights**
+  (not `category.weight`; 0-slot guard); `Course.weightings`; scheme-max `compute_standing`;
+  goal_seek min-x over schemes. Files: `grades_math.py`, `test_grades_math.py`. Verify: scheme-A-wins
+  vs scheme-B-wins hand-calc; div-by-zero/0-weight-category guard; **regression ±1e-9**.
+- **T7 (serde weightings)** — parse `course.weightings` (id-keyed, each covers all categories, sum 100).
+  Files: `grades_serde.py`, `test_grades_serde.py`.
+- **T8 (editor alternate-weighting section)** — course-level add/remove scheme, per-category weight
+  inputs, sum-to-100 chip; scheme sync on category add/remove. Files: `RubricEditor.tsx`, `rubric.ts`,
+  `Grades.css`, tests, i18n.
 
 ## Locked decisions
 
@@ -146,3 +187,44 @@ untouched (regression-locked).
 - **D4:** alternate weightings keyed by **category id**, each a full vector summing to 100; primary scheme implicit.
 - **D5:** normalized per-category (`e_cat`/`gw_cat`) is the parametrization seam; Phase-1 category math reused.
 - **D6:** syllabus auto-detection deferred; manual editor only.
+
+### Eng-review decisions (2026-07-03)
+- **ED1 (delivery):** phased — **replace-if-higher (Phase 2A-1) ships first** as its own PR stacked
+  on `feat/grade-backend`; max-of-weighting (2A-2) is a fast-follow. Same unified-core design; the
+  scheme machinery is 2A-2 only (replace-if-higher needs none of it). Keeps each PR reviewable and
+  off an already-unmerged base longer than necessary.
+- **ED2 (replacer plumbing):** `find_wire_item` returns the item's `replacer` flag; `goal_seek` takes
+  `unknown_is_replacer`; the standing route plumbs it through — so goal_seek can select the boost math.
+- **ED3 (full piecewise):** goal_seek models the boost for ANY unknown in a `replaceLowest` category
+  (replacer or non-replacer), enumerating breakpoints — NOT the frozen-boost approximation.
+- **ED4 (normalization, 2A-2):** normalize by intrinsic relative slot weights (sum-to-1 within the
+  category), not `category.weight`; guard 0-slot / 0-weight categories to avoid div-by-zero.
+- **ED5 (regression):** the no-new-feature regression asserts float tolerance (≤1e-9 / `pytest.approx`),
+  not byte-for-byte — the normalization refactor reorders float ops.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | not run (optional) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | clean | 2 arch findings resolved, 0 critical gaps; scope phased 2A-1/2A-2 |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | not run (editor add: replacer radio + alt-weighting section) |
+| Outside Voice | `/codex` | Independent 2nd opinion | 0 | — | codex unavailable on this install; skipped |
+
+- **SCOPE (Step 0):** complexity smell fired (~13 files, 2 new dataclasses) but essential (full-stack
+  + test-per-source) and product-scope was brainstorming-locked. Resolved by **phasing delivery**
+  (ED1): 2A-1 replace-if-higher first, 2A-2 max-of-weighting fast-follow.
+- **ARCH D2 (confidence 8):** replacer flag must be plumbed through `find_wire_item` → `goal_seek`
+  (`unknown_is_replacer`) → route, or the boost breakpoint can't be selected → wrong needed-score. **Fixed in spec (ED2).**
+- **ARCH D3 (confidence 7):** unknown = non-replacer in a `replaceLowest` category — user chose FULL
+  piecewise over the frozen-boost approximation. **Fixed in spec (ED3).**
+- **CODE QUALITY:** 1 note (share one `min-x over pieces` solver across replaceLowest + 2A-2 schemes;
+  rank path stays untouched) — baked into T2/T6 as a guideline, no decision needed.
+- **TESTS:** coverage diagram produced; 11 new paths + IRON regression (±1e-9) folded into T1-T3/T6.
+  Regression is auto-added (no question). No test-strategy decision outstanding.
+- **PERFORMANCE:** small N (items/schemes single-digit); no N+1, no hotspot. No issues.
+- **KNOWN TOOLING:** `gstack-review-log` / dashboard binary is v1.40 vs 1.58.5 on this install
+  (upgrade available) — the /ship review dashboard may not reflect this run until gstack upgrades.
+- **UNRESOLVED:** 0. **Critical gaps:** 0.
+- **VERDICT:** ENG CLEARED — ready to implement (Phase 2A-1 first: T1 compute → T2 goal_seek → T3
+  serde+route → T4 helpers → T5 editor). Then writing-plans to expand T1-T5 into a step plan.
