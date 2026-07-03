@@ -6,9 +6,13 @@
 export type Rule =
   | { kind: "uniform"; nSlots: number }
   | { kind: "dropLowest"; nSlots: number; k: number }
-  | { kind: "rankWeights"; weights: number[] }; // absolute per-slot points
+  | { kind: "rankWeights"; weights: number[] } // absolute per-slot points, assigned by SCORE RANK (legacy; not editor-exposed)
+  | { kind: "fixedWeights" }; // per-item fixed weights — the weight lives on each Item.weight (positional, not rank-based)
 
-export type Item = { id: string; name: string; score: number | null; maxScore: number };
+// `weight` is only meaningful when the owning category's rule is `fixedWeights`; it is
+// the item's fixed contribution in points-of-the-100-total (item weights should sum to
+// the category weight). Matches backend/grades_math.py Item.weight.
+export type Item = { id: string; name: string; score: number | null; maxScore: number; weight?: number };
 export type Category = { id: string; name: string; weight: number; rule: Rule; items: Item[] };
 export type Cutoff = { letter: string; min: number };
 export type Course = { name: string; term: string; categories: Category[]; cutoffs: Cutoff[] };

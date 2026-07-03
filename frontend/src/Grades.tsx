@@ -11,6 +11,7 @@ import {
   parseSyllabus,
 } from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
+import { addItem as addItemRow, materializeCourse } from "./grades/rubric";
 import { useLocale } from "./i18n/LocaleContext";
 import { useAuth } from "./context/AuthContext";
 
@@ -116,7 +117,8 @@ function GradesAuthed({ token }: { token: string }) {
     setPhase("parsing");
     parseSyllabus(token, file)
       .then((c) => {
-        updateCourse(c);
+        // T3: pre-generate fillable rows so the gradebook is usable the moment they confirm.
+        updateCourse(materializeCourse(c));
         setPhase("confirming");
       })
       .catch((e) => {
@@ -125,7 +127,7 @@ function GradesAuthed({ token }: { token: string }) {
       });
   };
   const startManual = () => {
-    updateCourse(emptyManualCourse());
+    updateCourse(materializeCourse(emptyManualCourse()));
     setPhase("confirming");
   };
 
@@ -351,20 +353,12 @@ function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course)
       ),
     });
   };
+  // Reuse the rubric row helper so a gradebook-added row also keeps the rule's slot count
+  // in sync (and seeds a fixedWeights row with a weight) — no rule/row desync.
   const addItem = (catId: string) =>
     onChange({
       ...course,
-      categories: course.categories.map((cat) =>
-        cat.id !== catId
-          ? cat
-          : {
-              ...cat,
-              items: [
-                ...cat.items,
-                { id: `${catId}-${Date.now()}`, name: `Item ${cat.items.length + 1}`, score: null, maxScore: 100 },
-              ],
-            },
-      ),
+      categories: course.categories.map((cat) => (cat.id !== catId ? cat : addItemRow(cat))),
     });
 
   return (
