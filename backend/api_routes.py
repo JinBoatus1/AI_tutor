@@ -27,6 +27,7 @@ import grade_store
 import grades_serde as g_serde
 import grades_math as g_math
 import grades_report as g_report
+import grades_syllabus as g_syllabus
 
 try:
     from memory import open_memory, Status
@@ -1294,6 +1295,55 @@ async def grades_standing(body: GradeStandingBody, authorization: Optional[str] 
         return g_report.standing_and_ladder(body.course, body.unknownItemId)
     except g_serde.SerdeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid course: {e}")
+
+
+@router.post("/api/grades/parse_syllabus")
+async def parse_syllabus(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+):
+    """Upload a syllabus PDF -> vision LLM extracts the grading rubric as a Course (unsaved).
+    The frontend then confirms/edits it in the rubric editor before saving."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty file.")
+    if len(pdf_bytes) > MAX_USER_PDF_BYTES:
+        raise HTTPException(status_code=400, detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).")
+    try:
+        pages = lr.render_user_pdf_first_pages_to_base64(pdf_bytes, max_pages=MAX_USER_PDF_PAGES_RENDER)
+    except Exception as e:
+        print(f"[Syllabus] render failed: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Could not open or render the PDF.")
+    if not pages:
+        raise HTTPException(status_code=400, detail="PDF has no pages to read.")
+
+    # Also extract full text — prose-heavy syllabi state the grade breakdown in words,
+    # often past the first rendered pages. Best-effort; images still carry the layout.
+    syllabus_text = ""
+    try:
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as _doc:
+            syllabus_text = "\n".join(p.get_text() for p in _doc)
+    except Exception as e:
+        print(f"[Syllabus] text extract failed (using images only): {e}", flush=True)
+
+    resp = create_chat_completion(
+        model="gpt-5.2",
+        messages=g_syllabus.build_parse_messages(pages, syllabus_text),
+        temperature=0.0,
+    )
+    raw = resp.choices[0].message.content or ""
+    try:
+        course = g_syllabus.normalize_parsed_course(g_syllabus._loads_lenient(raw))
+    except Exception as e:
+        print(f"[Syllabus] parse failed: {e}", flush=True)
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read a grading rubric from this syllabus. Try entering it manually.",
+        )
+    return {"course": course}
 
 
 # ============================================================

@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import "./Grades.css";
 import type { Course, LadderRow, Standing, StandingResp } from "./grades/types";
-import { emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
-import { fetchCourse, saveCourse, fetchStanding, importLegacyCourseIfAny } from "./grades/gradesStorage";
+import { emptyManualCourse } from "./grades/mockData";
+import {
+  fetchCourse,
+  saveCourse,
+  fetchStanding,
+  importLegacyCourseIfAny,
+  parseSyllabus,
+} from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
 import { useLocale } from "./i18n/LocaleContext";
 import { useAuth } from "./context/AuthContext";
@@ -53,6 +60,7 @@ function GradesAuthed({ token }: { token: string }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const courseBeforeEdit = useRef<Course | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,12 +111,18 @@ function GradesAuthed({ token }: { token: string }) {
     setEditing(true);
   };
 
-  const startParse = () => {
+  const startParse = (file: File) => {
+    setParseError(null);
     setPhase("parsing");
-    fakeParseSyllabus().then((c) => {
-      updateCourse(c);
-      setPhase("confirming");
-    });
+    parseSyllabus(token, file)
+      .then((c) => {
+        updateCourse(c);
+        setPhase("confirming");
+      })
+      .catch((e) => {
+        setParseError(e?.message || "Could not read that syllabus.");
+        setPhase("firstrun");
+      });
   };
   const startManual = () => {
     updateCourse(emptyManualCourse());
@@ -160,7 +174,9 @@ function GradesAuthed({ token }: { token: string }) {
         </div>
       </header>
 
-      {phase === "firstrun" && <FirstRun onUpload={startParse} onManual={startManual} />}
+      {phase === "firstrun" && (
+        <FirstRun onUpload={startParse} onManual={startManual} error={parseError} />
+      )}
       {phase === "parsing" && <Parsing />}
       {(phase === "confirming" || editing) && course && (
         <RubricEditor
@@ -241,19 +257,41 @@ function ReadyView({
   );
 }
 
-function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () => void }) {
+function FirstRun({
+  onUpload,
+  onManual,
+  error,
+}: {
+  onUpload: (file: File) => void;
+  onManual: () => void;
+  error: string | null;
+}) {
   const { t } = useLocale();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (f) onUpload(f);
+  };
   return (
     <section className="gr-firstrun">
       <div className="gr-fr-card">
         <div className="gr-fr-mark">∑</div>
         <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
-        <button className="gr-btn-primary gr-fr-cta" onClick={onUpload}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          hidden
+          onChange={onPick}
+        />
+        <button className="gr-btn-primary gr-fr-cta" onClick={() => fileRef.current?.click()}>
           {t("grades.uploadSyllabus")}
         </button>
         <button className="gr-linkbtn" onClick={onManual}>
           {t("grades.enterManually")}
         </button>
+        {error && <p className="gr-fr-error">{error}</p>}
       </div>
     </section>
   );

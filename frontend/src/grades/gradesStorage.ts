@@ -61,6 +61,32 @@ export async function fetchStanding(
   return (await r.json()) as StandingResp;
 }
 
+/**
+ * POST /api/grades/parse_syllabus (multipart) → a vision LLM reads the syllabus PDF and
+ * returns a proposed Course (unsaved) for the user to confirm. NOTE: do not set
+ * Content-Type — the browser sets the multipart boundary for FormData.
+ */
+export async function parseSyllabus(token: string, file: File): Promise<Course> {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(apiUrl("/api/grades/parse_syllabus"), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!r.ok) {
+    let detail = `parse_syllabus ${r.status}`;
+    try {
+      detail = (await r.json()).detail ?? detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+  const data = await r.json();
+  return data.course as Course;
+}
+
 // ---- legacy localStorage (read/clear only) — used by the one-time import-on-login (T7) ----
 export function readLegacyLocalCourse(): Course | null {
   try {

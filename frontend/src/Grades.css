@@ -80,6 +80,7 @@
 .gr-fr-title { font-family: var(--serif); font-size: 28px; color: var(--navy); margin-bottom: 10px; }
 .gr-fr-body { color: var(--ink-soft); font-size: 15px; line-height: 1.65; margin-bottom: 22px; }
 .gr-fr-cta { width: 100%; min-height: 46px; font-size: 13px; }
+.gr-fr-error { margin-top: 14px; color: #b4342b; font-size: 13.5px; line-height: 1.5; }
 .gr-fr-card .gr-linkbtn { margin-top: 14px; display: inline-block; }
 
 /* ---- parsing ---- */
