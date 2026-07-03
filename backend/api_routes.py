@@ -23,6 +23,11 @@ from AutoGrader.public_api import AutoGraderGradeRequest, grade_paper_once
 
 from auth import verify_token
 import database
+import grade_store
+import grades_serde as g_serde
+import grades_math as g_math
+import grades_report as g_report
+import grades_syllabus as g_syllabus
 
 try:
     from memory import open_memory, Status
@@ -643,6 +648,16 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 system_content += sbs.build_bar_prompt(bar, user_email)
             except Exception as e:
                 print(f"[StudentBar] update failed: {e}")
+            # Grade standing (server-only, D8): compact one-liner so the tutor can answer
+            # "what do I need on the final?". Guarded in its OWN try/except — a slow or
+            # throwing grade read must never break chat or the student_bar prompt above.
+            if user_email:
+                try:
+                    saved_course = grade_store.load_course(user_email)
+                    if saved_course:
+                        system_content += g_report.build_standing_prompt(saved_course)
+                except Exception as e:
+                    print(f"[Grades] standing injection skipped: {e}")
         section_hint = client_section_hint or lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
 
@@ -1223,6 +1238,112 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
     bar["textbook_id"] = tid
     sbs.save_bar(sid, bar, tid)
     return bar
+
+
+# ============================================================
+# Course Grade Tracker endpoints (requires auth — server-only, D3)
+# ============================================================
+# Persistence: grade_store (Mongo-primary + file-fallback), the rich wire course
+# stored verbatim. Compute: grades_report.standing_and_ladder (pure). The server is
+# authoritative for all grade math — never trust client-computed numbers.
+
+class GradeSaveBody(BaseModel):
+    course: Dict[str, Any]
+
+
+class GradeStandingBody(BaseModel):
+    course: Dict[str, Any]
+    unknownItemId: Optional[str] = None
+
+
+@router.get("/api/grades")
+async def get_grades(authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"course": grade_store.load_course(email)}
+
+
+@router.put("/api/grades")
+async def put_grades(body: GradeSaveBody, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        projected = g_serde.course_from_wire(body.course)
+    except g_serde.SerdeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid course: {e}")
+    warnings = g_math.validate_rubric(projected)  # non-blocking; UI shows these
+    stored = grade_store.save_course(email, body.course)
+    return {"course": stored, "warnings": warnings}
+
+
+@router.delete("/api/grades")
+async def delete_grades(authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"deleted": grade_store.delete_course(email)}
+
+
+@router.post("/api/grades/standing")
+async def grades_standing(body: GradeStandingBody, authorization: Optional[str] = Header(None)):
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        return g_report.standing_and_ladder(body.course, body.unknownItemId)
+    except g_serde.SerdeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid course: {e}")
+
+
+@router.post("/api/grades/parse_syllabus")
+async def parse_syllabus(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+):
+    """Upload a syllabus PDF -> vision LLM extracts the grading rubric as a Course (unsaved).
+    The frontend then confirms/edits it in the rubric editor before saving."""
+    email = verify_token(authorization)
+    if not email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    pdf_bytes = await file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="Empty file.")
+    if len(pdf_bytes) > MAX_USER_PDF_BYTES:
+        raise HTTPException(status_code=400, detail=f"PDF too large (max {MAX_USER_PDF_MB} MB).")
+    try:
+        pages = lr.render_user_pdf_first_pages_to_base64(pdf_bytes, max_pages=MAX_USER_PDF_PAGES_RENDER)
+    except Exception as e:
+        print(f"[Syllabus] render failed: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Could not open or render the PDF.")
+    if not pages:
+        raise HTTPException(status_code=400, detail="PDF has no pages to read.")
+
+    # Also extract full text — prose-heavy syllabi state the grade breakdown in words,
+    # often past the first rendered pages. Best-effort; images still carry the layout.
+    syllabus_text = ""
+    try:
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as _doc:
+            syllabus_text = "\n".join(p.get_text() for p in _doc)
+    except Exception as e:
+        print(f"[Syllabus] text extract failed (using images only): {e}", flush=True)
+
+    resp = create_chat_completion(
+        model="gpt-5.2",
+        messages=g_syllabus.build_parse_messages(pages, syllabus_text),
+        temperature=0.0,
+    )
+    raw = resp.choices[0].message.content or ""
+    try:
+        course = g_syllabus.normalize_parsed_course(g_syllabus._loads_lenient(raw))
+    except Exception as e:
+        print(f"[Syllabus] parse failed: {e}", flush=True)
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read a grading rubric from this syllabus. Try entering it manually.",
+        )
+    return {"course": course}
 
 
 # ============================================================

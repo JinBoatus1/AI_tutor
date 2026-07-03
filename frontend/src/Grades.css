@@ -80,6 +80,7 @@
 .gr-fr-title { font-family: var(--serif); font-size: 28px; color: var(--navy); margin-bottom: 10px; }
 .gr-fr-body { color: var(--ink-soft); font-size: 15px; line-height: 1.65; margin-bottom: 22px; }
 .gr-fr-cta { width: 100%; min-height: 46px; font-size: 13px; }
+.gr-fr-error { margin-top: 14px; color: #b4342b; font-size: 13.5px; line-height: 1.5; }
 .gr-fr-card .gr-linkbtn { margin-top: 14px; display: inline-block; }
 
 /* ---- parsing ---- */
@@ -189,6 +190,27 @@
 .gr-cutoff { font-family: var(--mono); font-size: 13px; color: var(--ink); display: inline-flex; align-items: center; gap: 4px; }
 .gr-cutoff input { width: 50px; min-height: 34px; text-align: center; font-family: var(--mono); font-size: 13px; border: 1px solid var(--rule); border-radius: 7px; padding: 3px 4px; background: var(--paper-card); }
 .gr-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* ---- rubric editor redesign: per-item rows, add/remove, custom weights ---- */
+.gr-edit-x { border: none; background: transparent; color: var(--ink-soft); font-size: 20px; line-height: 1; min-height: 30px; min-width: 30px; border-radius: 8px; cursor: pointer; }
+.gr-edit-x:hover { color: #9a5b3b; background: #f7ecdf; }
+.gr-edit-x-cat { flex: 0 0 auto; }
+.gr-legacy-note { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-soft); margin-left: 4px; }
+.gr-edit-items { margin-top: 6px; }
+.gr-edit-item-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dotted var(--rule); }
+.gr-edit-item-name { flex: 1 1 auto; font-family: var(--serif); font-size: 15px; color: var(--ink); border: 1px solid transparent; border-radius: 8px; padding: 5px 6px; background: transparent; }
+.gr-edit-item-name:hover, .gr-edit-item-name:focus { border-color: var(--rule); background: #fff; }
+.gr-edit-item-w { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.gr-edit-item-w input { width: 56px; min-height: 32px; text-align: right; font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 6px; background: var(--paper-card); }
+.gr-edit-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.gr-add-cat { margin-top: 14px; }
+.gr-edit-empty { padding: 18px 2px; }
+.gr-edit-empty-hint { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-soft); margin: 6px 0 0; }
+.gr-del-confirm { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.gr-del-q { font-family: var(--sans); font-size: 12.5px; color: #9a5b3b; }
+.gr-del-yes, .gr-del-no { font-family: var(--sans); font-size: 12px; font-weight: 600; min-height: 30px; padding: 5px 11px; border-radius: 999px; cursor: pointer; border: 1px solid var(--rule); }
+.gr-del-yes { background: #9a5b3b; color: #fff; border-color: #9a5b3b; }
+.gr-del-no { background: var(--paper-card); color: var(--ink-soft); }
 
 /* ---- responsive ---- */
 @media (max-width: 720px) {

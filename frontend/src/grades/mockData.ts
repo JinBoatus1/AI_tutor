@@ -1,5 +1,5 @@
 // PREVIEW MOCK data + fake syllabus parse. Replaced by the real API when the backend lands.
-import type { Course } from "./mockEngine";
+import type { Course } from "./types";
 
 export function demoCourse(): Course {
   return {
