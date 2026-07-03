@@ -32,14 +32,23 @@ Return ONLY a JSON object (no prose, no markdown fences) matching EXACTLY this s
 RULE is exactly one of:
   {"kind": "uniform", "nSlots": <int>}                  // N equally weighted items
   {"kind": "dropLowest", "nSlots": <int>, "k": <int>}   // drop the k lowest of N, rest equal
-  {"kind": "rankWeights", "weights": [<num>, ...]}      // explicit per-slot points, best score gets the largest
+  {"kind": "fixedWeights"}                               // items with DISTINCT fixed weights (see below)
+  {"kind": "rankWeights", "weights": [<num>, ...]}      // RARE: your BEST scores count more (weights go to the highest scores by rank)
 
 Rules:
 - Category `weight` values are POINTS OUT OF 100 and should sum to 100.
-- Describe the rubric ONLY. Do NOT invent individual assignment grades/scores; leave items out.
+- For most categories, describe the rubric ONLY: do NOT invent scores, and leave `items` out.
 - A single graded thing (e.g. "Final 30%") is {"kind":"uniform","nSlots":1} with weight 30.
 - "N quizzes, drop the lowest M" -> {"kind":"dropLowest","nSlots":N,"k":M}.
-- Unequal exams (e.g. midterm 20, final 30 in one 'Exams' bucket) -> rankWeights [30,20].
+- DISTINCT FIXED per-item weights ("three tests weighted 10%, 15%, 25% respectively";
+  "midterm 20%, final 30%") -> put them in ONE category with {"kind":"fixedWeights"} and
+  INCLUDE its items: give each item a "name" and a "weight" (points out of 100, and NO score).
+  The item weights should sum to that category's weight. Pre-name items from the syllabus
+  (Test 1, Midterm, Final). Do NOT split these into separate categories, and do NOT use rankWeights.
+  Example: {"name":"Tests","weight":50,"rule":{"kind":"fixedWeights"},
+            "items":[{"name":"Test 1","weight":10},{"name":"Test 2","weight":15},{"name":"Test 3","weight":25}]}
+- Use rankWeights ONLY when the syllabus says your better/higher scores count more (rank-based),
+  never for plain fixed per-item weights.
 - Infer letter cutoffs from the syllabus grading scale; if none is given, use a standard US
   scale (A 93, A- 90, B+ 87, B 83, B- 80, C+ 77, C 73, C- 70, D 60, F 0).
 
@@ -114,12 +123,17 @@ def normalize_parsed_course(data: Any) -> Dict[str, Any]:
         for j, it in enumerate(c.get("items") or []):
             if not isinstance(it, dict):
                 continue
-            items.append({
+            item_wire: Dict[str, Any] = {
                 "id": str(it.get("id") or f"c{i}i{j}"),
                 "name": str(it.get("name") or f"Item {j + 1}"),
                 "score": it.get("score", None),
                 "maxScore": _num(it.get("maxScore"), 100),
-            })
+            }
+            # fixedWeights items carry their OWN fixed weight (points out of 100); preserve
+            # it so the positional grade math and the editor sum-check keep working.
+            if it.get("weight") is not None:
+                item_wire["weight"] = _num(it.get("weight"), 0)
+            items.append(item_wire)
         categories.append({
             "id": str(c.get("id") or f"cat{i}"),
             "name": str(c.get("name") or f"Category {i + 1}"),

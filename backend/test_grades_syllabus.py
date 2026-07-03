@@ -103,3 +103,51 @@ def test_normalize_preserves_items_when_present():
     course = syl.normalize_parsed_course(data)
     it = course["categories"][0]["items"][0]
     assert it["id"] == "c0i0" and it["name"] == "Q1" and it["maxScore"] == 10.0
+
+
+def test_normalize_fixedweights_keeps_distinct_item_weights():
+    """The logic-syllabus case: 'three tests weighted 10/15/25' becomes ONE fixedWeights
+    category with named, per-item-weighted rows (no scores) that round-trips through serde."""
+    data = {
+        "name": "Intro to Logic",
+        "term": "Fall 2026",
+        "categories": [
+            {
+                "name": "Tests",
+                "weight": 50,
+                "rule": {"kind": "fixedWeights"},
+                "items": [
+                    {"name": "Test 1", "weight": 10},
+                    {"name": "Test 2", "weight": 15},
+                    {"name": "Test 3", "weight": 25},
+                ],
+            },
+            {"name": "Homework", "weight": 40, "rule": {"kind": "uniform", "nSlots": 10}},
+            {"name": "Live logic", "weight": 10, "rule": {"kind": "uniform", "nSlots": 1}},
+        ],
+        "cutoffs": [{"letter": "A", "min": 93}],
+    }
+    course = syl.normalize_parsed_course(data)
+    tests = course["categories"][0]
+    assert tests["rule"] == {"kind": "fixedWeights"}
+    assert [it["name"] for it in tests["items"]] == ["Test 1", "Test 2", "Test 3"]
+    assert [it["weight"] for it in tests["items"]] == [10.0, 15.0, 25.0]
+    assert all(it["score"] is None for it in tests["items"])  # rubric only, no invented scores
+    gs.course_from_wire(course)  # shape/rule validation passes
+
+
+def test_normalize_coerces_string_item_weight():
+    data = {
+        "name": "X",
+        "categories": [
+            {
+                "name": "Tests",
+                "weight": 30,
+                "rule": {"kind": "fixedWeights"},
+                "items": [{"name": "T1", "weight": "30"}],
+            }
+        ],
+        "cutoffs": [{"letter": "A", "min": 90}],
+    }
+    course = syl.normalize_parsed_course(data)
+    assert course["categories"][0]["items"][0]["weight"] == 30.0
