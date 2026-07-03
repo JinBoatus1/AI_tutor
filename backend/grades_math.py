@@ -284,12 +284,32 @@ def compute_standing(course: Course) -> Standing:
 #  total() is non-decreasing (a higher score never lowers your grade), so the first
 #  crossing is the minimum needed score.
 # --------------------------------------------------------------------------- #
+def _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter):
+    """Minimum x in [0,1] with total(x) >= target_pct, given a continuous piecewise-linear
+    `total` whose only kinks are at `breakpoints` (which must include 0.0 and 1.0). Shared by
+    the ReplaceLowest goal-seek (and, later, the 2A-2 scheme goal-seek). The rank path keeps
+    its own inline copy (regression-locked)."""
+    target_pct = float(target_pct)
+    if total(0.0) >= target_pct:
+        return GoalSeekResult("already_met", 0.0, 0.0, target_letter, target_pct)
+    if total(1.0) < target_pct:
+        return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+    for a, b in zip(breakpoints, breakpoints[1:]):
+        ta, tb = total(a), total(b)
+        if tb < target_pct:
+            continue
+        x_star = a if tb == ta else a + (target_pct - ta) * (b - a) / (tb - ta)
+        return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+    return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+
 def goal_seek(
     course: Course,
     target_letter: str,
     unknown_category: str,
     unknown_max_score: float,
     unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
 ) -> GoalSeekResult:
     """Minimum score on ONE ungraded item to reach `target_letter`.
 
@@ -305,12 +325,14 @@ def goal_seek(
 
     # Fixed contribution from every category except the unknown's (branches per rule).
     fixed_other = 0.0
+    fixed_other_weight = 0.0
     unknown_cat: Optional[Category] = None
     for cat in course.categories:
         if cat.name == unknown_category and unknown_cat is None:
             unknown_cat = cat
             continue
         fixed_other += _category_earned(cat)
+        fixed_other_weight += _category_graded_weight(cat)
     if unknown_cat is None:
         raise ValueError(f"unknown_category {unknown_category!r} not found")
     if unknown_max_score <= 0:
@@ -329,6 +351,21 @@ def goal_seek(
             return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
         x_star = (target_pct - base) / w_u
         return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+
+    if isinstance(unknown_cat.rule, ReplaceLowest):
+        if unknown_weight is None:
+            raise ValueError("goal_seek on a ReplaceLowest category requires unknown_weight")
+        w_u = float(unknown_weight)
+        existing = [(it.weight or 0.0, it.replacer, it.fraction) for it in unknown_cat.items]
+        existing_weight = sum(w for (w, _r, _f) in existing)
+        total_graded_w = fixed_other_weight + existing_weight + w_u
+        raw_target = target_pct / 100.0 * total_graded_w
+
+        def total(x: float) -> float:
+            return fixed_other + _replace_lowest_slots(existing + [(w_u, unknown_is_replacer, x)])
+
+        breakpoints = sorted({0.0, 1.0, *(min(max(f, 0.0), 1.0) for (_w, _r, f) in existing)})
+        return _solve_piecewise(total, breakpoints, raw_target, unknown_max_score, target_letter)
 
     u_wts = slot_weights_desc(unknown_cat.rule, unknown_cat.weight)
     others = [it.fraction for it in unknown_cat.items]
