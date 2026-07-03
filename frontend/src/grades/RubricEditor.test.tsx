@@ -106,3 +106,19 @@ describe("RubricEditor — delete-with-scores confirm (T5)", () => {
     expect(screen.getByRole("button", { name: /\+ add your first category/i })).toBeTruthy();
   });
 });
+
+describe("RubricEditor — Replace lowest mode", () => {
+  it("exposes a single-select replacer radio and per-row weights", () => {
+    renderEditor(threeTests()); // 3 rows: Test #1/#2/#3, category weight 50
+    fireEvent.click(screen.getByRole("radio", { name: /replace lowest/i }));
+    // per-row weight inputs appear (like custom weights)
+    expect(screen.getByLabelText("Test #1 weight")).toBeTruthy();
+    // one replacer radio per row; last row defaults on
+    const reps = screen.getAllByRole("radio", { name: /final \(replaces lowest\)/i });
+    expect(reps).toHaveLength(3);
+    // pick the first row as the replacer -> single select
+    fireEvent.click(reps[0]);
+    expect((reps[0] as HTMLInputElement).checked).toBe(true);
+    expect((reps[2] as HTMLInputElement).checked).toBe(false);
+  });
+});

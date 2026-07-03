@@ -92,7 +92,7 @@ export function syncSlots(cat: Category): Category {
 }
 
 export function addItem(cat: Category): Category {
-  const isFixed = cat.rule.kind === "fixedWeights";
+  const isFixed = cat.rule.kind === "fixedWeights" || cat.rule.kind === "replaceLowest";
   const row = newItem(`Item ${cat.items.length + 1}`, isFixed ? 0 : undefined);
   return syncSlots({ ...cat, items: [...cat.items, row] });
 }
