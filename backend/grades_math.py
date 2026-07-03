@@ -357,15 +357,12 @@ def goal_seek(
             raise ValueError("goal_seek on a ReplaceLowest category requires unknown_weight")
         w_u = float(unknown_weight)
         existing = [(it.weight or 0.0, it.replacer, it.fraction) for it in unknown_cat.items]
-        existing_weight = sum(w for (w, _r, _f) in existing)
-        total_graded_w = fixed_other_weight + existing_weight + w_u
-        raw_target = target_pct / 100.0 * total_graded_w
 
         def total(x: float) -> float:
             return fixed_other + _replace_lowest_slots(existing + [(w_u, unknown_is_replacer, x)])
 
         breakpoints = sorted({0.0, 1.0, *(min(max(f, 0.0), 1.0) for (_w, _r, f) in existing)})
-        return _solve_piecewise(total, breakpoints, raw_target, unknown_max_score, target_letter)
+        return _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter)
 
     u_wts = slot_weights_desc(unknown_cat.rule, unknown_cat.weight)
     others = [it.fraction for it in unknown_cat.items]

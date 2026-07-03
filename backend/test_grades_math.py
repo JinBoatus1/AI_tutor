@@ -312,51 +312,52 @@ if __name__ == "__main__":
     unittest.main()
 
 
-def _rl_goal_course(m_scores, final_score=None, weights=(10, 10, 10)):
-    """Exams (ReplaceLowest): M1,M2 graded; Final graded only if final_score given.
-    cutoff A=90 on a 30-pt category = /30 scale."""
+def _rl_goal_course(m_scores, final_score=None):
+    """Exams (ReplaceLowest), category weight 100. M1,M2 weight 20 each; Final weight 60 (replacer),
+    graded only if final_score given. Item weights sum to 100, so earned points ARE the percentage
+    — matching the FixedWeights/rank goal_seek convention."""
     import grades_math as gm
-    items = [gm.Item(name="M1", score=m_scores[0], max_score=100, weight=weights[0]),
-             gm.Item(name="M2", score=m_scores[1], max_score=100, weight=weights[1])]
+    items = [gm.Item(name="M1", score=m_scores[0], max_score=100, weight=20),
+             gm.Item(name="M2", score=m_scores[1], max_score=100, weight=20)]
     if final_score is not None:
-        items.append(gm.Item(name="Final", score=final_score, max_score=100, weight=weights[2], replacer=True))
+        items.append(gm.Item(name="Final", score=final_score, max_score=100, weight=60, replacer=True))
     return gm.Course(name="C",
-        categories=[gm.Category(name="Exams", weight=30, rule=gm.ReplaceLowest(), items=items)],
+        categories=[gm.Category(name="Exams", weight=100, rule=gm.ReplaceLowest(), items=items)],
         cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)])
 
 
 def test_goal_seek_replacer_unknown_boost_side():
-    # M1=1.0, M2=0.5 graded; Final is the unknown (replacer), weight 10, target A=90% of /30 -> 27.0.
-    # For x>0.5 M2(0.5) is lifted to x: total = 10*1 + 10*0.5 + 10x + 10*(x-0.5) = 10 + 20x. =27 -> x=0.85.
+    # M1=1.0(w20), M2=0.5(w20); Final unknown replacer(w60). x>0.5 -> M2 lifted to x:
+    # total = 20*1 + 20*x + 60*x = 20 + 80x. =90 -> x=0.875 -> needed 87.5.
     import grades_math as gm
     c = _rl_goal_course((100, 50))
-    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=10, unknown_is_replacer=True)
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 87.5) < 1e-6
+
+
+def test_goal_seek_replacer_unknown_below_breakpoint():
+    # M1=1.0(w20), M2=0.95(w20); Final unknown replacer(w60). x<=0.95 (no boost):
+    # total = 20 + 19 + 60x = 39 + 60x. =90 -> 60x=51 -> x=0.85 (<0.95, consistent). needed 85.
+    import grades_math as gm
+    c = _rl_goal_course((100, 95))
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
     assert r.status == "ok"
     assert abs(r.needed_score - 85.0) < 1e-6
 
 
-def test_goal_seek_replacer_unknown_below_breakpoint():
-    # M1=1.0, M2=0.95 graded; Final unknown replacer. For x<=0.95 (no boost): total = 10 + 9.5 + 10x.
-    # =27 -> 10x = 7.5 -> x=0.75 (<0.95 so no boost, consistent). needed 75.
-    import grades_math as gm
-    c = _rl_goal_course((100, 95))
-    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=10, unknown_is_replacer=True)
-    assert r.status == "ok"
-    assert abs(r.needed_score - 75.0) < 1e-6
-
-
 def test_goal_seek_nonreplacer_unknown_full_piecewise():
-    # M1=1.0 and Final=1.0 (replacer) graded; M2 is the UNKNOWN non-replacer (weight 10).
-    # For x<1.0 M2 is lowest non-rep and is lifted to frac_rep=1.0: base=10*1+10*x+10*1=20+10x;
-    # boost=10*(1.0-x); total=30 (constant) >= target 27 at every x -> already_met, needed 0.
+    # M1=1.0(w20), Final=1.0 replacer(w60) graded; M2 is the UNKNOWN non-replacer(w20).
+    # For x<1.0 M2 is lowest non-rep, lifted to 1.0: total = 20 + 60 + 20x + 20*(1-x) = 100 (constant)
+    # >= 90 at every x -> already_met, needed 0.
     import grades_math as gm
     c = gm.Course(name="C",
-        categories=[gm.Category(name="Exams", weight=30, rule=gm.ReplaceLowest(), items=[
-            gm.Item(name="M1", score=100, max_score=100, weight=10),
-            gm.Item(name="Final", score=100, max_score=100, weight=10, replacer=True),
+        categories=[gm.Category(name="Exams", weight=100, rule=gm.ReplaceLowest(), items=[
+            gm.Item(name="M1", score=100, max_score=100, weight=20),
+            gm.Item(name="Final", score=100, max_score=100, weight=60, replacer=True),
         ])],
         cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)])
-    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=10, unknown_is_replacer=False)
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=20, unknown_is_replacer=False)
     assert r.status in ("already_met", "ok")
     assert (r.needed_score or 0.0) < 1e-6
 
@@ -369,7 +370,8 @@ def test_goal_seek_replace_lowest_requires_weight():
 
 
 def test_goal_seek_replace_lowest_infeasible():
+    # M1=0(w20), M2=0(w20); Final unknown replacer(w60). Best case x=1: base 60 + boost 20 = 80 < 90.
     import grades_math as gm
-    c = _rl_goal_course((0, 0))  # even a perfect boosted final can't reach 90% of /30
-    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=10, unknown_is_replacer=True)
+    c = _rl_goal_course((0, 0))
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
     assert r.status == "infeasible"
