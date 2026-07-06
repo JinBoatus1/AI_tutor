@@ -33,26 +33,29 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
     });
 
   return (
-    <section className="gr-card gr-gradebook">
-      <h2 className="gr-sec-label">{t("grades.gradebook")}</h2>
+    <section className="gr-gradebook">
+      <h2 className="gr-sec">
+        <span>{t("grades.gradebook")}</span>
+      </h2>
       {course.categories.map((cat) => (
         <div className="gr-gb-cat" key={cat.id}>
           <div className="gr-gb-cat-head">
             <span className="gr-gb-cat-name">{cat.name}</span>
-            <span className="gr-gb-cat-weight">{cat.weight}%</span>
+            <span className="gr-gb-weight">{cat.weight}%</span>
           </div>
           {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
           {cat.items.map((it) => {
             const warn = scoreWarning(it);
+            const upcoming = it.score == null;
             return (
-              <div className="gr-gb-row" key={it.id}>
+              <div className={`gr-gb-row${upcoming ? " is-upcoming" : ""}`} key={it.id}>
                 <span className="gr-gb-name">{it.name}</span>
-                <span className="gr-gb-leader" />
-                {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
-                {warn && <span className="gr-gb-overmax">{t("grades.scoreOverMax")}</span>}
-                <span className={`gr-gb-score${warn ? " is-warn" : ""}`}>
+                <span className="gr-gb-lead" />
+                {upcoming && <span className="gr-tag">{t("grades.upcoming")}</span>}
+                {warn && <span className="gr-warn-tag">{t("grades.scoreOverMax")}</span>}
+                <span className={`gr-score${upcoming ? " is-empty" : ""}${warn ? " is-warn" : ""}`}>
                   <input
-                    className="gr-gb-input"
+                    className="gr-score-in"
                     type="number"
                     inputMode="numeric"
                     placeholder="—"
@@ -60,22 +63,20 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
                     aria-label={`${it.name} score`}
                     onChange={(e) => setScore(cat.id, it.id, e.target.value)}
                   />
-                  <span className="gr-gb-max">
-                    /
-                    <input
-                      className="gr-gb-maxinput"
-                      type="number"
-                      inputMode="numeric"
-                      value={it.maxScore}
-                      aria-label={`${it.name} max score`}
-                      onChange={(e) => setMaxScore(cat.id, it.id, e.target.value)}
-                    />
-                  </span>
+                  <span className="gr-score-sep">/</span>
+                  <input
+                    className="gr-score-max"
+                    type="number"
+                    inputMode="numeric"
+                    value={it.maxScore}
+                    aria-label={`${it.name} max score`}
+                    onChange={(e) => setMaxScore(cat.id, it.id, e.target.value)}
+                  />
                 </span>
               </div>
             );
           })}
-          <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
+          <button className="gr-gb-add" onClick={() => addItem(cat.id)}>
             {t("grades.addGrade")}
           </button>
         </div>
