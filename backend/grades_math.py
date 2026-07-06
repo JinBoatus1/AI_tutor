@@ -325,14 +325,12 @@ def goal_seek(
 
     # Fixed contribution from every category except the unknown's (branches per rule).
     fixed_other = 0.0
-    fixed_other_weight = 0.0
     unknown_cat: Optional[Category] = None
     for cat in course.categories:
         if cat.name == unknown_category and unknown_cat is None:
             unknown_cat = cat
             continue
         fixed_other += _category_earned(cat)
-        fixed_other_weight += _category_graded_weight(cat)
     if unknown_cat is None:
         raise ValueError(f"unknown_category {unknown_category!r} not found")
     if unknown_max_score <= 0:
