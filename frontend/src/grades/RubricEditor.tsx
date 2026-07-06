@@ -11,6 +11,7 @@ import {
   removeCategory,
   removeItem,
   setMode,
+  setReplacer,
   type ScoringMode,
 } from "./rubric";
 import { useLocale } from "../i18n/LocaleContext";
@@ -20,7 +21,7 @@ import { useLocale } from "../i18n/LocaleContext";
    pre-creates gradebook items the student can fill immediately. Editing is local; the
    parent persists on change / confirm. All grade math stays server-side. */
 
-const MODES: ScoringMode[] = ["uniform", "dropLowest", "fixedWeights"];
+const MODES: ScoringMode[] = ["uniform", "dropLowest", "fixedWeights", "replaceLowest"];
 
 export default function RubricEditor({
   course,
@@ -89,7 +90,8 @@ export default function RubricEditor({
 
         {c.categories.map((cat, i) => {
           const mode = activeMode(cat.rule);
-          const isFixed = mode === "fixedWeights";
+          const isFixed = mode === "fixedWeights" || mode === "replaceLowest";
+          const isReplace = mode === "replaceLowest";
           const wSum = itemWeightSum(cat);
           const wOk = Math.abs(wSum - cat.weight) < 0.01;
           return (
@@ -146,7 +148,9 @@ export default function RubricEditor({
                       ? t("grades.allEqual")
                       : m === "dropLowest"
                         ? t("grades.dropLowest")
-                        : t("grades.customWeights")}
+                        : m === "fixedWeights"
+                          ? t("grades.customWeights")
+                          : t("grades.replaceLowestMode")}
                   </button>
                 ))}
                 {mode === null && <span className="gr-legacy-note">{t("grades.legacyRank")}</span>}
@@ -183,6 +187,18 @@ export default function RubricEditor({
                         {t("grades.pts")}
                       </label>
                     )}
+                    {isReplace && (
+                      <label className="gr-item-rep">
+                        <input
+                          type="radio"
+                          name={`rep-${cat.id}`}
+                          checked={!!it.replacer}
+                          aria-label={t("grades.replacerLabel")}
+                          onChange={() => mutCat(i, (x) => setReplacer(x, it.id))}
+                        />
+                        {t("grades.replacerLabel")}
+                      </label>
+                    )}
                     <button
                       className="gr-edit-x"
                       aria-label={`${t("grades.removeItem")}: ${it.name}`}
@@ -204,6 +220,7 @@ export default function RubricEditor({
                     </span>
                   )}
                 </div>
+                {isReplace && <p className="gr-replace-hint">{t("grades.replaceLowestHint")}</p>}
               </div>
             </div>
           );

@@ -12,7 +12,7 @@ import type { Category, Course, Item, Rule } from "./types";
 
 // The three modes the editor exposes. `rankWeights` is preserved in the model but not a
 // selectable mode (rare score-rank rubrics from the old editor); see activeMode().
-export type ScoringMode = "uniform" | "dropLowest" | "fixedWeights";
+export type ScoringMode = "uniform" | "dropLowest" | "fixedWeights" | "replaceLowest";
 
 // --------------------------------------------------------------------------- //
 // ids
@@ -28,6 +28,7 @@ export const genId = (prefix = "it"): string =>
 export function activeMode(rule: Rule): ScoringMode | null {
   if (rule.kind === "dropLowest") return "dropLowest";
   if (rule.kind === "fixedWeights") return "fixedWeights";
+  if (rule.kind === "replaceLowest") return "replaceLowest";
   if (rule.kind === "uniform") return "uniform";
   return null; // rankWeights — legacy, not editor-exposed
 }
@@ -42,6 +43,7 @@ export function slotCountOf(rule: Rule): number {
       return rule.nSlots;
     case "rankWeights":
       return rule.weights.length;
+    case "replaceLowest":
     case "fixedWeights":
       return 0;
   }
@@ -90,7 +92,7 @@ export function syncSlots(cat: Category): Category {
 }
 
 export function addItem(cat: Category): Category {
-  const isFixed = cat.rule.kind === "fixedWeights";
+  const isFixed = cat.rule.kind === "fixedWeights" || cat.rule.kind === "replaceLowest";
   const row = newItem(`Item ${cat.items.length + 1}`, isFixed ? 0 : undefined);
   return syncSlots({ ...cat, items: [...cat.items, row] });
 }
@@ -112,15 +114,26 @@ export function setMode(cat: Category, mode: ScoringMode): Category {
     const k = Math.min(Math.max(prevK, 0), Math.max(0, n - 1));
     return { ...cat, rule: { kind: "dropLowest", nSlots: n, k } };
   }
-  // fixedWeights: ensure every item carries a weight. Preserve any existing weights;
-  // seed the rest with an even split of the category weight so the sum starts sensible.
+  // fixedWeights / replaceLowest: ensure every item carries a weight (even-split seed).
   const missing = cat.items.some((it) => it.weight == null);
   let items = cat.items;
   if (missing && n > 0) {
     const seed = evenWeights(cat.weight, n);
     items = cat.items.map((it, i) => ({ ...it, weight: it.weight ?? seed[i] }));
   }
+  if (mode === "replaceLowest") {
+    // default the LAST row to the replacer (the "final") if none is flagged yet
+    if (!items.some((it) => it.replacer)) {
+      items = items.map((it, i) => ({ ...it, replacer: i === items.length - 1 }));
+    }
+    return { ...cat, rule: { kind: "replaceLowest" }, items };
+  }
   return { ...cat, rule: { kind: "fixedWeights" }, items };
+}
+
+/** Flag exactly one item as the replacer (the final); clear the rest. */
+export function setReplacer(cat: Category, itemId: string): Category {
+  return { ...cat, items: cat.items.map((it) => ({ ...it, replacer: it.id === itemId })) };
 }
 
 // --------------------------------------------------------------------------- //

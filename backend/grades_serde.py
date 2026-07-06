@@ -90,8 +90,10 @@ def rule_from_wire(data: Any, *, where: str = "rule") -> gm.Rule:
     if kind == "fixedWeights":
         # Weights live on the items (Item.weight), not on the rule.
         return gm.FixedWeights()
+    if kind == "replaceLowest":
+        return gm.ReplaceLowest()
     raise SerdeError(
-        f"{where}: unknown rule kind {kind!r} (expected uniform|dropLowest|rankWeights|fixedWeights)"
+        f"{where}: unknown rule kind {kind!r} (expected uniform|dropLowest|rankWeights|fixedWeights|replaceLowest)"
     )
 
 
@@ -109,6 +111,7 @@ def item_from_wire(data: Any, *, where: str = "item") -> Optional[gm.Item]:
         score=_require_number(score, f"{where}.score"),
         max_score=_require_number(d.get("maxScore"), f"{where}.maxScore"),
         weight=_require_number(raw_weight, f"{where}.weight") if raw_weight is not None else None,
+        replacer=bool(d.get("replacer", False)),
     )
 
 
@@ -173,11 +176,12 @@ def course_from_wire(data: Any, *, where: str = "course") -> gm.Course:
 # course_from_wire has already stripped, so its max_score must come from the
 # raw wire doc.
 # --------------------------------------------------------------------------- #
-def find_wire_item(data: Any, item_id: str) -> Optional[tuple[str, float, Optional[float]]]:
-    """Return (category_name, max_score, weight) for the wire item whose id == item_id, else None.
+def find_wire_item(data: Any, item_id: str) -> Optional[tuple[str, float, Optional[float], bool]]:
+    """Return (category_name, max_score, weight, replacer) for the wire item whose id == item_id, else None.
 
-    `weight` is the item's own fixed weight (present only for FixedWeights categories); the
-    goal-seek route passes it through as goal_seek's `unknown_weight`.
+    `weight` is the item's own fixed weight (present only for FixedWeights/ReplaceLowest categories);
+    the goal-seek route passes it through as goal_seek's `unknown_weight`.
+    `replacer` is the item's replacer flag, passed through as goal_seek's `unknown_is_replacer`.
     """
     d = _require_dict(data, "course")
     for c in _require_list(d.get("categories", []), "course.categories"):
@@ -188,5 +192,6 @@ def find_wire_item(data: Any, item_id: str) -> Optional[tuple[str, float, Option
             if itd.get("id") == item_id:
                 raw_w = itd.get("weight")
                 weight = _require_number(raw_w, "item.weight") if raw_w is not None else None
-                return cat_name, _require_number(itd.get("maxScore"), "item.maxScore"), weight
+                replacer = bool(itd.get("replacer", False))
+                return cat_name, _require_number(itd.get("maxScore"), "item.maxScore"), weight, replacer
     return None

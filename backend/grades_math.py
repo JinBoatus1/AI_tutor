@@ -81,7 +81,15 @@ class FixedWeights:
     FixedWeights through slot_weights_desc (it has no rule-level weights)."""
 
 
-Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights]
+@dataclass(frozen=True)
+class ReplaceLowest:
+    """Per-item FIXED weights (like FixedWeights) with ONE item flagged `replacer`
+    (the final). The replacer counts in its own slot AND, if it scores higher than
+    the lowest graded non-replacer, that lowest item's fraction is lifted to the
+    replacer's. The weights live on the Items; exactly one Item has replacer=True."""
+
+
+Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights, ReplaceLowest]
 
 
 # --------------------------------------------------------------------------- #
@@ -93,6 +101,7 @@ class Item:
     score: float
     max_score: float
     weight: Optional[float] = None  # only meaningful when the category rule is FixedWeights
+    replacer: bool = False  # only meaningful when the category rule is ReplaceLowest
 
     @property
     def fraction(self) -> float:
@@ -181,8 +190,26 @@ def _used_weight(weights_desc: list[float], n_items: int) -> float:
 # --------------------------------------------------------------------------- #
 # Per-category earned / graded-weight (branches rank-based vs positional fixed)
 # --------------------------------------------------------------------------- #
+def _replace_lowest_slots(slots: list[tuple[float, bool, float]]) -> float:
+    """Earned points for a ReplaceLowest category. Each slot = (weight, is_replacer, fraction).
+    Base = sum(w*frac); then if a replacer is present alongside >=1 non-replacer and scores
+    higher than the lowest non-replacer, that lowest slot is lifted to the replacer fraction."""
+    base = sum(w * f for (w, _r, f) in slots)
+    reps = [(w, f) for (w, r, f) in slots if r]
+    non = [(w, f) for (w, r, f) in slots if not r]
+    if not reps or not non:
+        return base
+    frac_rep = max(f for (_w, f) in reps)
+    w_low, f_low = min(non, key=lambda wf: wf[1])
+    if frac_rep > f_low:
+        return base + w_low * (frac_rep - f_low)
+    return base
+
+
 def _category_earned(cat: "Category") -> float:
     """Points earned in a category from its (graded) items."""
+    if isinstance(cat.rule, ReplaceLowest):
+        return _replace_lowest_slots([(it.weight or 0.0, it.replacer, it.fraction) for it in cat.items])
     if isinstance(cat.rule, FixedWeights):
         # POSITIONAL: each item contributes its OWN weight (no rank sorting).
         return sum((it.weight or 0.0) * it.fraction for it in cat.items)
@@ -192,7 +219,7 @@ def _category_earned(cat: "Category") -> float:
 
 def _category_graded_weight(cat: "Category") -> float:
     """Renormalization base: total weight of the graded slots in a category."""
-    if isinstance(cat.rule, FixedWeights):
+    if isinstance(cat.rule, (FixedWeights, ReplaceLowest)):
         return sum((it.weight or 0.0) for it in cat.items)
     wts = slot_weights_desc(cat.rule, cat.weight)
     return _used_weight(wts, len(cat.items))
@@ -257,12 +284,32 @@ def compute_standing(course: Course) -> Standing:
 #  total() is non-decreasing (a higher score never lowers your grade), so the first
 #  crossing is the minimum needed score.
 # --------------------------------------------------------------------------- #
+def _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter):
+    """Minimum x in [0,1] with total(x) >= target_pct, given a continuous piecewise-linear
+    `total` whose only kinks are at `breakpoints` (which must include 0.0 and 1.0). Shared by
+    the ReplaceLowest goal-seek (and, later, the 2A-2 scheme goal-seek). The rank path keeps
+    its own inline copy (regression-locked)."""
+    target_pct = float(target_pct)
+    if total(0.0) >= target_pct:
+        return GoalSeekResult("already_met", 0.0, 0.0, target_letter, target_pct)
+    if total(1.0) < target_pct:
+        return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+    for a, b in zip(breakpoints, breakpoints[1:]):
+        ta, tb = total(a), total(b)
+        if tb < target_pct:
+            continue
+        x_star = a if tb == ta else a + (target_pct - ta) * (b - a) / (tb - ta)
+        return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+    return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+
 def goal_seek(
     course: Course,
     target_letter: str,
     unknown_category: str,
     unknown_max_score: float,
     unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
 ) -> GoalSeekResult:
     """Minimum score on ONE ungraded item to reach `target_letter`.
 
@@ -302,6 +349,18 @@ def goal_seek(
             return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
         x_star = (target_pct - base) / w_u
         return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+
+    if isinstance(unknown_cat.rule, ReplaceLowest):
+        if unknown_weight is None:
+            raise ValueError("goal_seek on a ReplaceLowest category requires unknown_weight")
+        w_u = float(unknown_weight)
+        existing = [(it.weight or 0.0, it.replacer, it.fraction) for it in unknown_cat.items]
+
+        def total(x: float) -> float:
+            return fixed_other + _replace_lowest_slots(existing + [(w_u, unknown_is_replacer, x)])
+
+        breakpoints = sorted({0.0, 1.0, *(min(max(f, 0.0), 1.0) for (_w, _r, f) in existing)})
+        return _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter)
 
     u_wts = slot_weights_desc(unknown_cat.rule, unknown_cat.weight)
     others = [it.fraction for it in unknown_cat.items]
@@ -374,6 +433,18 @@ def validate_rubric(course: Course, tol: float = 0.01) -> list[str]:
                     f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
                 )
             n_slots = len(cat.items)  # items ARE the slots here
+        elif isinstance(cat.rule, ReplaceLowest):
+            s = sum((it.weight or 0.0) for it in cat.items)
+            if cat.items and abs(s - cat.weight) > tol:
+                warnings.append(
+                    f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
+                )
+            n_reps = sum(1 for it in cat.items if it.replacer)
+            if cat.items and n_reps != 1:
+                warnings.append(
+                    f"'{cat.name}': replace-lowest needs exactly one item marked as the replacer (got {n_reps})."
+                )
+            n_slots = len(cat.items)
         else:
             n_slots = 0
 
