@@ -146,6 +146,33 @@ def cutoff_from_wire(data: Any, *, where: str = "cutoff") -> gm.Cutoff:
 
 
 # --------------------------------------------------------------------------- #
+# WeightSchemes  (course-level alternate weighting schemes)
+# --------------------------------------------------------------------------- #
+def weightings_from_wire(data: Any, categories_wire: list, *, where: str = "course.weightings") -> list["gm.WeightScheme"]:
+    """Parse alternate weighting schemes. Wire: [{name, weights: {categoryId: number}}]. Resolves each
+    scheme's id-keyed weights to a POSITIONAL list aligned to `categories_wire` (grades_math schemes are
+    positional); a category omitted by a scheme falls back to its own primary weight."""
+    raw = data.get("weightings")
+    if not raw:
+        return []
+    cat_ids = [str(_require_dict(c, f"{where}.category").get("id", "")) for c in categories_wire]
+    cat_weights = [_require_number(_require_dict(c, f"{where}.category").get("weight"), f"{where}.category.weight")
+                   for c in categories_wire]
+    schemes: list[gm.WeightScheme] = []
+    for i, s in enumerate(_require_list(raw, where)):
+        sd = _require_dict(s, f"{where}[{i}]")
+        wmap = sd.get("weights") or {}
+        if not isinstance(wmap, dict):
+            raise SerdeError(f"{where}[{i}].weights must be an object")
+        weights = [
+            _require_number(wmap[cid], f"{where}[{i}].weights[{cid}]") if cid in wmap else cat_weights[j]
+            for j, cid in enumerate(cat_ids)
+        ]
+        schemes.append(gm.WeightScheme(name=str(sd.get("name", "")), weights=weights))
+    return schemes
+
+
+# --------------------------------------------------------------------------- #
 # Course  (the projection entry point)
 # --------------------------------------------------------------------------- #
 def course_from_wire(data: Any, *, where: str = "course") -> gm.Course:
@@ -154,9 +181,10 @@ def course_from_wire(data: Any, *, where: str = "course") -> gm.Course:
     Drops id/term, strips null-score items. Raises SerdeError on malformed input.
     """
     d = _require_dict(data, where)
+    categories_wire = _require_list(d.get("categories", []), f"{where}.categories")
     categories = [
         category_from_wire(c, where=f"{where}.categories[{i}]")
-        for i, c in enumerate(_require_list(d.get("categories", []), f"{where}.categories"))
+        for i, c in enumerate(categories_wire)
     ]
     cutoffs = [
         cutoff_from_wire(c, where=f"{where}.cutoffs[{i}]")
@@ -167,6 +195,7 @@ def course_from_wire(data: Any, *, where: str = "course") -> gm.Course:
         name=_require_str(name, f"{where}.name") if name is not None else "",
         categories=categories,
         cutoffs=cutoffs,
+        weightings=weightings_from_wire(d, categories_wire, where=f"{where}.weightings"),
     )
 
 

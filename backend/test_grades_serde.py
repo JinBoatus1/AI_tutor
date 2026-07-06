@@ -245,3 +245,38 @@ def test_find_wire_item_returns_replacer_flag():
         ]}], "cutoffs": [{"letter": "A", "min": 90}]}
     found = gs.find_wire_item(course, "fin")
     assert found == ("Exams", 100.0, 10.0, True)
+
+
+# --------------------------------------------------------------------------- #
+# Task 8: course.weightings parsing (id-keyed -> positional)
+# --------------------------------------------------------------------------- #
+def test_course_from_wire_parses_weightings_positional():
+    import grades_serde as gs
+    course = {"name": "C", "categories": [
+        {"id": "mid", "name": "Midterm", "weight": 60, "rule": {"kind": "uniform", "nSlots": 1},
+         "items": [{"id": "m", "name": "M", "score": 50, "maxScore": 100}]},
+        {"id": "fin", "name": "Final", "weight": 40, "rule": {"kind": "uniform", "nSlots": 1}, "items": []},
+    ], "cutoffs": [{"letter": "A", "min": 90}],
+        "weightings": [{"name": "final-heavy", "weights": {"mid": 40, "fin": 60}}]}
+    gm_course = gs.course_from_wire(course)
+    assert len(gm_course.weightings) == 1
+    assert gm_course.weightings[0].name == "final-heavy"
+    assert gm_course.weightings[0].weights == [40.0, 60.0]  # positional: [Midterm, Final]
+
+
+def test_course_from_wire_weightings_missing_category_falls_back_to_primary():
+    import grades_serde as gs
+    course = {"name": "C", "categories": [
+        {"id": "mid", "name": "Midterm", "weight": 60, "rule": {"kind": "uniform", "nSlots": 1}, "items": []},
+        {"id": "fin", "name": "Final", "weight": 40, "rule": {"kind": "uniform", "nSlots": 1}, "items": []},
+    ], "cutoffs": [], "weightings": [{"name": "partial", "weights": {"fin": 70}}]}
+    gm_course = gs.course_from_wire(course)
+    assert gm_course.weightings[0].weights == [60.0, 70.0]  # 'mid' omitted -> primary 60; 'fin' -> 70
+
+
+def test_course_from_wire_no_weightings_is_empty():
+    import grades_serde as gs
+    course = {"name": "C", "categories": [
+        {"id": "c", "name": "C", "weight": 100, "rule": {"kind": "uniform", "nSlots": 1}, "items": []}],
+        "cutoffs": []}
+    assert gs.course_from_wire(course).weightings == []
