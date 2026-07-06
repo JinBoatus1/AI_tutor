@@ -280,3 +280,14 @@ def test_course_from_wire_no_weightings_is_empty():
         {"id": "c", "name": "C", "weight": 100, "rule": {"kind": "uniform", "nSlots": 1}, "items": []}],
         "cutoffs": []}
     assert gs.course_from_wire(course).weightings == []
+
+
+def test_course_from_wire_rejects_malformed_weightings():
+    # trust-boundary hardening: non-list weightings and non-object scheme weights must raise, not coerce
+    import grades_serde as gs, pytest
+    cats = [{"id": "c", "name": "C", "weight": 100, "rule": {"kind": "uniform", "nSlots": 1}, "items": []}]
+    with pytest.raises(gs.SerdeError):
+        gs.course_from_wire({"name": "C", "categories": cats, "cutoffs": [], "weightings": "nope"})
+    with pytest.raises(gs.SerdeError):
+        gs.course_from_wire({"name": "C", "categories": cats, "cutoffs": [],
+                             "weightings": [{"name": "s", "weights": []}]})

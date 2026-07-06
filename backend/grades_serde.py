@@ -153,16 +153,18 @@ def weightings_from_wire(data: Any, categories_wire: list, *, where: str = "cour
     scheme's id-keyed weights to a POSITIONAL list aligned to `categories_wire` (grades_math schemes are
     positional); a category omitted by a scheme falls back to its own primary weight."""
     raw = data.get("weightings")
-    if not raw:
-        return []
+    if raw is None:
+        return []  # absent key = no alternate schemes; a non-list value falls through to _require_list -> SerdeError
     cat_ids = [str(_require_dict(c, f"{where}.category").get("id", "")) for c in categories_wire]
     cat_weights = [_require_number(_require_dict(c, f"{where}.category").get("weight"), f"{where}.category.weight")
                    for c in categories_wire]
     schemes: list[gm.WeightScheme] = []
     for i, s in enumerate(_require_list(raw, where)):
         sd = _require_dict(s, f"{where}[{i}]")
-        wmap = sd.get("weights") or {}
-        if not isinstance(wmap, dict):
+        wmap = sd.get("weights")
+        if wmap is None:
+            wmap = {}  # a scheme may omit weights entirely -> all categories fall back to primary
+        elif not isinstance(wmap, dict):
             raise SerdeError(f"{where}[{i}].weights must be an object")
         weights = [
             _require_number(wmap[cid], f"{where}[{i}].weights[{cid}]") if cid in wmap else cat_weights[j]
