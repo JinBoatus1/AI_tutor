@@ -156,29 +156,23 @@ function GradesAuthed({ token }: { token: string }) {
 
   return (
     <div className="gr-page">
-      <header className="gr-head">
-        {phase === "ready" && course ? (
+      {phase === "ready" && !editing && course && (
+        <header className="gr-head">
           <div className="gr-masthead">
             <div className="gr-eyebrow">{t("grades.reportCard")}</div>
             <h1 className="gr-course">{course.name}</h1>
             {course.term ? <div className="gr-term">{course.term}</div> : null}
           </div>
-        ) : (
-          <h1 className="gr-title">{t("grades.title")}</h1>
-        )}
-        <div className="gr-head-actions">
-          {phase === "ready" && (
-            <>
-              <button className="gr-btn-ghost" onClick={openEdit}>
-                ⚙ {t("grades.editRubric")}
-              </button>
-              <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
-                {t("grades.newCourse")}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+          <div className="gr-head-actions">
+            <button className="gr-btn-ghost" onClick={openEdit}>
+              ⚙ {t("grades.editRubric")}
+            </button>
+            <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
+              {t("grades.newCourse")}
+            </button>
+          </div>
+        </header>
+      )}
 
       {phase === "firstrun" && (
         <FirstRun onUpload={startParse} onManual={startManual} error={parseError} />
@@ -287,7 +281,9 @@ function FirstRun({
   return (
     <section className="gr-firstrun">
       <div className="gr-fr-card">
+        <div className="gr-fr-eyebrow">{t("grades.reportCard")}</div>
         <div className="gr-fr-mark">∑</div>
+        <h2 className="gr-fr-title">{t("grades.firstrunTitle")}</h2>
         <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
         <input
           ref={fileRef}

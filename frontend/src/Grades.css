@@ -68,21 +68,23 @@
 :where(.gr-page) input:focus-visible,
 :where(.gr-page) select:focus-visible { outline: 2px solid var(--teal-mid); outline-offset: 2px; }
 
-/* ---- first run ---- */
-.gr-firstrun { display: flex; justify-content: center; padding: 40px 0; }
+/* ---- first run (report-card intro panel) ---- */
+.gr-firstrun { display: flex; justify-content: center; padding: 24px 0; }
 .gr-fr-card {
-  max-width: 480px; text-align: center; background: var(--paper-card); border: 1px solid var(--rule);
-  border-radius: 18px; padding: 42px 36px; box-shadow: 0 14px 36px -30px rgba(28, 37, 48, 0.3);
+  max-width: 500px; width: 100%; text-align: center; background: var(--paper-card); border: 1px solid var(--rule);
+  border-radius: 20px; padding: 44px 40px; box-shadow: 0 22px 50px -40px rgba(28, 37, 48, 0.55);
 }
+.gr-fr-eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--teal); margin-bottom: 20px; }
 .gr-fr-mark {
-  width: 60px; height: 60px; margin: 0 auto 18px; border-radius: 14px; display: grid; place-items: center;
-  font-family: var(--serif); font-size: 32px; color: var(--teal-bright); background: linear-gradient(150deg, var(--navy), #0c2828);
+  width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 16px; display: grid; place-items: center;
+  font-family: var(--serif); font-size: 34px; color: var(--teal-bright);
+  background: radial-gradient(120% 120% at 30% 0%, #0c2828, var(--navy));
 }
-.gr-fr-title { font-family: var(--serif); font-size: 28px; color: var(--navy); margin-bottom: 10px; }
-.gr-fr-body { color: var(--ink-soft); font-size: 15px; line-height: 1.65; margin-bottom: 22px; }
-.gr-fr-cta { width: 100%; min-height: 46px; font-size: 13px; }
+.gr-fr-title { font-family: var(--serif); font-size: 29px; color: var(--navy); margin-bottom: 12px; line-height: 1.1; background: none; -webkit-text-fill-color: currentColor; }
+.gr-fr-body { color: var(--ink-soft); font-size: 15px; line-height: 1.65; margin: 0 auto 26px; max-width: 400px; }
+.gr-fr-cta { width: 100%; min-height: 48px; font-size: 13px; border-radius: 12px; }
 .gr-fr-error { margin-top: 14px; color: #b4342b; font-size: 13.5px; line-height: 1.5; }
-.gr-fr-card .gr-linkbtn { margin-top: 14px; display: inline-block; }
+.gr-fr-card .gr-linkbtn { margin-top: 16px; display: inline-block; }
 
 /* ---- parsing ---- */
 .gr-parsing { text-align: center; padding: 76px 0; }
@@ -188,52 +190,52 @@
 .gr-gb-add { background: none; border: none; color: var(--teal); font-family: var(--mono); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; padding: 12px 2px 2px; }
 .gr-gb-add:hover { text-decoration: underline; }
 
-/* ---- rubric editor (ivory index-card) ---- */
-.gr-editor { background: var(--paper-card); border: 1px solid var(--rule-strong); border-radius: 16px; padding: 24px 26px; margin-top: 18px; box-shadow: 0 12px 32px -30px rgba(28, 37, 48, 0.3); }
-.gr-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-.gr-card-h { font-family: var(--serif); font-size: 23px; color: var(--navy); }
-.gr-sumchip { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; padding: 4px 10px; border-radius: 999px; }
+/* ---- rubric editor (report-card setup: masthead + category cards + panels) ---- */
+.gr-editor { background: none; border: none; border-radius: 0; padding: 0; margin-top: 4px; box-shadow: none; }
+.gr-editor-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.gr-card-h { font-family: var(--serif); font-size: 30px; color: var(--navy); line-height: 1.05; background: none; -webkit-text-fill-color: currentColor; }
+.gr-sumchip { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; padding: 6px 13px; border-radius: 999px; white-space: nowrap; }
 .gr-sumchip.ok { color: var(--teal); background: #e7f6f2; }
 .gr-sumchip.warn { color: #9a5b3b; background: #f7ecdf; }
-.gr-editor-note { color: var(--ink-soft); font-size: 14px; line-height: 1.55; margin-bottom: 16px; font-style: italic; font-family: var(--serif); }
-.gr-edit-cat { border: none; border-radius: 0; padding: 18px 2px 8px; margin-bottom: 0; background: none; }
-.gr-edit-cat + .gr-edit-cat { border-top: 1px dotted var(--rule); }
-.gr-edit-cat-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; border-bottom: 1.5px solid var(--rule-strong); padding-bottom: 9px; }
-.gr-edit-name { flex: 1 1 auto; font-family: var(--serif); font-size: 18px; color: var(--navy); border: 1px solid transparent; border-radius: 8px; padding: 4px 6px; background: transparent; }
+.gr-editor-note { color: var(--ink-soft); font-size: 14.5px; line-height: 1.55; margin: 0 0 18px; font-style: italic; font-family: var(--serif); }
+
+/* category card — echoes the gradebook card */
+.gr-edit-cat { background: var(--paper-card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 22px; margin-top: 14px; }
+.gr-edit-cat-top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1.5px solid var(--rule-strong); }
+.gr-edit-name { flex: 1 1 auto; font-family: var(--serif); font-size: 21px; color: var(--navy); border: 1px solid transparent; border-radius: 8px; padding: 4px 8px; background: transparent; }
 .gr-edit-name:hover, .gr-edit-name:focus { border-color: var(--rule); background: #fff; }
-.gr-edit-weight { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
-.gr-edit-weight input { width: 50px; min-height: 34px; text-align: right; font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 6px; background: var(--paper-card); }
-.gr-scoring { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.gr-scoring-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-right: 2px; }
-.gr-seg { font-family: var(--sans); font-size: 12.5px; font-weight: 600; min-height: 34px; padding: 6px 12px; border-radius: 999px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper-card); color: var(--ink-soft); }
+.gr-edit-weight { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; background: #e7f6f2; border-radius: 999px; padding: 5px 12px 5px 14px; flex: 0 0 auto; }
+.gr-edit-weight input { width: 40px; min-height: 26px; text-align: right; font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--teal); border: none; background: transparent; }
+
+/* scoring segmented control */
+.gr-scoring { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px; }
+.gr-scoring-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); margin-right: 6px; }
+.gr-seg { font-family: var(--sans); font-size: 12.5px; font-weight: 600; min-height: 34px; padding: 6px 14px; border-radius: 999px; cursor: pointer; border: 1px solid var(--rule); background: var(--paper); color: var(--ink-soft); }
 .gr-seg.is-on { background: var(--teal-mid); color: #fff; border-color: var(--teal-mid); }
-.gr-rule-params { font-size: 14px; color: var(--ink); line-height: 2.2; }
+.gr-legacy-note { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-soft); margin-left: 4px; }
+.gr-rule-params { font-size: 14px; color: var(--ink); line-height: 2.2; margin-top: 6px; }
 .gr-numin { width: 46px; min-height: 32px; text-align: center; font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule-strong); border-radius: 7px; padding: 3px 4px; margin: 0 2px; background: var(--paper-card); }
-.gr-tier-sum { font-family: var(--mono); font-size: 12px; margin-left: 8px; }
+
+/* item rows */
+.gr-edit-items { margin-top: 8px; }
+.gr-edit-item-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dotted var(--rule); }
+.gr-edit-item-row:last-of-type { border-bottom: none; }
+.gr-edit-item-name { flex: 1 1 auto; font-size: 15px; color: var(--ink); border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; background: transparent; }
+.gr-edit-item-name:hover, .gr-edit-item-name:focus { border-color: var(--rule); background: #fff; }
+.gr-edit-item-w { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 5px 10px; background: var(--paper-card); }
+.gr-edit-item-w input { width: 36px; text-align: right; font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--ink); border: none; background: transparent; }
+.gr-item-rep { font-family: var(--sans); font-size: 11.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.gr-edit-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.gr-tier-sum { font-family: var(--mono); font-size: 12px; }
 .gr-tier-sum.ok { color: var(--teal); }
 .gr-tier-sum.warn { color: #9a5b3b; }
-.gr-edit-cutoffs { margin-top: 10px; }
-.gr-edit-cutoffs-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
-.gr-cutoff-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-.gr-cutoff { font-family: var(--mono); font-size: 13px; color: var(--ink); display: inline-flex; align-items: center; gap: 4px; }
-.gr-cutoff input { width: 50px; min-height: 34px; text-align: center; font-family: var(--mono); font-size: 13px; border: 1px solid var(--rule); border-radius: 7px; padding: 3px 4px; background: var(--paper-card); }
-.gr-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.gr-replace-hint { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; }
+.gr-add-cat { margin-top: 16px; }
 
-/* ---- rubric editor redesign: per-item rows, add/remove, custom weights ---- */
-.gr-edit-x { border: none; background: transparent; color: var(--ink-soft); font-size: 20px; line-height: 1; min-height: 30px; min-width: 30px; border-radius: 8px; cursor: pointer; }
+/* remove buttons, delete-confirm, empty */
+.gr-edit-x { border: none; background: transparent; color: var(--ink-soft); font-size: 20px; line-height: 1; min-height: 32px; min-width: 32px; border-radius: 8px; cursor: pointer; flex: 0 0 auto; }
 .gr-edit-x:hover { color: #9a5b3b; background: #f7ecdf; }
 .gr-edit-x-cat { flex: 0 0 auto; }
-.gr-legacy-note { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-soft); margin-left: 4px; }
-.gr-edit-items { margin-top: 6px; }
-.gr-edit-item-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dotted var(--rule); }
-.gr-edit-item-name { flex: 1 1 auto; font-family: var(--serif); font-size: 15px; color: var(--ink); border: 1px solid transparent; border-radius: 8px; padding: 5px 6px; background: transparent; }
-.gr-edit-item-name:hover, .gr-edit-item-name:focus { border-color: var(--rule); background: #fff; }
-.gr-edit-item-w { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
-.gr-edit-item-w input { width: 56px; min-height: 32px; text-align: right; font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 6px; background: var(--paper-card); }
-.gr-edit-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
-.gr-item-rep { font-family: var(--sans); font-size: 11.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-.gr-replace-hint { font-family: var(--serif); font-style: italic; font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; }
-.gr-add-cat { margin-top: 14px; }
 .gr-edit-empty { padding: 18px 2px; }
 .gr-edit-empty-hint { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-soft); margin: 6px 0 0; }
 .gr-del-confirm { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; }
@@ -242,13 +244,29 @@
 .gr-del-yes { background: #9a5b3b; color: #fff; border-color: #9a5b3b; }
 .gr-del-no { background: var(--paper-card); color: var(--ink-soft); }
 
-.gr-alt-weighting { margin-top: 18px; padding-top: 14px; border-top: 1px dotted var(--rule); }
-.gr-scheme { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; }
+/* alternate-weighting + cutoffs panels (match the ready-view panels) */
+.gr-alt-weighting { margin-top: 34px; background: var(--paper-card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 22px; }
+.gr-scheme { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 12px; }
 .gr-scheme-head { display: flex; align-items: center; justify-content: space-between; }
 .gr-scheme-name { font-family: var(--serif); font-size: 15px; color: var(--navy); }
-.gr-scheme-rows { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
-.gr-scheme-w { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; }
-.gr-scheme-w input { width: 56px; min-height: 32px; text-align: right; font-family: var(--mono); font-size: 14px; border: 1px solid var(--rule); border-radius: 8px; padding: 4px 6px; background: var(--paper-card); }
+.gr-scheme-rows { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
+.gr-scheme-w { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 5px 10px 5px 12px; background: var(--paper-card); }
+.gr-scheme-w input { width: 44px; text-align: right; font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--ink); border: none; background: transparent; }
+
+.gr-edit-cutoffs { margin-top: 34px; background: var(--paper-card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px 22px; }
+.gr-edit-cutoffs-label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--navy); }
+.gr-cutoff-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.gr-cutoff { font-family: var(--mono); font-size: 14px; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule-strong); border-radius: 10px; padding: 6px 8px 6px 12px; background: var(--paper-card); }
+.gr-cutoff input { width: 44px; text-align: center; font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--teal); border: none; background: transparent; }
+.gr-editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
+
+/* kill native number spinners across the editor's numeric inputs */
+.gr-edit-weight input::-webkit-outer-spin-button, .gr-edit-weight input::-webkit-inner-spin-button,
+.gr-edit-item-w input::-webkit-outer-spin-button, .gr-edit-item-w input::-webkit-inner-spin-button,
+.gr-scheme-w input::-webkit-outer-spin-button, .gr-scheme-w input::-webkit-inner-spin-button,
+.gr-cutoff input::-webkit-outer-spin-button, .gr-cutoff input::-webkit-inner-spin-button,
+.gr-numin::-webkit-outer-spin-button, .gr-numin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gr-edit-weight input, .gr-edit-item-w input, .gr-scheme-w input, .gr-cutoff input, .gr-numin { -moz-appearance: textfield; appearance: textfield; }
 
 /* ---- responsive ---- */
 @media (max-width: 720px) {

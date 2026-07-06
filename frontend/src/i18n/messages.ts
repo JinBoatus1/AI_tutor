@@ -114,6 +114,7 @@ const EN = {
   "grades.previewMock": "Preview · mock data",
   "grades.editRubric": "Edit rubric",
   "grades.newCourse": "+ New course",
+  "grades.firstrunTitle": "Let's build your report card",
   "grades.firstrunBody":
     "Upload your syllabus and AI Tutor pulls out the grading rubric — categories, weights, and letter cutoffs — for you to confirm.",
   "grades.uploadSyllabus": "Upload syllabus (PDF)",
@@ -145,6 +146,7 @@ const EN = {
   "grades.scoreOn": "score {score} on {item}",
   "grades.alreadyLockedIn": "already locked in",
   "grades.outOfReach": "out of reach",
+  "grades.setupReportCard": "Set up the report card",
   "grades.confirmRubric": "Confirm your rubric",
   "grades.editRubricTitle": "Edit rubric",
   "grades.weightsSum": "weights: {sum}%",
@@ -448,6 +450,7 @@ const ZH: Record<MessageKey, string> = {
   "grades.previewMock": "预览 · 模拟数据",
   "grades.editRubric": "编辑评分规则",
   "grades.newCourse": "+ 新建课程",
+  "grades.firstrunTitle": "来建你的成绩单吧",
   "grades.firstrunBody":
     "上传教学大纲，AI Tutor 将提取评分规则 — 类别、权重与等级 cutoff — 供您确认。",
   "grades.uploadSyllabus": "上传教学大纲（PDF）",
@@ -479,6 +482,7 @@ const ZH: Record<MessageKey, string> = {
   "grades.scoreOn": "在 {item} 得 {score} 分",
   "grades.alreadyLockedIn": "已锁定",
   "grades.outOfReach": "无法达到",
+  "grades.setupReportCard": "设置成绩单",
   "grades.confirmRubric": "确认评分规则",
   "grades.editRubricTitle": "编辑评分规则",
   "grades.weightsSum": "权重：{sum}%",
@@ -780,6 +784,7 @@ const ES: Record<MessageKey, string> = {
   "grades.previewMock": "Vista previa · datos simulados",
   "grades.editRubric": "Editar rúbrica",
   "grades.newCourse": "+ Nuevo curso",
+  "grades.firstrunTitle": "Construyamos tu boletín",
   "grades.firstrunBody":
     "Sube tu programa y AI Tutor extrae la rúbrica — categorías, pesos y cortes de letra — para que la confirmes.",
   "grades.uploadSyllabus": "Subir programa (PDF)",
@@ -811,6 +816,7 @@ const ES: Record<MessageKey, string> = {
   "grades.scoreOn": "saca {score} en {item}",
   "grades.alreadyLockedIn": "ya asegurado",
   "grades.outOfReach": "fuera de alcance",
+  "grades.setupReportCard": "Configura el boletín",
   "grades.confirmRubric": "Confirma tu rúbrica",
   "grades.editRubricTitle": "Editar rúbrica",
   "grades.weightsSum": "pesos: {sum}%",

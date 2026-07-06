@@ -75,7 +75,10 @@ export default function RubricEditor({
   return (
     <div className="gr-editor" role="dialog" aria-label={t("grades.editRubricTitle")}>
       <div className="gr-editor-head">
-        <h2 className="gr-card-h">{parsed ? t("grades.confirmRubric") : t("grades.editRubricTitle")}</h2>
+        <div>
+          <div className="gr-eyebrow">{t("grades.setupReportCard")}</div>
+          <h2 className="gr-card-h">{parsed ? t("grades.confirmRubric") : t("grades.editRubricTitle")}</h2>
+        </div>
         <span className={`gr-sumchip${sumOk ? " ok" : " warn"}`}>
           {t("grades.weightsSum", { sum: String(sum) })} {sumOk ? t("grades.weightsOk") : t("grades.weightsWarn")}
         </span>
