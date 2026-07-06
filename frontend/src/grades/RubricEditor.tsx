@@ -4,14 +4,18 @@ import {
   activeMode,
   addCategory,
   addItem,
+  addScheme,
   categoryWeightSum,
   hasEnteredScores,
   itemWeightSum,
   materializeCourse,
   removeCategory,
   removeItem,
+  removeScheme,
+  schemeSum,
   setMode,
   setReplacer,
+  setSchemeWeight,
   type ScoringMode,
 } from "./rubric";
 import { useLocale } from "../i18n/LocaleContext";
@@ -231,6 +235,38 @@ export default function RubricEditor({
             {t("grades.addCategory")}
           </button>
         )}
+      </div>
+
+      <div className="gr-alt-weighting">
+        <div className="gr-edit-cutoffs-label">{t("grades.altWeighting")}</div>
+        {(c.weightings ?? []).map((s, si) => {
+          const ssum = schemeSum(s);
+          const ok = Math.abs(ssum - 100) < 0.01;
+          return (
+            <div className="gr-scheme" key={si}>
+              <div className="gr-scheme-head">
+                <span className="gr-scheme-name">{s.name}</span>
+                <button className="gr-edit-x" aria-label={`${t("grades.removeScheme")}: ${s.name}`}
+                  onClick={() => push((prev) => removeScheme(prev, si))}>×</button>
+              </div>
+              <div className="gr-scheme-rows">
+                {c.categories.map((cat) => (
+                  <label className="gr-scheme-w" key={cat.id}>
+                    <span>{cat.name}</span>
+                    <input type="number" value={s.weights[cat.id] ?? cat.weight}
+                      aria-label={`${cat.name} weight in ${s.name}`}
+                      onChange={(e) => push((prev) => setSchemeWeight(prev, si, cat.id, Number(e.target.value) || 0))} />
+                  </label>
+                ))}
+              </div>
+              <span className={`gr-tier-sum${ok ? " ok" : " warn"}`}>
+                {ok ? t("grades.schemeSumOk") : t("grades.schemeSumWarn", { sum: String(ssum) })}
+              </span>
+            </div>
+          );
+        })}
+        <button className="gr-linkbtn" onClick={() => push(addScheme)}>{t("grades.addScheme")}</button>
+        {(c.weightings?.length ?? 0) > 0 && <p className="gr-replace-hint">{t("grades.altWeightingHint")}</p>}
       </div>
 
       <div className="gr-edit-cutoffs">
