@@ -3,6 +3,7 @@ import {
   activeMode,
   addCategory,
   addItem,
+  addScheme,
   categoryWeightSum,
   evenWeights,
   hasEnteredScores,
@@ -11,8 +12,11 @@ import {
   newItem,
   removeCategory,
   removeItem,
+  removeScheme,
+  schemeSum,
   setMode,
   setReplacer,
+  setSchemeWeight,
   slotCountOf,
   syncSlots,
 } from "./rubric";
@@ -190,5 +194,33 @@ describe("replaceLowest helpers", () => {
     expect(c.items.map((it) => !!it.replacer)).toEqual([true, false, false]);
     c = setReplacer(c, c.items[1].id);
     expect(c.items.map((it) => !!it.replacer)).toEqual([false, true, false]);
+  });
+});
+
+describe("weighting-scheme helpers", () => {
+  const base = (): Course => ({
+    name: "C", term: "",
+    categories: [
+      { id: "mid", name: "Midterm", weight: 60, rule: { kind: "uniform", nSlots: 1 }, items: [] },
+      { id: "fin", name: "Final", weight: 40, rule: { kind: "uniform", nSlots: 1 }, items: [] },
+    ],
+    cutoffs: [],
+  });
+  it("addScheme seeds a scheme from the current category weights", () => {
+    const c = addScheme(base());
+    expect(c.weightings).toHaveLength(1);
+    expect(c.weightings![0].weights).toEqual({ mid: 60, fin: 40 });
+  });
+  it("setSchemeWeight edits one category's weight in one scheme", () => {
+    let c = addScheme(base());
+    c = setSchemeWeight(c, 0, "fin", 60);
+    c = setSchemeWeight(c, 0, "mid", 40);
+    expect(c.weightings![0].weights).toEqual({ mid: 40, fin: 60 });
+    expect(schemeSum(c.weightings![0])).toBe(100);
+  });
+  it("removeScheme drops it", () => {
+    let c = addScheme(base());
+    c = removeScheme(c, 0);
+    expect(c.weightings).toEqual([]);
   });
 });

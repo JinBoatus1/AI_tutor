@@ -8,7 +8,7 @@
 // Kept as pure Course->Course / Category->Category transforms so they unit-test in node
 // (no jsdom); RubricEditor.tsx is a thin view over them.
 
-import type { Category, Course, Item, Rule } from "./types";
+import type { Category, Course, Item, Rule, WeightScheme } from "./types";
 
 // The three modes the editor exposes. `rankWeights` is preserved in the model but not a
 // selectable mode (rare score-rank rubrics from the old editor); see activeMode().
@@ -137,6 +137,48 @@ export function setReplacer(cat: Category, itemId: string): Category {
 }
 
 // --------------------------------------------------------------------------- //
+// weighting schemes
+// --------------------------------------------------------------------------- //
+/** Sum of a scheme's per-category weights (for the "should be 100" chip). */
+export const schemeSum = (s: WeightScheme): number =>
+  Math.round(Object.values(s.weights).reduce((a, b) => a + b, 0) * 100) / 100;
+
+/** Append a new scheme seeded from the current category weights. */
+export function addScheme(course: Course): Course {
+  const weights: Record<string, number> = {};
+  for (const cat of course.categories) weights[cat.id] = cat.weight;
+  const scheme: WeightScheme = { name: `Option ${(course.weightings?.length ?? 0) + 2}`, weights };
+  return { ...course, weightings: [...(course.weightings ?? []), scheme] };
+}
+
+/** Remove scheme at index i. */
+export function removeScheme(course: Course, i: number): Course {
+  return { ...course, weightings: (course.weightings ?? []).filter((_, j) => j !== i) };
+}
+
+/** Set one category's weight within scheme i. */
+export function setSchemeWeight(course: Course, i: number, catId: string, weight: number): Course {
+  return {
+    ...course,
+    weightings: (course.weightings ?? []).map((s, j) =>
+      j === i ? { ...s, weights: { ...s.weights, [catId]: weight } } : s,
+    ),
+  };
+}
+
+/** Keep schemes aligned when a category is added/removed: rebuild each scheme's weights to exactly
+ *  the current categories (new cats seed their own weight; removed cats drop out). */
+export function syncSchemes(course: Course): Course {
+  if (!course.weightings?.length) return course;
+  const weightings = course.weightings.map((s) => {
+    const weights: Record<string, number> = {};
+    for (const cat of course.categories) weights[cat.id] = s.weights[cat.id] ?? cat.weight;
+    return { ...s, weights };
+  });
+  return { ...course, weightings };
+}
+
+// --------------------------------------------------------------------------- //
 // categories
 // --------------------------------------------------------------------------- //
 export function addCategory(course: Course): Course {
@@ -147,11 +189,11 @@ export function addCategory(course: Course): Course {
     rule: { kind: "uniform", nSlots: 0 },
     items: [],
   };
-  return { ...course, categories: [...course.categories, cat] };
+  return syncSchemes({ ...course, categories: [...course.categories, cat] });
 }
 
 export function removeCategory(course: Course, catId: string): Course {
-  return { ...course, categories: course.categories.filter((c) => c.id !== catId) };
+  return syncSchemes({ ...course, categories: course.categories.filter((c) => c.id !== catId) });
 }
 
 /** True if a category holds any entered score — deleting it should be confirmed (T5). */

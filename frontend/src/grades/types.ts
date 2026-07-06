@@ -16,7 +16,10 @@ export type Rule =
 export type Item = { id: string; name: string; score: number | null; maxScore: number; weight?: number; replacer?: boolean };
 export type Category = { id: string; name: string; weight: number; rule: Rule; items: Item[] };
 export type Cutoff = { letter: string; min: number };
-export type Course = { name: string; term: string; categories: Category[]; cutoffs: Cutoff[] };
+// Alternate course-level weighting scheme; the grade is the MAX over the primary weights + these.
+// `weights` is keyed by category id; a category omitted falls back to its own weight (backend).
+export type WeightScheme = { name: string; weights: Record<string, number> };
+export type Course = { name: string; term: string; categories: Category[]; cutoffs: Cutoff[]; weightings?: WeightScheme[] };
 
 // ---- server-computed responses (POST /api/grades/standing) ----
 export type GoalStatus = "ok" | "locked" | "unreachable";
