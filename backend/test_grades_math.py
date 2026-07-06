@@ -375,3 +375,68 @@ def test_goal_seek_replace_lowest_infeasible():
     c = _rl_goal_course((0, 0))
     r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
     assert r.status == "infeasible"
+
+
+def _two_cat_scheme_course(m_frac, f_frac, with_alt=True):
+    """Midterm(w60, 1 uniform item) + Final(w40, 1 uniform item). Alt scheme = Midterm 40 / Final 60.
+    Both items graded, weights sum to 100, so earned points == percent."""
+    import grades_math as gm
+    course = gm.Course(
+        name="C",
+        categories=[
+            gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                        items=[gm.Item(name="M", score=m_frac * 100, max_score=100)]),
+            gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1),
+                        items=[gm.Item(name="F", score=f_frac * 100, max_score=100)]),
+        ],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)],
+    )
+    if with_alt:
+        course.weightings = [gm.WeightScheme(name="final-heavy", weights=[40.0, 60.0])]
+    return course
+
+
+def test_apply_scheme_reweights_and_scales_fixed_items():
+    import grades_math as gm
+    from grades_math import apply_scheme
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Tests", weight=50, rule=gm.FixedWeights(),
+                    items=[gm.Item(name="T1", score=100, max_score=100, weight=20),
+                           gm.Item(name="T2", score=100, max_score=100, weight=30)])],
+        cutoffs=[])
+    out = apply_scheme(course, [100.0])  # category weight doubled -> item weights x2
+    assert out.categories[0].weight == 100.0
+    assert [it.weight for it in out.categories[0].items] == [40.0, 60.0]
+    u = gm.Course(name="C", categories=[gm.Category(name="U", weight=30, rule=gm.Uniform(n_slots=2),
+                  items=[gm.Item(name="a", score=1, max_score=1)])], cutoffs=[])
+    assert apply_scheme(u, [60.0]).categories[0].items[0].weight is None
+
+
+def test_standing_scheme_max_primary_wins():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(1.0, 0.5))
+    assert abs(s.percent - 80.0) < 1e-9
+
+
+def test_standing_scheme_max_alt_wins():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(0.5, 1.0))
+    assert abs(s.percent - 80.0) < 1e-9
+
+
+def test_standing_no_weightings_is_unchanged():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(0.5, 1.0, with_alt=False))
+    assert abs(s.percent - 70.0) < 1e-9
+
+
+def test_apply_scheme_zero_weight_category_guard():
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Empty", weight=0, rule=gm.Uniform(n_slots=0), items=[]),
+        gm.Category(name="Final", weight=100, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="F", score=90, max_score=100)])],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    course.weightings = [gm.WeightScheme(name="alt", weights=[0.0, 100.0])]
+    s = gm.compute_standing(course)
+    assert abs(s.percent - 90.0) < 1e-9

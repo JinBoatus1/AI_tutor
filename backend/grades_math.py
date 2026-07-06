@@ -36,7 +36,7 @@ Model
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, Union
 
 
@@ -125,10 +125,20 @@ class Cutoff:
 
 
 @dataclass
+class WeightScheme:
+    """An alternate per-category weight vector (positional to Course.categories). Each scheme
+    should sum to 100. The course grade is the MAX over the primary weights + all schemes."""
+
+    name: str
+    weights: list[float]
+
+
+@dataclass
 class Course:
     name: str
     categories: list[Category] = field(default_factory=list)
     cutoffs: list[Cutoff] = field(default_factory=list)
+    weightings: list[WeightScheme] = field(default_factory=list)
 
 
 @dataclass
@@ -245,9 +255,29 @@ def min_pct_for_letter(letter: str, cutoffs: list[Cutoff]) -> Optional[float]:
 
 
 # --------------------------------------------------------------------------- #
+# Alternate weighting schemes
+# --------------------------------------------------------------------------- #
+def apply_scheme(course: Course, weights: list[float]) -> Course:
+    """Return a copy of `course` re-weighted to `weights[i]` per category. Slot-weighted rules
+    (uniform/dropLowest/rankWeights) pick up the new weight through `category.weight`; per-item
+    rules (fixedWeights/replaceLowest) have their item weights scaled by weights[i]/old_weight so
+    intra-category proportions are preserved. A category whose ORIGINAL weight is 0 keeps 0-weight
+    items (contributes nothing) — this is the div-by-zero guard."""
+    new_cats: list[Category] = []
+    for cat, w in zip(course.categories, weights):
+        if cat.weight > 0:
+            scale = w / cat.weight
+            items = [replace(it, weight=(it.weight * scale)) if it.weight is not None else it for it in cat.items]
+        else:
+            items = [replace(it, weight=0.0) if it.weight is not None else it for it in cat.items]
+        new_cats.append(replace(cat, weight=w, items=items))
+    return replace(course, categories=new_cats, weightings=[])
+
+
+# --------------------------------------------------------------------------- #
 # Current standing (grade on graded work so far)
 # --------------------------------------------------------------------------- #
-def compute_standing(course: Course) -> Standing:
+def _standing_core(course: Course) -> Standing:
     earned = 0.0
     graded_weight = 0.0
     for cat in course.categories:
@@ -262,6 +292,19 @@ def compute_standing(course: Course) -> Standing:
         earned_points=earned,
         graded_weight=graded_weight,
     )
+
+
+def compute_standing(course: Course) -> Standing:
+    """Standing under the most favorable weighting scheme. With no `weightings`, delegates to the
+    core unchanged (byte-for-byte for every existing rule)."""
+    if not course.weightings:
+        return _standing_core(course)
+    best = _standing_core(course)  # the primary scheme
+    for scheme in course.weightings:
+        cand = _standing_core(apply_scheme(course, scheme.weights))
+        if cand.percent is not None and (best.percent is None or cand.percent > best.percent):
+            best = cand
+    return best
 
 
 # --------------------------------------------------------------------------- #
