@@ -346,7 +346,27 @@ def _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_l
     return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
 
 
-def goal_seek(
+_GS_RANK = {"already_met": 0, "ok": 1, "infeasible": 2}
+
+
+def _better_goal(a: Optional[GoalSeekResult], b: GoalSeekResult) -> GoalSeekResult:
+    """Pick the more favorable goal-seek result across schemes: already_met > ok(min needed) >
+    infeasible. The student may pick whichever scheme is easiest."""
+    if a is None:
+        return b
+    ra, rb = _GS_RANK.get(a.status, 3), _GS_RANK.get(b.status, 3)
+    if rb < ra:
+        return b
+    if rb > ra:
+        return a
+    if a.status == "ok" and b.needed_score is not None and (
+        a.needed_score is None or b.needed_score < a.needed_score
+    ):
+        return b
+    return a
+
+
+def _goal_seek_core(
     course: Course,
     target_letter: str,
     unknown_category: str,
@@ -436,6 +456,36 @@ def goal_seek(
 
     # Should be unreachable given the feasibility guards above.
     return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+
+def goal_seek(
+    course: Course,
+    target_letter: str,
+    unknown_category: str,
+    unknown_max_score: float,
+    unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
+) -> GoalSeekResult:
+    """Minimum needed score across the primary + alternate weighting schemes (the student picks
+    the most favorable). With no `weightings`, delegates to the core unchanged."""
+    if not course.weightings:
+        return _goal_seek_core(course, target_letter, unknown_category, unknown_max_score,
+                               unknown_weight, unknown_is_replacer)
+    idx = next((i for i, c in enumerate(course.categories) if c.name == unknown_category), None)
+    if idx is None:
+        raise ValueError(f"unknown_category {unknown_category!r} not found")
+    orig_w = course.categories[idx].weight
+    schemes = [[c.weight for c in course.categories]] + [s.weights for s in course.weightings]
+    best: Optional[GoalSeekResult] = None
+    for w in schemes:
+        scaled_uw = unknown_weight
+        if unknown_weight is not None and orig_w > 0:
+            scaled_uw = unknown_weight * (w[idx] / orig_w)
+        res = _goal_seek_core(apply_scheme(course, w), target_letter, unknown_category,
+                              unknown_max_score, scaled_uw, unknown_is_replacer)
+        best = _better_goal(best, res)
+    assert best is not None
+    return best
 
 
 # --------------------------------------------------------------------------- #

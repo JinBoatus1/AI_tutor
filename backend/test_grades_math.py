@@ -312,6 +312,47 @@ if __name__ == "__main__":
     unittest.main()
 
 
+def test_goal_seek_scheme_min_picks_favorable():
+    # Midterm 0.5 (w60), Final ungraded (w40). Target B=70. alt = M40/F60.
+    #   primary: 60*0.5 + 40*x = 30 + 40x = 70 -> x=1.0 (needed 100)
+    #   alt:     40*0.5 + 60*x = 20 + 60x = 70 -> x=0.8333 (needed 83.33)
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=50, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="final-heavy", weights=[40.0, 60.0])]
+    r = gm.goal_seek(course, "B", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "ok"
+    assert abs(r.needed_score - (50.0 / 0.6)) < 1e-6  # 83.333...
+
+
+def test_goal_seek_scheme_already_met_wins():
+    # Midterm 1.0 (w60). Target C=70. Primary total(0)=60 < 70 (ok). Alt mid-heavy [80,20]: 80 >= 70 -> already_met.
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=100, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="C", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="mid-heavy", weights=[80.0, 20.0])]
+    r = gm.goal_seek(course, "C", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "already_met"
+
+
+def test_goal_seek_no_weightings_unchanged():
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=50, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    r = gm.goal_seek(course, "B", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 100.0) < 1e-6
+
+
 def _rl_goal_course(m_scores, final_score=None):
     """Exams (ReplaceLowest), category weight 100. M1,M2 weight 20 each; Final weight 60 (replacer),
     graded only if final_score given. Item weights sum to 100, so earned points ARE the percentage
