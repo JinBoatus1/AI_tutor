@@ -36,7 +36,7 @@ Model
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, Union
 
 
@@ -125,10 +125,20 @@ class Cutoff:
 
 
 @dataclass
+class WeightScheme:
+    """An alternate per-category weight vector (positional to Course.categories). Each scheme
+    should sum to 100. The course grade is the MAX over the primary weights + all schemes."""
+
+    name: str
+    weights: list[float]
+
+
+@dataclass
 class Course:
     name: str
     categories: list[Category] = field(default_factory=list)
     cutoffs: list[Cutoff] = field(default_factory=list)
+    weightings: list[WeightScheme] = field(default_factory=list)
 
 
 @dataclass
@@ -245,9 +255,29 @@ def min_pct_for_letter(letter: str, cutoffs: list[Cutoff]) -> Optional[float]:
 
 
 # --------------------------------------------------------------------------- #
+# Alternate weighting schemes
+# --------------------------------------------------------------------------- #
+def apply_scheme(course: Course, weights: list[float]) -> Course:
+    """Return a copy of `course` re-weighted to `weights[i]` per category. Slot-weighted rules
+    (uniform/dropLowest/rankWeights) pick up the new weight through `category.weight`; per-item
+    rules (fixedWeights/replaceLowest) have their item weights scaled by weights[i]/old_weight so
+    intra-category proportions are preserved. A category whose ORIGINAL weight is 0 keeps 0-weight
+    items (contributes nothing) — this is the div-by-zero guard."""
+    new_cats: list[Category] = []
+    for cat, w in zip(course.categories, weights):
+        if cat.weight > 0:
+            scale = w / cat.weight
+            items = [replace(it, weight=(it.weight * scale)) if it.weight is not None else it for it in cat.items]
+        else:
+            items = [replace(it, weight=0.0) if it.weight is not None else it for it in cat.items]
+        new_cats.append(replace(cat, weight=w, items=items))
+    return replace(course, categories=new_cats, weightings=[])
+
+
+# --------------------------------------------------------------------------- #
 # Current standing (grade on graded work so far)
 # --------------------------------------------------------------------------- #
-def compute_standing(course: Course) -> Standing:
+def _standing_core(course: Course) -> Standing:
     earned = 0.0
     graded_weight = 0.0
     for cat in course.categories:
@@ -262,6 +292,19 @@ def compute_standing(course: Course) -> Standing:
         earned_points=earned,
         graded_weight=graded_weight,
     )
+
+
+def compute_standing(course: Course) -> Standing:
+    """Standing under the most favorable weighting scheme. With no `weightings`, delegates to the
+    core unchanged (byte-for-byte for every existing rule)."""
+    if not course.weightings:
+        return _standing_core(course)
+    best = _standing_core(course)  # the primary scheme
+    for scheme in course.weightings:
+        cand = _standing_core(apply_scheme(course, scheme.weights))
+        if cand.percent is not None and (best.percent is None or cand.percent > best.percent):
+            best = cand
+    return best
 
 
 # --------------------------------------------------------------------------- #
@@ -303,7 +346,27 @@ def _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_l
     return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
 
 
-def goal_seek(
+_GS_RANK = {"already_met": 0, "ok": 1, "infeasible": 2}
+
+
+def _better_goal(a: Optional[GoalSeekResult], b: GoalSeekResult) -> GoalSeekResult:
+    """Pick the more favorable goal-seek result across schemes: already_met > ok(min needed) >
+    infeasible. The student may pick whichever scheme is easiest."""
+    if a is None:
+        return b
+    ra, rb = _GS_RANK.get(a.status, 3), _GS_RANK.get(b.status, 3)
+    if rb < ra:
+        return b
+    if rb > ra:
+        return a
+    if a.status == "ok" and b.needed_score is not None and (
+        a.needed_score is None or b.needed_score < a.needed_score
+    ):
+        return b
+    return a
+
+
+def _goal_seek_core(
     course: Course,
     target_letter: str,
     unknown_category: str,
@@ -393,6 +456,36 @@ def goal_seek(
 
     # Should be unreachable given the feasibility guards above.
     return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+
+def goal_seek(
+    course: Course,
+    target_letter: str,
+    unknown_category: str,
+    unknown_max_score: float,
+    unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
+) -> GoalSeekResult:
+    """Minimum needed score across the primary + alternate weighting schemes (the student picks
+    the most favorable). With no `weightings`, delegates to the core unchanged."""
+    if not course.weightings:
+        return _goal_seek_core(course, target_letter, unknown_category, unknown_max_score,
+                               unknown_weight, unknown_is_replacer)
+    idx = next((i for i, c in enumerate(course.categories) if c.name == unknown_category), None)
+    if idx is None:
+        raise ValueError(f"unknown_category {unknown_category!r} not found")
+    orig_w = course.categories[idx].weight
+    schemes = [[c.weight for c in course.categories]] + [s.weights for s in course.weightings]
+    best: Optional[GoalSeekResult] = None
+    for w in schemes:
+        scaled_uw = unknown_weight
+        if unknown_weight is not None and orig_w > 0:
+            scaled_uw = unknown_weight * (w[idx] / orig_w)
+        res = _goal_seek_core(apply_scheme(course, w), target_letter, unknown_category,
+                              unknown_max_score, scaled_uw, unknown_is_replacer)
+        best = _better_goal(best, res)
+    assert best is not None
+    return best
 
 
 # --------------------------------------------------------------------------- #
