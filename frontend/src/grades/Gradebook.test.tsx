@@ -47,4 +47,9 @@ describe("Gradebook — editable max score + over-max warning", () => {
     renderGb(course(95));
     expect(screen.queryByText(/over the max/i)).toBeNull();
   });
+  it("blanking the max score falls back to 100 (never 0)", () => {
+    const onChange = renderGb(course());
+    fireEvent.change(screen.getByLabelText("Exam 1 max score"), { target: { value: "" } });
+    expect((onChange.mock.calls[0][0] as Course).categories[0].items[0].maxScore).toBe(100);
+  });
 });
