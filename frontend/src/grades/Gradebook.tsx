@@ -1,8 +1,18 @@
-import type { Course } from "./types";
+import type { Course, CategoryStanding, ReplaceBoost } from "./types";
 import { addItem as addItemRow, scoreWarning } from "./rubric";
 import { useLocale } from "../i18n/LocaleContext";
 
-export default function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course) => void }) {
+export default function Gradebook({
+  course,
+  onChange,
+  catStandings = null,
+  boosts = null,
+}: {
+  course: Course;
+  onChange: (c: Course) => void;
+  catStandings?: CategoryStanding[] | null;
+  boosts?: ReplaceBoost[] | null;
+}) {
   const { t } = useLocale();
   const setScore = (catId: string, itemId: string, raw: string) => {
     const score = raw.trim() === "" ? null : Number(raw);
@@ -37,12 +47,30 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
       <h2 className="gr-sec">
         <span>{t("grades.gradebook")}</span>
       </h2>
-      {course.categories.map((cat) => (
+      {course.categories.map((cat, i) => {
+        const cs = catStandings?.[i];
+        const catBoosts = (boosts ?? []).filter((b) => b.categoryName === cat.name);
+        return (
         <div className="gr-gb-cat" key={cat.id}>
           <div className="gr-gb-cat-head">
-            <span className="gr-gb-cat-name">{cat.name}</span>
+            <div className="gr-gb-cat-title">
+              <span className="gr-gb-cat-name">{cat.name}</span>
+              {cs?.graded && cs.percent != null && (
+                <span className="gr-gb-cat-sub">
+                  <b>{cs.percent.toFixed(0)}%</b> {t("grades.soFar")}
+                </span>
+              )}
+            </div>
             <span className="gr-gb-weight">{cat.weight}%</span>
           </div>
+          {catBoosts.map((b) => (
+            <div className="gr-boost" key={`${b.replacer}-${b.lifted}`}>
+              <span>
+                ↑ <b>{b.replacer}</b> {t("grades.replacedBy")} <b>{b.lifted}</b>
+              </span>
+              <span className="gr-boost-delta">+{b.deltaPct.toFixed(1)}%</span>
+            </div>
+          ))}
           {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
           {cat.items.map((it) => {
             const warn = scoreWarning(it);
@@ -80,7 +108,8 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
             {t("grades.addGrade")}
           </button>
         </div>
-      ))}
+        );
+      })}
     </section>
   );
 }

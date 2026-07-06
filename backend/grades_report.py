@@ -42,9 +42,28 @@ def standing_and_ladder(
     """
     projected = gs.course_from_wire(course_wire)  # nulls stripped, ids/term dropped
     standing = gm.compute_standing(projected)
+
+    ws = gm.winning_scheme(projected)  # (name, count) or None
+    winning = None
+    if ws is not None:
+        scheme_name, count = ws
+        winning = {"name": None if scheme_name == gm.PRIMARY_SCHEME else scheme_name, "count": count}
+
     payload: Dict[str, Any] = {
         "standing": {"percent": standing.percent, "letter": standing.letter},
         "ladder": None,
+        "breakdown": {
+            "categories": [
+                {"name": c.name, "weight": c.weight, "percent": c.percent, "graded": c.graded}
+                for c in gm.category_breakdown(projected)
+            ],
+            "winningScheme": winning,
+            "replaceBoosts": [
+                {"categoryName": b.category_name, "replacer": b.replacer,
+                 "lifted": b.lifted, "deltaPct": round(b.delta_pct, 1)}
+                for b in gm.replace_boosts(projected)
+            ],
+        },
     }
     if not unknown_item_id:
         return payload

@@ -25,4 +25,15 @@ export type Course = { name: string; term: string; categories: Category[]; cutof
 export type GoalStatus = "ok" | "locked" | "unreachable";
 export type LadderRow = { letter: string; status: GoalStatus; needed: number | null };
 export type Standing = { percent: number | null; letter: string | null };
-export type StandingResp = { standing: Standing; ladder: LadderRow[] | null };
+
+// ---- result transparency ("b"): read-only breakdown the server computes ----
+export type CategoryStanding = { name: string; weight: number; percent: number | null; graded: boolean };
+export type WinningScheme = { name: string | null; count: number }; // name === null → primary weights won
+export type ReplaceBoost = { categoryName: string; replacer: string; lifted: string; deltaPct: number };
+export type Breakdown = {
+  categories: CategoryStanding[];
+  winningScheme: WinningScheme | null;
+  replaceBoosts: ReplaceBoost[];
+};
+// `breakdown` optional so an older server response still type-checks (UI hides all three then).
+export type StandingResp = { standing: Standing; ladder: LadderRow[] | null; breakdown?: Breakdown };
