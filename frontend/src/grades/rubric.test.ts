@@ -223,4 +223,14 @@ describe("weighting-scheme helpers", () => {
     c = removeScheme(c, 0);
     expect(c.weightings).toEqual([]);
   });
+  it("syncSchemes keeps schemes aligned when categories change (via add/removeCategory)", () => {
+    let c = addScheme(base()); // scheme {mid:60, fin:40}
+    c = addCategory(c); // new category, weight 0
+    const newId = c.categories[2].id;
+    expect(c.weightings![0].weights[newId]).toBe(0); // seeded into the existing scheme
+    expect(Object.keys(c.weightings![0].weights).sort()).toEqual(["fin", "mid", newId].sort());
+    c = removeCategory(c, "mid"); // drop Midterm
+    expect(c.weightings![0].weights).not.toHaveProperty("mid"); // dropped from the scheme
+    expect(Object.keys(c.weightings![0].weights).sort()).toEqual(["fin", newId].sort());
+  });
 });
