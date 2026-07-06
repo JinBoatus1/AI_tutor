@@ -122,3 +122,14 @@ describe("RubricEditor — Replace lowest mode", () => {
     expect((reps[2] as HTMLInputElement).checked).toBe(false);
   });
 });
+
+describe("RubricEditor — alternate weighting", () => {
+  it("adds a scheme with a per-category weight input and a sum chip", () => {
+    renderEditor(threeTests()); // one category "Tests" weight 50
+    fireEvent.click(screen.getByRole("button", { name: /add an alternate weighting/i }));
+    const input = screen.getByLabelText("Tests weight in Option 2");
+    expect(input).toBeTruthy();
+    fireEvent.change(input, { target: { value: "100" } });
+    expect(screen.getByText("✓ sums to 100")).toBeTruthy();
+  });
+});
