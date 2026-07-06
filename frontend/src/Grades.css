@@ -173,11 +173,18 @@
 .gr-score:focus-within { border-color: var(--teal-mid); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12); }
 .gr-score.is-empty { border-style: dashed; border-color: var(--rule-strong); }
 .gr-score.is-warn { border-color: #9a5b3b; }
-.gr-score-in { width: 42px; text-align: right; font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--ink); border: none; background: transparent; padding: 0; }
+.gr-score-in { width: 44px; text-align: right; font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--ink); border: none; background: transparent; padding: 0; }
 .gr-score-in::placeholder { color: var(--rule-strong); }
 .gr-score-sep { font-family: var(--mono); font-size: 14px; color: var(--ink-soft); }
-.gr-score-max { width: 36px; font-family: var(--mono); font-size: 14px; color: var(--ink-soft); border: none; background: transparent; padding: 0; }
+.gr-score-max { width: 40px; font-family: var(--mono); font-size: 14px; color: var(--ink-soft); border: none; background: transparent; padding: 0; }
 .gr-score-max:focus { color: var(--ink); }
+/* Kill the native number-input spinner arrows: they clutter the pill and eat
+   horizontal room, which was clipping a 3-digit max like "100". */
+.gr-score-in::-webkit-outer-spin-button,
+.gr-score-in::-webkit-inner-spin-button,
+.gr-score-max::-webkit-outer-spin-button,
+.gr-score-max::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.gr-score-in, .gr-score-max { -moz-appearance: textfield; appearance: textfield; }
 .gr-gb-add { background: none; border: none; color: var(--teal); font-family: var(--mono); font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; padding: 12px 2px 2px; }
 .gr-gb-add:hover { text-decoration: underline; }
 
