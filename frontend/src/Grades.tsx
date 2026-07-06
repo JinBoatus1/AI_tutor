@@ -156,26 +156,23 @@ function GradesAuthed({ token }: { token: string }) {
 
   return (
     <div className="gr-page">
-      <header className="gr-head">
-        <h1 className="gr-title">
-          {phase === "ready" && course ? course.name : t("grades.title")}
-          {phase === "ready" && course?.term ? (
-            <span className="gr-sub"> <span className="gr-dot">·</span> {course.term}</span>
-          ) : null}
-        </h1>
-        <div className="gr-head-actions">
-          {phase === "ready" && (
-            <>
-              <button className="gr-btn-ghost" onClick={openEdit}>
-                ⚙ {t("grades.editRubric")}
-              </button>
-              <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
-                {t("grades.newCourse")}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      {phase === "ready" && !editing && course && (
+        <header className="gr-head">
+          <div className="gr-masthead">
+            <div className="gr-eyebrow">{t("grades.reportCard")}</div>
+            <h1 className="gr-course">{course.name}</h1>
+            {course.term ? <div className="gr-term">{course.term}</div> : null}
+          </div>
+          <div className="gr-head-actions">
+            <button className="gr-btn-ghost" onClick={openEdit}>
+              ⚙ {t("grades.editRubric")}
+            </button>
+            <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
+              {t("grades.newCourse")}
+            </button>
+          </div>
+        </header>
+      )}
 
       {phase === "firstrun" && (
         <FirstRun onUpload={startParse} onManual={startManual} error={parseError} />
@@ -242,13 +239,18 @@ function ReadyView({
       ),
     [course],
   );
+  const totalItems = useMemo(
+    () => course.categories.reduce((n, cat) => n + cat.items.length, 0),
+    [course],
+  );
+  const gradedItems = totalItems - ungraded.length;
   const [selId, setSelId] = useState<string>("");
   const sel = ungraded.find((u) => u.it.id === selId) ?? ungraded[0];
   const resp = useServerStanding(token, course, sel?.it.id);
 
   return (
     <>
-      <StandingHero standing={resp?.standing ?? null} />
+      <StandingHero standing={resp?.standing ?? null} graded={gradedItems} total={totalItems} />
       <GoalSeek
         ladder={resp?.ladder ?? null}
         ungraded={ungraded}
@@ -279,7 +281,9 @@ function FirstRun({
   return (
     <section className="gr-firstrun">
       <div className="gr-fr-card">
+        <div className="gr-fr-eyebrow">{t("grades.reportCard")}</div>
         <div className="gr-fr-mark">∑</div>
+        <h2 className="gr-fr-title">{t("grades.firstrunTitle")}</h2>
         <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
         <input
           ref={fileRef}
@@ -311,28 +315,51 @@ function Parsing() {
   );
 }
 
-function StandingHero({ standing }: { standing: Standing | null }) {
+function StandingHero({
+  standing,
+  graded,
+  total,
+}: {
+  standing: Standing | null;
+  graded: number;
+  total: number;
+}) {
   const { t } = useLocale();
   const percent = standing?.percent ?? null;
   const letter = standing?.letter ?? "—";
   // Split a trailing +/− off the letter so it can render as a small serif superscript.
   const letterMain = letter.length > 1 ? letter.slice(0, -1) : letter;
   const letterSup = letter.length > 1 ? letter.slice(-1) : "";
+  const pctGraded = total > 0 ? Math.round((graded / total) * 100) : 0;
   return (
-    <section className="gr-standing" aria-label={t("grades.standing")}>
+    <section className="gr-hero" aria-label={t("grades.standing")}>
       {percent == null ? (
-        <div className="gr-standing-empty">{t("grades.standingEmpty")}</div>
+        <div className="gr-hero-empty">{t("grades.standingEmpty")}</div>
       ) : (
         <>
-          <div className="gr-mark">
-            {letterMain}
-            {letterSup && <sup>{letterSup}</sup>}
+          <div className="gr-hero-mark">
+            <div className="gr-hero-eyebrow">{t("grades.currentGrade")}</div>
+            <div className="gr-hero-letter">
+              {letterMain}
+              {letterSup && <sup>{letterSup}</sup>}
+            </div>
           </div>
-          <div className="gr-standing-side">
-            <div className="gr-standing-num">
+          <div className="gr-hero-stats">
+            <div className="gr-hero-pct">
               {percent.toFixed(1)}<small>%</small>
             </div>
-            <div className="gr-standing-basis">{t("grades.onGradedSoFar")}</div>
+            <div className="gr-hero-basis">{t("grades.onGradedSoFar")}</div>
+            {total > 0 && (
+              <div className="gr-progress">
+                <div className="gr-progress-track">
+                  <div className="gr-progress-fill" style={{ width: `${pctGraded}%` }} />
+                </div>
+                <div className="gr-progress-cap">
+                  <span>{t("grades.gradedLabel")}</span>
+                  <span>{t("grades.gradedCount", { n: String(graded), total: String(total) })}</span>
+                </div>
+              </div>
+            )}
             <span className="gr-seal">● {t("grades.standing")}</span>
           </div>
         </>
@@ -364,12 +391,11 @@ function GoalSeek({
   const targetLetter = reachable?.letter ?? rows[0]?.letter ?? "A";
 
   return (
-    <section className="gr-card gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
-      <hr className="gr-rule" />
-      <div className="gr-sec-label">
+    <section className="gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
+      <div className="gr-sec">
         <span>{t("grades.pathTo", { letter: targetLetter })}</span>
         {sel && ungraded.length > 1 ? (
-          <label className="gr-goal-on">
+          <label className="gr-sec-aside">
             {t("grades.on")}
             <select value={sel.it.id} onChange={(e) => onSelect(e.target.value)} aria-label="Upcoming item">
               {ungraded.map((u) => (
@@ -390,11 +416,11 @@ function GoalSeek({
         <p className="gr-goal-done">{t("grades.allGraded")}</p>
       ) : (
         <>
-          <div className="gr-path">
+          <div className="gr-goal-focal">
             {reachable && reachable.needed != null ? (
               <>
-                <span className="gr-path-q">{t("grades.youNeed")}</span>
-                <span className="gr-path-num">
+                <span className="gr-goal-q">{t("grades.youNeed")}</span>
+                <span className="gr-goal-num">
                   {reachable.needed.toFixed(1)}
                   <small> / {sel.it.maxScore}</small>
                 </span>
@@ -404,32 +430,35 @@ function GoalSeek({
               </>
             ) : allLocked ? (
               <>
-                <span className="gr-path-q">{t("grades.alreadyAt")}</span>
-                <span className="gr-path-num">{rows[0].letter}</span>
+                <span className="gr-goal-q">{t("grades.alreadyAt")}</span>
+                <span className="gr-goal-num">{rows[0].letter}</span>
                 <span className="gr-hand">{t("grades.lockedIn")}</span>
               </>
             ) : (
               <>
-                <span className="gr-path-q">{t("grades.onTrackFor")}</span>
-                <span className="gr-path-num">{bestLocked?.letter ?? targetLetter}</span>
+                <span className="gr-goal-q">{t("grades.onTrackFor")}</span>
+                <span className="gr-goal-num">{bestLocked?.letter ?? targetLetter}</span>
                 <span className="gr-hand">✎</span>
               </>
             )}
           </div>
 
-          <ul className="gr-goal-list">
+          <ul className="gr-ladder">
             {rows.map((r) => (
-              <li className="gr-goal-row" key={r.letter}>
-                <span className="gr-goal-letter">{r.letter}</span>
-                <span className="gr-goal-leader" />
+              <li
+                className={`gr-ladder-row${reachable && r.letter === reachable.letter ? " is-target" : ""}`}
+                key={r.letter}
+              >
+                <span className="gr-ladder-letter">{r.letter}</span>
+                <span className="gr-ladder-bar" />
                 {r.status === "ok" && r.needed != null ? (
-                  <span className="gr-goal-need">
+                  <span className="gr-ladder-need">
                     {t("grades.scoreOn", { score: r.needed.toFixed(1), item: sel.it.name })}
                   </span>
                 ) : r.status === "locked" ? (
-                  <span className="gr-goal-locked">{t("grades.alreadyLockedIn")}</span>
+                  <span className="gr-ladder-locked">{t("grades.alreadyLockedIn")}</span>
                 ) : (
-                  <span className="gr-goal-unreach">{t("grades.outOfReach")}</span>
+                  <span className="gr-ladder-unreach">{t("grades.outOfReach")}</span>
                 )}
               </li>
             ))}
