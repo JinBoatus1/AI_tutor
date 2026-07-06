@@ -481,3 +481,24 @@ def test_apply_scheme_zero_weight_category_guard():
     course.weightings = [gm.WeightScheme(name="alt", weights=[0.0, 100.0])]
     s = gm.compute_standing(course)
     assert abs(s.percent - 90.0) < 1e-9
+
+
+def test_goal_seek_scheme_scales_fixedweights_unknown_weight():
+    # Exercises the per-scheme unknown_weight scaling for a FixedWeights unknown category.
+    # Tests(FixedWeights w50): T1 graded 1.0 (w25); T2 is the UNKNOWN (w25, stripped as null upstream).
+    # Final(uniform w50) graded 0.5. Target B=70.
+    #   primary [50,50]: fixed_other(Final)=25, Tests T1=25, base=50, w_u=25 -> (70-50)/25=0.8 -> needed 80.
+    #   alt tests-heavy [80,20]: apply_scheme scales T1 w25->40, Final w50->20; unknown_weight 25->40.
+    #     fixed_other(Final)=10, Tests T1=40, base=50, w_u=40 -> (70-50)/40=0.5 -> needed 50.
+    #   min over schemes -> 50. (If the scaling were missing, alt would also give 80 and the min stays 80.)
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Tests", weight=50, rule=gm.FixedWeights(),
+                    items=[gm.Item(name="T1", score=100, max_score=100, weight=25)]),
+        gm.Category(name="Final", weight=50, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="F", score=50, max_score=100)])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="tests-heavy", weights=[80.0, 20.0])]
+    r = gm.goal_seek(course, "B", "Tests", unknown_max_score=100, unknown_weight=25, unknown_is_replacer=False)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 50.0) < 1e-6
