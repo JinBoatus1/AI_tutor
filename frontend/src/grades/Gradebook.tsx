@@ -1,5 +1,5 @@
 import type { Course } from "./types";
-import { addItem as addItemRow } from "./rubric";
+import { addItem as addItemRow, scoreWarning } from "./rubric";
 import { useLocale } from "../i18n/LocaleContext";
 
 export default function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course) => void }) {
@@ -15,6 +15,15 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
       ),
     });
   };
+  const setMaxScore = (catId: string, itemId: string, raw: string) =>
+    onChange({
+      ...course,
+      categories: course.categories.map((cat) =>
+        cat.id !== catId
+          ? cat
+          : { ...cat, items: cat.items.map((it) => (it.id === itemId ? { ...it, maxScore: Number(raw) || 100 } : it)) },
+      ),
+    });
   // Reuse the rubric row helper so a gradebook-added row also keeps the rule's slot count
   // in sync (and seeds a fixedWeights row with a weight) — no rule/row desync.
   const addItem = (catId: string) =>
@@ -33,25 +42,39 @@ export default function Gradebook({ course, onChange }: { course: Course; onChan
             <span className="gr-gb-cat-weight">{cat.weight}%</span>
           </div>
           {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
-          {cat.items.map((it) => (
-            <div className="gr-gb-row" key={it.id}>
-              <span className="gr-gb-name">{it.name}</span>
-              <span className="gr-gb-leader" />
-              {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
-              <span className="gr-gb-score">
-                <input
-                  className="gr-gb-input"
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="—"
-                  value={it.score ?? ""}
-                  aria-label={`${it.name} score`}
-                  onChange={(e) => setScore(cat.id, it.id, e.target.value)}
-                />
-                <span className="gr-gb-max">/ {it.maxScore}</span>
-              </span>
-            </div>
-          ))}
+          {cat.items.map((it) => {
+            const warn = scoreWarning(it);
+            return (
+              <div className="gr-gb-row" key={it.id}>
+                <span className="gr-gb-name">{it.name}</span>
+                <span className="gr-gb-leader" />
+                {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
+                {warn && <span className="gr-gb-overmax">{t("grades.scoreOverMax")}</span>}
+                <span className={`gr-gb-score${warn ? " is-warn" : ""}`}>
+                  <input
+                    className="gr-gb-input"
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="—"
+                    value={it.score ?? ""}
+                    aria-label={`${it.name} score`}
+                    onChange={(e) => setScore(cat.id, it.id, e.target.value)}
+                  />
+                  <span className="gr-gb-max">
+                    /
+                    <input
+                      className="gr-gb-maxinput"
+                      type="number"
+                      inputMode="numeric"
+                      value={it.maxScore}
+                      aria-label={`${it.name} max score`}
+                      onChange={(e) => setMaxScore(cat.id, it.id, e.target.value)}
+                    />
+                  </span>
+                </span>
+              </div>
+            );
+          })}
           <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
             {t("grades.addGrade")}
           </button>
