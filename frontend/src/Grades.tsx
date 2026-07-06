@@ -360,7 +360,7 @@ function StandingHero({
                 </div>
                 <div className="gr-progress-cap">
                   <span>{t("grades.gradedLabel")}</span>
-                  <span>{t("grades.gradedCount", { n: graded, total })}</span>
+                  <span>{t("grades.gradedCount", { n: String(graded), total: String(total) })}</span>
                 </div>
               </div>
             )}
