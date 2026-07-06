@@ -78,6 +78,11 @@ export function newItem(name: string, weight?: number): Item {
   return { id: genId(), name, score: null, maxScore: 100, ...(weight != null ? { weight } : {}) };
 }
 
+/** True when an entered score is outside [0, maxScore] — a likely typo. Non-blocking:
+ *  callers only surface it; the value is still saved. */
+export const scoreWarning = (it: Pick<Item, "score" | "maxScore">): boolean =>
+  it.score != null && (it.score < 0 || it.score > it.maxScore);
+
 /** Keep `rule` consistent with the current item rows after an add/remove.
  *  - uniform / dropLowest: nSlots tracks the row count (clamp dropLowest.k in range).
  *  - fixedWeights / rankWeights: unchanged (weights live on items / are legacy). */

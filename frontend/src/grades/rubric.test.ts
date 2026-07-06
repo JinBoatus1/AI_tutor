@@ -14,6 +14,7 @@ import {
   removeItem,
   removeScheme,
   schemeSum,
+  scoreWarning,
   setMode,
   setReplacer,
   setSchemeWeight,
@@ -194,6 +195,23 @@ describe("replaceLowest helpers", () => {
     expect(c.items.map((it) => !!it.replacer)).toEqual([true, false, false]);
     c = setReplacer(c, c.items[1].id);
     expect(c.items.map((it) => !!it.replacer)).toEqual([false, true, false]);
+  });
+});
+
+describe("scoreWarning", () => {
+  it("null score never warns", () => {
+    expect(scoreWarning({ score: null, maxScore: 100 })).toBe(false);
+  });
+  it("in-range score does not warn (incl. the boundary == maxScore)", () => {
+    expect(scoreWarning({ score: 88, maxScore: 100 })).toBe(false);
+    expect(scoreWarning({ score: 100, maxScore: 100 })).toBe(false);
+    expect(scoreWarning({ score: 0, maxScore: 100 })).toBe(false);
+  });
+  it("score above the max warns", () => {
+    expect(scoreWarning({ score: 120, maxScore: 100 })).toBe(true);
+  });
+  it("negative score warns", () => {
+    expect(scoreWarning({ score: -5, maxScore: 100 })).toBe(true);
   });
 });
 
