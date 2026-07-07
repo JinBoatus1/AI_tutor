@@ -268,6 +268,13 @@
 .sb--collapsed .sb-link, .sb--collapsed .sb-section-head, .sb--collapsed .sb-signin { justify-content: center; padding: 11px 0; gap: 0; }
 .sb--collapsed .sb-footer { display: flex; justify-content: center; }
 .sb--collapsed .sb-user { justify-content: center; }
+/* Collapsed rail: Learning Progress / History shrink to just their icon head. Their
+   `.is-open` bodies use a more specific selector than the generic `.sb-section-body`
+   hide above, so re-hide them here at higher specificity — and stop the progress
+   section from stretching the rail — else the tree squishes into 72px (distorted). */
+.sb--collapsed .sb-section--progress { flex: 0 0 auto; }
+.sb--collapsed .sb-section--progress.is-open .sb-section-body,
+.sb--collapsed .sb-section--hist.is-open .sb-section-body { display: none; }
 
 @media (max-width: 760px) {
   .sb { --sb-w: var(--sb-w-collapsed); }
