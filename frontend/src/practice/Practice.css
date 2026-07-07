@@ -50,6 +50,18 @@
 .pr-step-btn small { font-family: var(--pr-mono); font-size: 0.64rem; opacity: 0.8; }
 .pr-step-btn--active { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.1); color: var(--pr-teal-deep); font-weight: 600; }
 .pr-step-btn--locked { opacity: 0.45; cursor: not-allowed; }
+.pr-step-btn--done:not(.pr-step-btn--active) { border-color: rgba(20, 184, 166, 0.35); }
+
+.guide-panel .guide-book-hint {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--pr-ink-soft);
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--pr-teal);
+  background: rgba(20, 184, 166, 0.06);
+  border-radius: 0 8px 8px 0;
+}
 
 /* ---- toolbar (view note / skip to challenge) ---- */
 .pr-toolbar { display: flex; gap: 12px; }
