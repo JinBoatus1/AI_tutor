@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import "./Grades.css";
-import type { Course, LadderRow, Standing, StandingResp } from "./grades/types";
+import type { Course, LadderRow, Standing, StandingResp, WinningScheme } from "./grades/types";
 import { emptyManualCourse } from "./grades/mockData";
 import {
   fetchCourse,
@@ -248,16 +248,27 @@ function ReadyView({
   const sel = ungraded.find((u) => u.it.id === selId) ?? ungraded[0];
   const resp = useServerStanding(token, course, sel?.it.id);
 
+  const breakdown = resp?.breakdown;
   return (
     <>
-      <StandingHero standing={resp?.standing ?? null} graded={gradedItems} total={totalItems} />
+      <StandingHero
+        standing={resp?.standing ?? null}
+        graded={gradedItems}
+        total={totalItems}
+        winningScheme={breakdown?.winningScheme ?? null}
+      />
       <GoalSeek
         ladder={resp?.ladder ?? null}
         ungraded={ungraded}
         sel={sel}
         onSelect={setSelId}
       />
-      <Gradebook course={course} onChange={onChange} />
+      <Gradebook
+        course={course}
+        onChange={onChange}
+        catStandings={breakdown?.categories ?? null}
+        boosts={breakdown?.replaceBoosts ?? null}
+      />
     </>
   );
 }
@@ -315,14 +326,16 @@ function Parsing() {
   );
 }
 
-function StandingHero({
+export function StandingHero({
   standing,
   graded,
   total,
+  winningScheme = null,
 }: {
   standing: Standing | null;
   graded: number;
   total: number;
+  winningScheme?: WinningScheme | null;
 }) {
   const { t } = useLocale();
   const percent = standing?.percent ?? null;
@@ -361,6 +374,14 @@ function StandingHero({
               </div>
             )}
             <span className="gr-seal">● {t("grades.standing")}</span>
+            {winningScheme && (
+              <div className="gr-hero-scheme">
+                {t("grades.gradedUnder", {
+                  scheme: winningScheme.name ?? t("grades.primaryWeights"),
+                  count: String(winningScheme.count),
+                })}
+              </div>
+            )}
           </div>
         </>
       )}

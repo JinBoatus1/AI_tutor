@@ -53,3 +53,35 @@ describe("Gradebook — editable max score + over-max warning", () => {
     expect((onChange.mock.calls[0][0] as Course).categories[0].items[0].maxScore).toBe(100);
   });
 });
+
+describe("Gradebook — transparency (per-category subtotal + replace boost)", () => {
+  const render3 = (extra: {
+    catStandings?: { name: string; weight: number; percent: number | null; graded: boolean }[] | null;
+    boosts?: { categoryName: string; replacer: string; lifted: string; deltaPct: number }[] | null;
+  }) =>
+    render(
+      <LocaleProvider>
+        <Gradebook course={course()} onChange={vi.fn()} {...extra} />
+      </LocaleProvider>,
+    );
+
+  it("shows the per-category subtotal when the category is graded", () => {
+    render3({ catStandings: [{ name: "Exams", weight: 100, percent: 92, graded: true }], boosts: [] });
+    expect(screen.getByText(/92%/)).toBeTruthy();
+    expect(screen.getByText(/so far/i)).toBeTruthy();
+  });
+  it("hides the subtotal when the category has no grades", () => {
+    render3({ catStandings: [{ name: "Exams", weight: 100, percent: null, graded: false }], boosts: [] });
+    expect(screen.queryByText(/so far/i)).toBeNull();
+  });
+  it("renders a replace-boost note for the matching category", () => {
+    render3({ boosts: [{ categoryName: "Exams", replacer: "Final", lifted: "Midterm 2", deltaPct: 3.2 }] });
+    expect(screen.getByText(/Final/)).toBeTruthy();
+    expect(screen.getByText(/Midterm 2/)).toBeTruthy();
+    expect(screen.getByText(/\+3\.2%/)).toBeTruthy();
+  });
+  it("shows no boost note when there are none", () => {
+    render3({ boosts: [] });
+    expect(screen.queryByText(/replaced/i)).toBeNull();
+  });
+});

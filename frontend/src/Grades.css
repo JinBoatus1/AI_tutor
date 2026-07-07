@@ -124,6 +124,7 @@
   border: 1px solid var(--teal); border-radius: 999px; padding: 5px 12px;
 }
 .gr-hero-empty { color: var(--ink-soft); font-size: 18px; font-family: var(--serif); padding: 40px 36px; }
+.gr-hero-scheme { font-family: var(--mono); font-size: 11px; letter-spacing: 0.03em; color: var(--ink-soft); margin-top: 12px; }
 
 /* ---- section labels ---- */
 .gr-sec {
@@ -160,6 +161,13 @@
 .gr-gb-cat-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 12px; border-bottom: 1.5px solid var(--rule-strong); }
 .gr-gb-cat-name { font-family: var(--serif); font-size: 21px; font-weight: 400; color: var(--navy); }
 .gr-gb-weight { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--teal); background: #e7f6f2; border-radius: 999px; padding: 4px 11px; }
+/* transparency ("b"): per-category subtotal + replace-boost note */
+.gr-gb-cat-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.gr-gb-cat-sub { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-soft); }
+.gr-gb-cat-sub b { color: var(--teal); font-weight: 500; }
+.gr-boost { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; font-family: var(--sans); font-size: 12.5px; color: var(--teal); background: #e7f6f2; border-radius: 10px; padding: 8px 13px; }
+.gr-boost b { font-weight: 600; }
+.gr-boost-delta { margin-left: auto; font-family: var(--mono); color: var(--teal-mid); font-weight: 500; }
 .gr-gb-empty { color: var(--ink-soft); font-size: 13.5px; font-style: italic; padding: 12px 0; }
 .gr-gb-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px dotted var(--rule); }
 .gr-gb-row:last-of-type { border-bottom: none; }

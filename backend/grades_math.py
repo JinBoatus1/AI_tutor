@@ -308,6 +308,79 @@ def compute_standing(course: Course) -> Standing:
 
 
 # --------------------------------------------------------------------------- #
+# Result transparency: per-category breakdown, winning scheme, replace boost
+# (READ-only views of data compute_standing already produces; no math change)
+# --------------------------------------------------------------------------- #
+PRIMARY_SCHEME = "__primary__"  # sentinel: the course's own category weights won
+
+
+@dataclass(frozen=True)
+class CategoryStanding:
+    name: str
+    weight: float
+    percent: Optional[float]  # None when the category has no graded items
+    graded: bool
+
+
+@dataclass(frozen=True)
+class ReplaceBoost:
+    category_name: str
+    replacer: str  # the item whose score did the replacing
+    lifted: str  # the lowest non-replacer it lifted
+    delta_pct: float  # how much the lift raised the OVERALL standing percent
+
+
+def category_breakdown(course: Course) -> list["CategoryStanding"]:
+    """Per-category standing, index-aligned with course.categories. Scheme-invariant:
+    a category's earned/graded_weight ratio is unchanged by scaling its overall weight."""
+    out: list[CategoryStanding] = []
+    for cat in course.categories:
+        gw = _category_graded_weight(cat)
+        pct = (_category_earned(cat) / gw * 100.0) if gw > 0 else None
+        out.append(CategoryStanding(cat.name, cat.weight, pct, gw > 0))
+    return out
+
+
+def winning_scheme(course: Course) -> Optional[tuple[str, int]]:
+    """(winner_name, candidate_count) or None when the course has no alternate weightings.
+    Winner = the candidate (primary + each scheme) maximizing standing percent; ties keep the
+    earlier candidate (primary first), mirroring compute_standing's strict `>`."""
+    if not course.weightings:
+        return None
+    best_name = PRIMARY_SCHEME
+    best = _standing_core(course)
+    for scheme in course.weightings:
+        cand = _standing_core(apply_scheme(course, scheme.weights))
+        if cand.percent is not None and (best.percent is None or cand.percent > best.percent):
+            best_name, best = scheme.name, cand
+    return best_name, len(course.weightings) + 1
+
+
+def replace_boosts(course: Course) -> list["ReplaceBoost"]:
+    """One entry per ReplaceLowest category whose replace-if-higher actually fired.
+    delta_pct = boost_points / total_graded_weight * 100 (the lift to the overall standing),
+    computed on the base course — matches _replace_lowest_slots' `w_low*(frac_rep - f_low)`."""
+    total_gw = sum(_category_graded_weight(c) for c in course.categories)
+    out: list[ReplaceBoost] = []
+    if total_gw <= 0:
+        return out
+    for cat in course.categories:
+        if not isinstance(cat.rule, ReplaceLowest):
+            continue
+        reps = [it for it in cat.items if it.replacer]
+        non = [it for it in cat.items if not it.replacer]
+        if not reps or not non:
+            continue
+        rep = max(reps, key=lambda it: it.fraction)
+        low = min(non, key=lambda it: it.fraction)
+        if rep.fraction <= low.fraction:
+            continue
+        boost_points = (low.weight or 0.0) * (rep.fraction - low.fraction)
+        out.append(ReplaceBoost(cat.name, rep.name, low.name, boost_points / total_gw * 100.0))
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Goal seek (single unknown item) - the piecewise solver
 # --------------------------------------------------------------------------- #
 #  total(x) as the unknown's fraction x rises from 0 -> 1:
