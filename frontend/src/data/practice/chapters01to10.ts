@@ -461,11 +461,11 @@ export const chapter06: PracticeSet = {
       id: "ch6-c2",
       prompt: "Use strong induction to prove every integer $n\\ge8$ can be expressed as $3a+5b$ with $a,b\\in\\mathbb{N}$.",
       solution:
-        "Check bases: $8=3+5$, $9=3+3+3$, $10=5+5$. Assume each value from $8$ to $k$ can be written as $3a+5b$, with $k\\ge10$. " +
-        "Then $k-2\\ge8$, so $k-2=3a+5b$ for some $a,b$. Add one $5$ and remove one $3$ is messy; cleaner: use $k-3\\ge8$ and write $k-3=3a+5b$, then $k+1=3(a+1)+5b$. " +
+        "Check bases: $8=3+5$, $9=3+3+3$, $10=5+5$. Assume every value from $8$ to $k$ is representable as $3a+5b$, where $k\\ge10$. " +
+        "Since $k\\ge10$, we have $k-2\\ge8$, so by the hypothesis $k-2=3a+5b$ for some $a,b\\in\\mathbb{N}$. Then $k+1=(k-2)+3=3(a+1)+5b$. " +
         "Therefore all $n\\ge8$ are representable. $\\blacksquare$",
       rubric:
-        "Uses enough base values; applies hypothesis to a smaller index (typically $k-3$); builds $k+1$ with valid nonnegative coefficients.",
+        "Uses the three base values $8,9,10$; applies the hypothesis to a smaller index (e.g. $k-2$); builds $k+1$ with valid nonnegative coefficients.",
     },
   ],
 };
