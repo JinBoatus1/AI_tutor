@@ -150,6 +150,18 @@
   width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--pr-rule); border-radius: 10px;
   background: #fffdf8; padding: 10px 12px; font-family: var(--pr-sans); font-size: 0.9rem; color: var(--pr-ink); line-height: 1.5;
 }
+
+/* clickable math-symbol palette under the challenge textbox */
+.pr-palette { margin-top: 8px; border: 1px solid var(--pr-rule); border-radius: 10px; background: #fffdf8; padding: 8px; }
+.pr-palette-label { font-family: var(--pr-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pr-ink-soft); margin-bottom: 8px; }
+.pr-palette-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.pr-palette-tab { font-family: var(--pr-mono); font-size: 0.66rem; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--pr-rule); background: var(--pr-paper); color: var(--pr-ink-soft); cursor: pointer; }
+.pr-palette-tab.is-on { background: var(--pr-teal); color: #fff; border-color: var(--pr-teal); }
+.pr-palette-tab:disabled { opacity: 0.5; cursor: default; }
+.pr-palette-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.pr-sym { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--pr-rule); border-radius: 8px; background: var(--pr-paper); color: var(--pr-ink); font-family: var(--pr-serif); font-size: 1.05rem; cursor: pointer; }
+.pr-sym:hover { border-color: var(--pr-teal); background: rgba(20, 184, 166, 0.1); color: var(--pr-teal-deep); }
+.pr-sym:focus-visible, .pr-palette-tab:focus-visible { outline: 2px solid var(--pr-teal); outline-offset: 1px; }
 .pr-hints { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .pr-hint { border-left: 2px solid var(--pr-teal); background: rgba(20, 184, 166, 0.06); border-radius: 0 8px 8px 0; padding: 8px 12px; font-size: 0.86rem; line-height: 1.5; }
 .pr-hint-rung { font-family: var(--pr-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pr-teal-deep); display: block; margin-bottom: 2px; }
