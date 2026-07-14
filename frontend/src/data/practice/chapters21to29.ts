@@ -89,7 +89,7 @@ export const chapter22: PracticeSet = {
   title: "Infinity",
   warmup: [
     { id: "c22-f1", front: "Countably infinite", back: "A set is countably infinite if it can be put in bijection with $\\mathbb{N}$." },
-    { id: "c22-f2", front: "Uncountable", back: "A set is uncountable if no bijection with $\\mathbb{N}$ exists." },
+    { id: "c22-f2", front: "Uncountable", back: "A set is uncountable if it is infinite and cannot be put in bijection with $\\mathbb{N}$ (equivalently, not countable)." },
     { id: "c22-f3", front: "Diagonalization", back: "Cantor's method constructs an element differing from every listed element at some index." },
     { id: "c22-f4", front: "Power set theorem", back: "For any set $S$, $|\\mathcal{P}(S)|>|S|$." },
     { id: "c22-f5", front: "Binary strings and naturals", back: "Finite binary strings are countable via length-lex order." },
@@ -297,8 +297,8 @@ export const chapter24: PracticeSet = {
         { id: "l2", text: "Then the machine can try both paths." },
         { id: "l3", text: "So it is still a DFA." },
       ],
-      flawLineId: "l1",
-      why: "A DFA requires exactly one successor for each $(q,a)$; branching is an NFA feature.",
+      flawLineId: "l3",
+      why: "Entertaining a branch is a fine hypothesis, but concluding it is still a DFA is the error: a DFA requires exactly one successor for each $(q,a)$, so a machine that branches is an NFA, not a DFA.",
     },
     {
       kind: "fill-blank",

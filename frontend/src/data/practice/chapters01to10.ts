@@ -114,7 +114,7 @@ export const chapter02: PracticeSet = {
     {
       kind: "fill-blank",
       id: "ch2-p2",
-      prompt: "Complete: for any finite set $A$ with $|A|=n$, $|\\mathcal{P}(A)| = ____.",
+      prompt: "Complete: for any finite set $A$ with $|A|=n$, $|\\mathcal{P}(A)|$ = ____.",
       before: "Each element has two choices (in or out) for each subset. Therefore",
       after: ".",
       accept: ["2^n", "$2^n$", "2**n"],
@@ -738,7 +738,6 @@ export const chapter09: PracticeSet = {
         "This is the same formula with $n=k+1$. $\\blacksquare$",
       rubric:
         "Includes base and hypothesis; substitutes correctly; performs algebra to target closed form for $k+1$.",
-      twinPromptId: "ch9-c2",
     },
     {
       id: "ch9-c2",
@@ -830,7 +829,6 @@ export const chapter10: PracticeSet = {
         "Thus $x=4,y=-5$.",
       rubric:
         "Runs Euclidean algorithm correctly; back-substitutes to linear combination; states explicit coefficients matching gcd.",
-      twinPromptId: "ch10-c2",
     },
     {
       id: "ch10-c2",
