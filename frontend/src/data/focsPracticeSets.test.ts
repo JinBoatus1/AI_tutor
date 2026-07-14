@@ -5,6 +5,50 @@ import { isValidTopoOrder } from "../practice/grading";
 describe("focsPracticeSets content integrity", () => {
   const sets = Object.values(FOCS_PRACTICE_SETS);
 
+  function allStrings(set: (typeof sets)[number]): string[] {
+    const out: string[] = [];
+    for (const w of set.warmup) out.push(w.front, w.back);
+    for (const q of set.practice) {
+      out.push(q.prompt, q.why);
+      if (q.kind === "mcq") out.push(...q.choices);
+      if (q.kind === "proof-order") out.push(...q.steps.map((s) => s.text));
+      if (q.kind === "spot-flaw") out.push(...q.lines.map((l) => l.text));
+      if (q.kind === "fill-blank") out.push(q.before, q.after, ...q.accept);
+    }
+    for (const c of set.challenge) out.push(c.prompt, c.solution, c.rubric);
+    return out;
+  }
+
+  it("all top-level item ids are globally unique", () => {
+    const seen = new Map<string, string>();
+    for (const set of sets) {
+      const ids = [
+        ...set.warmup.map((w) => w.id),
+        ...set.practice.map((q) => q.id),
+        ...set.challenge.map((c) => c.id),
+      ];
+      for (const id of ids) {
+        expect(seen.has(id), `duplicate id "${id}" (also in ${seen.get(id)})`).toBe(false);
+        seen.set(id, `chapter ${set.chapter}`);
+      }
+    }
+  });
+
+  it("proof-order step ids and spot-flaw line ids are unique within their question", () => {
+    for (const set of sets) {
+      for (const q of set.practice) {
+        if (q.kind === "proof-order") {
+          const ids = q.steps.map((s) => s.id);
+          expect(new Set(ids).size, `${q.id} has duplicate step ids`).toBe(ids.length);
+        }
+        if (q.kind === "spot-flaw") {
+          const ids = q.lines.map((l) => l.id);
+          expect(new Set(ids).size, `${q.id} has duplicate line ids`).toBe(ids.length);
+        }
+      }
+    }
+  });
+
   it("every FOCS Problems chapter has a practice set", () => {
     expect(FOCS_PROBLEM_CHAPTERS.length).toBeGreaterThan(1);
     for (const chapter of FOCS_PROBLEM_CHAPTERS) {
@@ -77,6 +121,16 @@ describe("focsPracticeSets content integrity", () => {
           expect(c.solution.trim().length, c.id).toBeGreaterThan(0);
           expect(c.rubric.trim().length, c.id).toBeGreaterThan(0);
           if (c.twinPromptId) expect(ids.has(c.twinPromptId), `${c.id} twin missing`).toBe(true);
+        }
+      });
+
+      it("LaTeX $ delimiters balance and \\begin/\\end match", () => {
+        for (const s of allStrings(set)) {
+          const dollars = (s.match(/(?<!\\)\$/g) || []).length;
+          expect(dollars % 2, `unbalanced $ in ch ${set.chapter}: "${s.slice(0, 70)}"`).toBe(0);
+          const begins = (s.match(/\\begin\{/g) || []).length;
+          const ends = (s.match(/\\end\{/g) || []).length;
+          expect(begins, `\\begin/\\end mismatch in ch ${set.chapter}: "${s.slice(0, 70)}"`).toBe(ends);
         }
       });
     });

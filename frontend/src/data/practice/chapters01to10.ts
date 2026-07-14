@@ -114,7 +114,7 @@ export const chapter02: PracticeSet = {
     {
       kind: "fill-blank",
       id: "ch2-p2",
-      prompt: "Complete: for any finite set $A$ with $|A|=n$, $|\\mathcal{P}(A)| = ____.",
+      prompt: "Complete: for any finite set $A$ with $|A|=n$, $|\\mathcal{P}(A)|$ = ____.",
       before: "Each element has two choices (in or out) for each subset. Therefore",
       after: ".",
       accept: ["2^n", "$2^n$", "2**n"],
