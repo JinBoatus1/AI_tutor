@@ -297,8 +297,8 @@ export const chapter24: PracticeSet = {
         { id: "l2", text: "Then the machine can try both paths." },
         { id: "l3", text: "So it is still a DFA." },
       ],
-      flawLineId: "l1",
-      why: "A DFA requires exactly one successor for each $(q,a)$; branching is an NFA feature.",
+      flawLineId: "l3",
+      why: "Entertaining a branch is a fine hypothesis, but concluding it is still a DFA is the error: a DFA requires exactly one successor for each $(q,a)$, so a machine that branches is an NFA, not a DFA.",
     },
     {
       kind: "fill-blank",
