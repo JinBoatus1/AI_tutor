@@ -829,7 +829,6 @@ export const chapter10: PracticeSet = {
         "Thus $x=4,y=-5$.",
       rubric:
         "Runs Euclidean algorithm correctly; back-substitutes to linear combination; states explicit coefficients matching gcd.",
-      twinPromptId: "ch10-c2",
     },
     {
       id: "ch10-c2",
