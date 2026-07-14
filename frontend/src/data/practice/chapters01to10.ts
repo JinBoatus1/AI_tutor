@@ -738,7 +738,6 @@ export const chapter09: PracticeSet = {
         "This is the same formula with $n=k+1$. $\\blacksquare$",
       rubric:
         "Includes base and hypothesis; substitutes correctly; performs algebra to target closed form for $k+1$.",
-      twinPromptId: "ch9-c2",
     },
     {
       id: "ch9-c2",
