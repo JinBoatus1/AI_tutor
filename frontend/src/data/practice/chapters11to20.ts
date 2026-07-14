@@ -7,7 +7,7 @@ export const chapter11: PracticeSet = {
     { id: "ch11-v-e", front: "Graph basics", back: "A graph is $G=(V,E)$ with vertices $V$ and edges $E$." },
     { id: "ch11-degree", front: "Degree of a vertex", back: "The degree $\\deg(v)$ is the number of edges incident to $v$." },
     { id: "ch11-handshake", front: "Handshake Lemma", back: "In any finite undirected graph, $\\sum_{v\\in V}\\deg(v)=2|E|$." },
-    { id: "ch11-path", front: "Path", back: "A path is a sequence of adjacent vertices with no repeated edge." },
+    { id: "ch11-path", front: "Path", back: "A path is a sequence of adjacent vertices with no repeated vertex (so no repeated edge either)." },
     { id: "ch11-cycle", front: "Cycle", back: "A cycle is a closed path with no repeated vertices except start/end." },
     { id: "ch11-tree", front: "Tree", back: "A tree is a connected acyclic graph; if it has $n$ vertices, then it has $n-1$ edges." },
   ],
