@@ -797,13 +797,13 @@ export const chapter20: PracticeSet = {
       id: "ch20-p2",
       prompt: "For nonnegative integer-valued $X$, which identity is correct?",
       choices: [
-        "$E[X]=\\sum_{t\\ge1}tP(X=t)$",
+        "$E[X]=\\sum_{t\\ge0}P(X\\ge t)$",
         "$E[X]=\\sum_{t\\ge1}P(X\\ge t)$",
         "$E[X]=P(X\\ge1)$",
         "$E[X]=\\sum_{t\\ge0}P(X=t)^2$",
       ],
       answerIndex: 1,
-      why: "This is the tail-sum formula for nonnegative integer random variables.",
+      why: "The tail-sum formula starts at $t=1$: $E[X]=\\sum_{t\\ge1}P(X\\ge t)$. Starting the sum at $t=0$ adds $P(X\\ge0)=1$, overshooting by one.",
     },
     {
       kind: "proof-order",
