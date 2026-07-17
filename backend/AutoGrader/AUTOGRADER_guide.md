@@ -33,6 +33,35 @@ The backend also accepts other image formats supported by Pillow, but the format
 
 If at least one question falls back to percentage mode, the UI shows only the per-question scores and does not compute a total.
 
+## Multi-Agent Scoring
+
+Scoring is performed per question, not per paper:
+
+1. Recognition runs once for the cropped question-answer pairs.
+2. Three independent evaluators score each gradeable question concurrently:
+   - `solution_verifier`
+   - `rubric_grader`
+   - `critical_reviewer`
+3. A deterministic aggregator compares normalized scores, score modes, and maximum marks.
+4. Material disagreement is sent to an arbitration evaluator.
+5. Unresolved disagreement or insufficient valid evaluator output becomes `manual_review`.
+
+Each result is owned by a concrete `paper_instance_id` and `question_attempt_id`. The
+`canonical_question_id` is only used to group the same question across papers in the
+background. It must not be used to attach one student's feedback to another paper.
+
+The in-memory question pool can lease a `QuestionBatchTask` containing the same
+canonical question from multiple papers. Batches with different rubric versions or
+grading criteria are kept separate.
+
+Optional environment settings:
+
+- `AUTOGRADER_MODEL` (default `gpt-5.2`)
+- `AUTOGRADER_MAX_CONCURRENCY` (default `6`)
+- `AUTOGRADER_EVALUATOR_RETRIES` (default `1`)
+- `AUTOGRADER_DISAGREEMENT_THRESHOLD` (default `0.15`)
+- `AUTOGRADER_ENABLE_ARBITRATION` (default enabled)
+
 ## API Contract
 
 The public entry point is defined in `public_api.py`:
@@ -94,6 +123,20 @@ File:
   - `percentage`: the model could not determine full marks, so it returned a percentage score
 - `max_score: float | null`
   - Full marks for the question when `mode = "absolute"`
+- `paper_instance_id: string`
+  - Concrete paper that owns the result
+- `question_attempt_id: string`
+  - Concrete answer attempt that owns the result and feedback
+- `canonical_question_id: string`
+  - Background grouping identity for the standard question
+- `confidence: int`
+  - Deterministic 0-100 agreement score
+- `consensus: "high" | "medium" | "low"`
+- `agent_count: int`
+  - Number of valid independent evaluator results
+- `arbitrated: bool`
+- `feedback: object`
+  - Attempt-specific summary, awarded points, deductions, evidence, and suggestion
 
 ## Grading Rule
 

@@ -1,6 +1,8 @@
 from .grader import AggregatorBase, AutoGraderBase, AutoGraderEntry, EvaluatorBase, SchedulerBase, WorkerPoolBase
 from .inmemory import InMemoryAutoGrader
 from .models import (
+    AgentQuestionEvaluation,
+    AttemptFeedback,
     AutoGradeJobResultsResponse,
     AutoGradeJobStatusResponse,
     AutoGradeJobSubmitRequest,
@@ -12,10 +14,28 @@ from .models import (
     DocumentBundle,
     EvaluationResult,
     GradeTaskItem,
+    ConsensusQuestionScore,
+    PaperManifest,
+    PaperManifestQuestion,
     PaperQuestionAnswerPairs,
+    PaperScoreSummary,
+    QuestionAttempt,
+    QuestionAttemptStatus,
+    QuestionBatchTask,
+    QuestionRubric,
     QuestionAnswerPdfPair,
+    RubricCriterion,
     SourceItem,
     SourceType,
+)
+from .multi_agent import (
+    DeterministicQuestionAggregator,
+    LLMQuestionArbitrator,
+    LLMQuestionEvaluator,
+    MultiAgentQuestionScorer,
+    PaperScoreAggregator,
+    QuestionArbitratorBase,
+    QuestionEvaluatorBase,
 )
 from .public_api import (
     AutoGraderExternalApi,
@@ -24,6 +44,7 @@ from .public_api import (
     AutoGraderScoreItem,
     grade_paper_once,
 )
+from .question_pool import InMemoryQuestionPool
 from .recognizer import QuestionAnswerRecognizer
 from .service import get_autograder, has_autograder, register_autograder
 
@@ -34,6 +55,17 @@ __all__ = [
     "SourceItem",
     "DocumentBundle",
     "GradeTaskItem",
+    "QuestionAttemptStatus",
+    "AttemptFeedback",
+    "QuestionAttempt",
+    "RubricCriterion",
+    "QuestionRubric",
+    "QuestionBatchTask",
+    "AgentQuestionEvaluation",
+    "ConsensusQuestionScore",
+    "PaperManifestQuestion",
+    "PaperManifest",
+    "PaperScoreSummary",
     "QuestionAnswerPdfPair",
     "PaperQuestionAnswerPairs",
     "AutoGraderScoreItem",
@@ -53,6 +85,14 @@ __all__ = [
     "EvaluatorBase",
     "AggregatorBase",
     "WorkerPoolBase",
+    "QuestionEvaluatorBase",
+    "QuestionArbitratorBase",
+    "LLMQuestionEvaluator",
+    "LLMQuestionArbitrator",
+    "DeterministicQuestionAggregator",
+    "MultiAgentQuestionScorer",
+    "PaperScoreAggregator",
+    "InMemoryQuestionPool",
     "AutoGraderEntry",
     "InMemoryAutoGrader",
     "grade_paper_once",

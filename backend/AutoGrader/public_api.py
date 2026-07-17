@@ -6,6 +6,8 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
+from .models import AttemptFeedback
+
 
 ScoreMode = Literal["absolute", "percentage", "manual_review"]
 
@@ -25,6 +27,15 @@ class AutoGraderScoreItem(BaseModel):
     reason: str | None = Field(default=None, description="Why the question was skipped or manually reviewed")
     question_text: str | None = Field(default=None, description="Transcribed question text from the recognition stage")
     answer_text: str | None = Field(default=None, description="Transcribed answer text from the recognition stage")
+    paper_instance_id: str | None = Field(default=None, description="Concrete paper that owns this result")
+    question_attempt_id: str | None = Field(default=None, description="Concrete answer attempt that owns this result")
+    canonical_question_id: str | None = Field(default=None, description="Canonical question used for background grouping")
+    confidence: int | None = Field(default=None, ge=0, le=100, description="Deterministic evaluator agreement confidence")
+    consensus: Literal["high", "medium", "low"] | None = Field(default=None, description="Human-readable agreement band")
+    agent_count: int = Field(default=0, ge=0, description="Number of valid independent evaluator results")
+    arbitrated: bool = Field(default=False, description="Whether a disagreement agent resolved this score")
+    rubric_version: str | None = Field(default=None, description="Rubric version used by all evaluators")
+    feedback: AttemptFeedback | None = Field(default=None, description="Feedback scoped to this exact question attempt")
 
 
 class AutoGraderGradeRequest(BaseModel):
