@@ -10,7 +10,7 @@
 
 .autograder-page-inner {
   width: 100%;
-  max-width: 620px;
+  max-width: 900px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -23,10 +23,18 @@
 
 .autograder-hero-title {
   margin: 0;
-  font-size: clamp(1.45rem, 3.2vw, 1.85rem);
+  font-size: 1.85rem;
   font-weight: 800;
   color: #0f766e;
   line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.autograder-hero-sub {
+  max-width: 680px;
+  margin: 8px auto 0;
+  color: #475569;
+  line-height: 1.5;
 }
 
 .autograder-card {
@@ -35,13 +43,14 @@
   border: 1px solid rgba(45, 212, 191, 0.22);
   box-shadow: 0 4px 24px -6px rgba(15, 118, 110, 0.12), 0 12px 40px -16px rgba(15, 23, 42, 0.08);
   padding: 20px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .autograder-panel {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 10px;
   padding: 14px;
@@ -50,10 +59,16 @@
   border: 1px solid #e2e8f0;
 }
 
+.autograder-panel:last-of-type,
+.autograder-submit,
+.autograder-error-text {
+  grid-column: 1 / -1;
+}
+
 .autograder-panel-label {
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: #475569;
 }
@@ -78,6 +93,7 @@
 }
 
 .autograder-file-choose-btn {
+  flex-shrink: 0;
   padding: 9px 16px;
   border-radius: 8px;
   border: 1px solid #99f6e4;
@@ -97,6 +113,7 @@
 }
 
 .autograder-file-choose-btn:focus-visible,
+.autograder-paper-tab:focus-visible,
 .autograder-submit:focus-visible,
 .autograder-textarea:focus-visible {
   outline: 2px solid #2dd4bf;
@@ -118,6 +135,21 @@
   font-weight: 700;
 }
 
+.autograder-file-list {
+  max-height: 112px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px 8px 8px 28px;
+  border-top: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.autograder-file-list li {
+  overflow-wrap: anywhere;
+}
+
 .autograder-textarea {
   width: 100%;
   min-height: 112px;
@@ -137,7 +169,6 @@
 }
 
 .autograder-submit {
-  align-self: stretch;
   min-height: 44px;
   padding: 11px 18px;
   border: none;
@@ -184,17 +215,18 @@
 
 .autograder-result-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .autograder-result h3 {
-  margin: 0;
+  margin: 0 0 3px;
   font-size: 1.05rem;
   font-weight: 800;
   color: #0f766e;
+  letter-spacing: 0;
 }
 
 .autograder-mode-pill {
@@ -215,18 +247,92 @@
   line-height: 1.5;
 }
 
-.autograder-score-list {
-  display: flex;
-  flex-direction: column;
+.autograder-paper-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.autograder-paper-tab {
+  min-width: 0;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.autograder-paper-tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autograder-paper-tab strong {
+  flex-shrink: 0;
+  color: #0f766e;
+  font-variant-numeric: tabular-nums;
+}
+
+.autograder-paper-tab--selected {
+  border-color: #14b8a6;
+  background: #ccfbf1;
+  color: #115e59;
+  box-shadow: inset 0 0 0 1px #14b8a6;
+}
+
+.autograder-paper-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 8px;
+  border-top: 1px solid rgba(45, 212, 191, 0.35);
+}
+
+.autograder-paper-heading h4 {
+  margin: 3px 0 0;
+  color: #0f172a;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.autograder-paper-id {
+  max-width: 45%;
+  overflow: hidden;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autograder-score-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
   margin-top: 12px;
 }
 
 .autograder-score-item {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 12px;
   border-radius: 8px;
   background: #fff;
   border: 1px solid #d1fae5;
@@ -241,15 +347,88 @@
   gap: 12px;
 }
 
-.autograder-score-item strong {
+.autograder-question-label {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.autograder-score-item > .autograder-score-main strong {
   color: #0f766e;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.autograder-score-item small {
-  color: #64748b;
+.autograder-score-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.autograder-score-badges span {
+  padding: 3px 7px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.autograder-score-badges .autograder-confidence--high {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.autograder-score-badges .autograder-confidence--medium {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.autograder-score-badges .autograder-confidence--low {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.autograder-feedback-summary,
+.autograder-suggestion {
+  margin: 0;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.autograder-suggestion {
+  padding: 8px 9px;
+  border-left: 3px solid #38bdf8;
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+
+.autograder-feedback-block {
+  padding-top: 7px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.autograder-feedback-block h5 {
+  margin: 0 0 4px;
+  color: #166534;
+  font-size: 0.76rem;
+  letter-spacing: 0;
+}
+
+.autograder-feedback-block--deduction h5 {
+  color: #b91c1c;
+}
+
+.autograder-feedback-block ul,
+.autograder-answer-details ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
   line-height: 1.45;
 }
 
@@ -278,9 +457,20 @@
   color: #115e59;
 }
 
+@media (max-width: 720px) {
+  .autograder-card,
+  .autograder-score-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
   .autograder-page {
     padding-inline: 10px;
+  }
+
+  .autograder-hero-title {
+    font-size: 1.5rem;
   }
 
   .autograder-card,
@@ -289,13 +479,18 @@
   }
 
   .autograder-result-header,
+  .autograder-paper-heading,
   .autograder-score-main {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
   }
 
-  .autograder-score-item strong {
+  .autograder-paper-id {
+    max-width: 100%;
+  }
+
+  .autograder-score-item > .autograder-score-main strong {
     text-align: left;
   }
 }

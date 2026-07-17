@@ -1,17 +1,15 @@
 import argparse
 import asyncio
-import base64
-import io
+import hashlib
 import json
 import tempfile
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import fitz
 from PIL import Image
 
-from deps import create_chat_completion
 from .models import (
     AutoGradeJobResultsResponse,
     AutoGradeJobStatusResponse,
@@ -21,11 +19,20 @@ from .models import (
     AutoGradeResult,
     EvaluationResult,
     GradeTaskItem,
+    ConsensusQuestionScore,
+    PaperManifest,
+    PaperManifestQuestion,
     PaperQuestionAnswerPairs,
+    PaperScoreSummary,
+    QuestionAttempt,
     QuestionAnswerPdfPair,
+    QuestionWorkerRunReport,
 )
+from .multi_agent import MultiAgentQuestionScorer, PaperScoreAggregator
+from .question_pool import InMemoryQuestionPool
 from .recognizer import QuestionAnswerRecognizer
 from .question_splitter import DocumentSplitter, QuestionDetector, QuestionSplitter
+from .worker_pool import ConcurrentQuestionWorkerPool
 
 
 class AutoGraderBase(ABC):
@@ -70,17 +77,53 @@ class WorkerPoolBase(ABC):
         """Submit one paper to a worker for execution."""
 
 
-# TODO: Implement the scheduler, worker pool, and aggregator in a concrete module later.
+# The paper-level abstractions above remain as compatibility contracts for the job API.
+
+
+@dataclass
+class _PreparedPaper:
+    paper_id: str
+    attempts: list[QuestionAttempt]
+    gradable_attempts: list[QuestionAttempt]
+    attempt_context: dict[str, dict[str, Any]]
+    manual_results: list[ConsensusQuestionScore]
+    scores: dict[str, dict[str, Any]]
 
 
 class AutoGraderEntry:
-    """Minimal runnable entry that pairs one question paper with one answer paper, then scores each pair once."""
+    """Pair papers and run independent per-question evaluators."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        question_scorer: MultiAgentQuestionScorer | None = None,
+        question_pool: InMemoryQuestionPool | None = None,
+        question_worker_pool: ConcurrentQuestionWorkerPool | None = None,
+        recognizer: QuestionAnswerRecognizer | None = None,
+    ) -> None:
         self._papers: dict[str, PaperQuestionAnswerPairs] = {}
         self._scores: dict[str, dict[str, dict[str, Any]]] = {}
+        self._attempts: dict[str, list[QuestionAttempt]] = {}
+        self._manifests: dict[str, PaperManifest] = {}
+        self._consensus_scores: dict[str, list[ConsensusQuestionScore]] = {}
+        self._worker_reports: dict[str, QuestionWorkerRunReport] = {}
         self._paper_temp_dirs: dict[str, Path] = {}
-        self._recognizer = QuestionAnswerRecognizer()
+        self._recognizer = recognizer or QuestionAnswerRecognizer()
+        if question_worker_pool is not None:
+            if question_scorer is not None and question_scorer is not question_worker_pool.scorer:
+                raise ValueError("question_scorer must match the supplied question_worker_pool")
+            if question_pool is not None and question_pool is not question_worker_pool.question_pool:
+                raise ValueError("question_pool must match the supplied question_worker_pool")
+            self._question_worker_pool = question_worker_pool
+            self._question_scorer = question_worker_pool.scorer
+            self._question_pool = question_worker_pool.question_pool
+        else:
+            self._question_scorer = question_scorer or MultiAgentQuestionScorer.default()
+            self._question_pool = question_pool or InMemoryQuestionPool()
+            self._question_worker_pool = ConcurrentQuestionWorkerPool(
+                self._question_pool,
+                self._question_scorer,
+            )
 
     @staticmethod
     def _load_document_bytes(source_path: str | Path) -> bytes:
@@ -94,56 +137,93 @@ class AutoGraderEntry:
         return QuestionSplitter.image_to_pdf_bytes(image)
 
     @staticmethod
+    def _source_fingerprint(source_path: str | Path) -> str:
+        return hashlib.sha256(Path(source_path).read_bytes()).hexdigest()
+
+    @staticmethod
     def _normalize_pair_label(label: str) -> str:
         return QuestionDetector.normalize_question_label(label)
 
     @staticmethod
-    def _pdf_first_page_to_b64(pdf_bytes: bytes, dpi: int = 150) -> str:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        page = doc[0]
-        pix = page.get_pixmap(dpi=dpi)
-        doc.close()
-        return base64.b64encode(pix.tobytes("png")).decode("utf-8")
+    def _provisional_template_id(
+        pairs: list[QuestionAnswerPdfPair],
+        inspections: dict[str, dict[str, Any]] | None = None,
+    ) -> str:
+        fingerprint_parts: list[bytes] = []
+        inspections = inspections or {}
+        for pair in pairs:
+            label = QuestionDetector.normalize_question_label(pair.question_label)
+            question_text = str(inspections.get(label, {}).get("question_text") or "")
+            normalized_text = "".join(question_text.lower().split())
+            fingerprint_parts.append(normalized_text.encode("utf-8") if normalized_text else pair.question_pdf)
+        digest = hashlib.sha256(b"\x00".join(fingerprint_parts)).hexdigest()[:16]
+        return f"exam-{digest}"
 
     @staticmethod
-    def _parse_score_map(raw_text: str) -> dict[str, dict[str, Any]]:
-        cleaned = raw_text.strip()
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("```", 1)[1].strip()
-            if cleaned.lower().startswith("json"):
-                cleaned = cleaned[4:].strip()
-        parsed = json.loads(cleaned)
-        if isinstance(parsed, dict) and "scores" in parsed and isinstance(parsed["scores"], dict):
-            parsed = parsed["scores"]
-        if not isinstance(parsed, dict):
-            raise ValueError("LLM scoring output must be a JSON object")
+    def _attempt_id(paper_id: str, index: int, label: str) -> str:
+        return f"{paper_id}:{index}:{label}"
 
-        scores: dict[str, dict[str, Any]] = {}
-        for key, value in parsed.items():
-            label = QuestionDetector.normalize_question_label(str(key))
-            if isinstance(value, dict):
-                score_item = dict(value)
-                if "score" in score_item:
-                    try:
-                        score_item["score"] = float(score_item["score"])
-                    except (TypeError, ValueError):
-                        pass
-                if "max_score" in score_item and score_item["max_score"] is not None:
-                    try:
-                        score_item["max_score"] = float(score_item["max_score"])
-                    except (TypeError, ValueError):
-                        pass
-                if "mode" not in score_item:
-                    score_item["mode"] = "absolute" if score_item.get("max_score") is not None else "percentage"
-                scores[label] = score_item
-                continue
+    @staticmethod
+    def _score_item_from_consensus(
+        result: ConsensusQuestionScore,
+        *,
+        question_text: str | None,
+        answer_text: str | None,
+        question_only: bool,
+    ) -> dict[str, Any]:
+        resolved_answer_text = result.feedback.summary if question_only and result.feedback.summary else answer_text
+        return {
+            "score": result.score,
+            "mode": result.mode,
+            "max_score": result.max_score,
+            "manual_review": result.manual_review,
+            "reason": result.reason,
+            "question_text": question_text,
+            "answer_text": resolved_answer_text,
+            "paper_instance_id": result.paper_instance_id,
+            "question_attempt_id": result.question_attempt_id,
+            "canonical_question_id": result.canonical_question_id,
+            "confidence": result.confidence,
+            "consensus": result.consensus,
+            "agent_count": result.agent_count,
+            "arbitrated": result.arbitrated,
+            "rubric_version": result.rubric_version,
+            "feedback": result.feedback.model_dump(),
+        }
 
-            try:
-                numeric_score = float(value)
-            except (TypeError, ValueError):
-                continue
-            scores[label] = {"score": numeric_score, "mode": "percentage"}
-        return scores
+    @staticmethod
+    def _manifest_from_attempts(
+        paper_id: str,
+        exam_template_id: str,
+        attempts: list[QuestionAttempt],
+    ) -> PaperManifest:
+        return PaperManifest(
+            paper_instance_id=paper_id,
+            exam_template_id=exam_template_id,
+            questions=[
+                PaperManifestQuestion(
+                    question_attempt_id=attempt.question_attempt_id,
+                    canonical_question_id=attempt.canonical_question_id,
+                    displayed_label=attempt.displayed_label,
+                )
+                for attempt in attempts
+            ],
+        )
+
+    @staticmethod
+    def _manual_consensus(attempt: QuestionAttempt, reason: str) -> ConsensusQuestionScore:
+        return ConsensusQuestionScore(
+            paper_instance_id=attempt.paper_instance_id,
+            question_attempt_id=attempt.question_attempt_id,
+            canonical_question_id=attempt.canonical_question_id,
+            displayed_label=attempt.displayed_label,
+            mode="manual_review",
+            manual_review=True,
+            reason=reason,
+            confidence=0,
+            consensus="low",
+            rubric_version=str(attempt.metadata.get("rubric_version", "initial")),
+        )
 
     @staticmethod
     def _save_pairs_to_temp_dir(paper_id: str, pairs: list[QuestionAnswerPdfPair]) -> Path:
@@ -183,6 +263,7 @@ class AutoGraderEntry:
             metadata={
                 "temp_dir": str(temp_dir),
                 "question_source": str(question_source),
+                "question_fingerprint": self._source_fingerprint(question_source),
                 "answer_source": str(answer_source),
                 "pair_count": len(pairs),
             },
@@ -217,6 +298,7 @@ class AutoGraderEntry:
             metadata={
                 "temp_dir": str(temp_dir),
                 "question_source": str(question_source),
+                "question_fingerprint": self._source_fingerprint(question_source),
                 "answer_source": None,
                 "pair_count": len(pairs),
                 "grading_mode": "question_only",
@@ -226,178 +308,210 @@ class AutoGraderEntry:
         self._paper_temp_dirs[paper_id] = temp_dir
         return record
 
-    async def score_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
-        """Recognize each pair first, then score only the pairs that are clear enough to grade."""
+    async def _prepare_paper_scoring(
+        self,
+        paper_id: str,
+        grading_criteria: str | None,
+    ) -> _PreparedPaper | None:
         paper = self._papers.get(paper_id)
         if paper is None or not paper.pairs:
             self._scores[paper_id] = {}
-            return {}
+            return None
 
         inspections = await self._recognizer.inspect_pairs(paper.pairs)
         inspect_by_label = {
             self._normalize_pair_label(label): data
             for label, data in inspections.items()
         }
-
-        scored_pairs: list[tuple[QuestionAnswerPdfPair, dict[str, Any]]] = []
+        source_fingerprint = str(paper.metadata.get("question_fingerprint") or "").strip()
+        exam_template_id = (
+            f"exam-{source_fingerprint[:16]}"
+            if source_fingerprint
+            else self._provisional_template_id(paper.pairs, inspect_by_label)
+        )
+        attempts: list[QuestionAttempt] = []
+        gradable_attempts: list[QuestionAttempt] = []
+        attempt_context: dict[str, dict[str, Any]] = {}
+        manual_results: list[ConsensusQuestionScore] = []
         scores: dict[str, dict[str, Any]] = {}
 
-        for pair in paper.pairs:
+        for index, pair in enumerate(paper.pairs, start=1):
             label = self._normalize_pair_label(pair.question_label)
+            attempt_id = self._attempt_id(paper_id, index, label)
+            canonical_question_id = f"{exam_template_id}:{index}:{label}"
             inspection = inspect_by_label.get(label)
+            attempt = QuestionAttempt(
+                paper_instance_id=paper_id,
+                question_attempt_id=attempt_id,
+                exam_template_id=exam_template_id,
+                canonical_question_id=canonical_question_id,
+                displayed_label=label,
+                question_pdf=pair.question_pdf,
+                answer_pdf=pair.answer_pdf,
+                question_text=inspection.get("question_text") if inspection else None,
+                answer_text=inspection.get("answer_text") if inspection else None,
+                grading_criteria=(grading_criteria or "").strip() or None,
+                metadata={"rubric_version": "initial", "pair_index": index},
+            )
+            attempts.append(attempt)
             if not inspection:
-                scores[label] = {
-                    "score": None,
-                    "mode": "manual_review",
-                    "max_score": None,
-                    "manual_review": True,
-                    "reason": "Recognition output was missing for this pair",
-                }
+                manual = self._manual_consensus(attempt, "Recognition output was missing for this pair")
+                manual_results.append(manual)
+                scores[label] = self._score_item_from_consensus(
+                    manual,
+                    question_text=None,
+                    answer_text=None,
+                    question_only=False,
+                )
                 continue
 
             if not inspection.get("can_grade", False):
-                scores[label] = {
-                    "score": None,
-                    "mode": "manual_review",
-                    "max_score": None,
-                    "manual_review": True,
-                    "reason": inspection.get("reason") or "The pair is not clear enough for automatic grading",
-                    "question_text": inspection.get("question_text"),
-                    "answer_text": inspection.get("answer_text"),
-                }
+                manual = self._manual_consensus(
+                    attempt,
+                    inspection.get("reason") or "The pair is not clear enough for automatic grading",
+                )
+                manual_results.append(manual)
+                scores[label] = self._score_item_from_consensus(
+                    manual,
+                    question_text=inspection.get("question_text"),
+                    answer_text=inspection.get("answer_text"),
+                    question_only=False,
+                )
                 continue
 
-            scored_pairs.append((pair, inspection))
-
-        if not scored_pairs:
-            self._scores[paper_id] = scores
-            return scores
-
-        system_msg = (
-            "You are grading an exam. The recognized question_text and answer_text are the primary inputs. Use the page images only to verify unclear OCR or layout details. "
-            "For each question-answer pair, first inspect the recognized text and determine the maximum points for that question. "
-            "If the max points are explicit or can be inferred from the question/rubric, score with that absolute max and return score plus max_score. "
-            "If the user supplied grading criteria, apply those criteria as part of the rubric and mention the relevant criterion briefly in reason when it affects the score. "
-            "If the recognized text is too noisy, incomplete, contradictory, or otherwise not trustworthy, mark the pair for manual review instead of guessing a score. "
-            "If the max points are not found but the pair is still clear enough to grade, return a percentage score from 0 to 100 and set mode to percentage. "
-            "Return ONLY valid JSON. Use the shape: {\"scores\": {\"5\": {\"score\": 12, \"max_score\": 16, \"mode\": \"absolute\"}, \"6\": {\"score\": 86, \"mode\": \"percentage\"}}}."
-        )
-        user_parts: list[dict[str, Any]] = [
-            {
-                "type": "text",
-                "text": (
-                    "You will receive several question-answer pairs. For each pair, read the transcribed question and answer text carefully; use the page images only to resolve OCR mistakes or layout ambiguity. "
-                    "Determine the full score for that question if it is visible or inferable from the paper. "
-                    "If the full score is visible/inferable, return an absolute score and max_score. "
-                    "If the text is not trustworthy enough to score, return manual_review metadata instead of guessing. "
-                    "Otherwise return a percentage score and set mode to percentage. "
-                    "Return only a JSON object mapping the question label to a score object."
-                ),
+            gradable_attempts.append(attempt)
+            attempt_context[attempt_id] = {
+                "label": label,
+                "question_text": inspection.get("question_text"),
+                "answer_text": inspection.get("answer_text"),
             }
-        ]
-        criteria = (grading_criteria or "").strip()
-        if criteria:
-            user_parts.append({"type": "text", "text": f"GRADING CRITERIA:\n{criteria}"})
 
-        for pair, inspection in scored_pairs:
-            label = self._normalize_pair_label(pair.question_label)
-            question_text = (inspection.get("question_text") or "").strip()
-            answer_text = (inspection.get("answer_text") or "").strip()
-            user_parts.append({"type": "text", "text": f"QUESTION {label}"})
-            if question_text:
-                user_parts.append({"type": "text", "text": f"Recognized question text: {question_text}"})
-            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
-            user_parts.append({"type": "text", "text": f"ANSWER {label}"})
-            if answer_text:
-                user_parts.append({"type": "text", "text": f"Recognized answer text: {answer_text}"})
-            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.answer_pdf)}"}})
-
-        resp = create_chat_completion(
-            model="gpt-5.2",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_parts},
-            ],
-            temperature=0.0,
+        self._attempts[paper_id] = attempts
+        self._manifests[paper_id] = self._manifest_from_attempts(paper_id, exam_template_id, attempts)
+        return _PreparedPaper(
+            paper_id=paper_id,
+            attempts=attempts,
+            gradable_attempts=gradable_attempts,
+            attempt_context=attempt_context,
+            manual_results=manual_results,
+            scores=scores,
         )
-        raw_text = resp.choices[0].message.content or ""
-        scored_map = self._parse_score_map(raw_text)
-        for pair, _inspection in scored_pairs:
-            label = self._normalize_pair_label(pair.question_label)
-            if label not in scored_map:
-                scored_map[label] = {
-                    "score": None,
-                    "mode": "manual_review",
-                    "max_score": None,
-                    "manual_review": True,
-                    "reason": "The scorer did not return a result for this pair",
-                }
-                continue
-            inspection = inspect_by_label.get(label, {})
-            if inspection.get("question_text") and "question_text" not in scored_map[label]:
-                scored_map[label]["question_text"] = inspection.get("question_text")
-            if inspection.get("answer_text") and "answer_text" not in scored_map[label]:
-                scored_map[label]["answer_text"] = inspection.get("answer_text")
-        scores.update(scored_map)
-        self._scores[paper_id] = scores
+
+    def _finalize_prepared_paper(
+        self,
+        prepared: _PreparedPaper,
+        consensus_results: list[ConsensusQuestionScore],
+    ) -> dict[str, dict[str, Any]]:
+        scores = dict(prepared.scores)
+        for result in consensus_results:
+            context = prepared.attempt_context[result.question_attempt_id]
+            scores[context["label"]] = self._score_item_from_consensus(
+                result,
+                question_text=context["question_text"],
+                answer_text=context["answer_text"],
+                question_only=False,
+            )
+        self._consensus_scores[prepared.paper_id] = [*prepared.manual_results, *consensus_results]
+        self._scores[prepared.paper_id] = scores
         return scores
 
+    async def score_papers(
+        self,
+        paper_ids: list[str],
+        grading_criteria: str | None = None,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """Score registered papers together so matching questions share worker batches."""
+        prepared_papers: list[_PreparedPaper] = []
+        for paper_id in paper_ids:
+            prepared = await self._prepare_paper_scoring(paper_id, grading_criteria)
+            if prepared is not None:
+                prepared_papers.append(prepared)
+
+        all_gradable_attempts = [
+            attempt
+            for prepared in prepared_papers
+            for attempt in prepared.gradable_attempts
+        ]
+        pre_worker_manual_count = sum(
+            len(prepared.manual_results)
+            for prepared in prepared_papers
+        )
+        consensus_results: list[ConsensusQuestionScore] = []
+        if all_gradable_attempts:
+            consensus_results, worker_report = await self._question_worker_pool.score_attempts(
+                all_gradable_attempts
+            )
+            worker_report.manual_review_count += pre_worker_manual_count
+            for prepared in prepared_papers:
+                self._worker_reports[prepared.paper_id] = worker_report.model_copy(deep=True)
+        elif pre_worker_manual_count:
+            worker_report = QuestionWorkerRunReport(
+                worker_count=self._question_worker_pool.worker_count,
+                manual_review_count=pre_worker_manual_count,
+            )
+            for prepared in prepared_papers:
+                self._worker_reports[prepared.paper_id] = worker_report.model_copy(deep=True)
+
+        results_by_paper: dict[str, list[ConsensusQuestionScore]] = {}
+        for result in consensus_results:
+            results_by_paper.setdefault(result.paper_instance_id, []).append(result)
+
+        output: dict[str, dict[str, dict[str, Any]]] = {
+            paper_id: dict(self._scores.get(paper_id, {}))
+            for paper_id in paper_ids
+        }
+        for prepared in prepared_papers:
+            output[prepared.paper_id] = self._finalize_prepared_paper(
+                prepared,
+                results_by_paper.get(prepared.paper_id, []),
+            )
+        return output
+
+    async def score_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
+        """Recognize pairs once, then grade each question with independent agents."""
+        results = await self.score_papers([paper_id], grading_criteria)
+        return results.get(paper_id, {})
+
     async def score_question_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
-        """Score a question-only paper by deriving reference answers from the questions."""
+        """Use independent agents to derive and verify reference answers per question."""
         paper = self._papers.get(paper_id)
         if paper is None or not paper.pairs:
             self._scores[paper_id] = {}
             return {}
 
-        system_msg = (
-            "You are grading from a question paper when no separate answer paper was provided. "
-            "For each question image, transcribe the question, solve it yourself, and apply any user-supplied grading criteria. "
-            "If the image includes a visible student answer or worked response, grade that response against your derived reference answer. "
-            "If no student answer is visible, return the full-credit reference answer and assign full credit for the derived correct answer. "
-            "Determine the maximum points from the question or criteria when possible. If max points are explicit or inferable, use mode=absolute with score and max_score. "
-            "If max points are unavailable, use mode=percentage with score from 0 to 100. "
-            "If the question cannot be read or solved reliably, use mode=manual_review, score=null, manual_review=true, and a short reason. "
-            "Return ONLY valid JSON with this shape: "
-            "{\"scores\":{\"1\":{\"score\":10,\"max_score\":10,\"mode\":\"absolute\",\"question_text\":\"...\",\"answer_text\":\"...\",\"reason\":\"...\"}}}."
-        )
-        user_parts: list[dict[str, Any]] = [
-            {
-                "type": "text",
-                "text": (
-                    "No separate answer file was provided. For each question, read the image, solve the problem, "
-                    "and return a score object. Put your derived reference answer or graded visible answer in answer_text."
-                ),
-            }
-        ]
-        criteria = (grading_criteria or "").strip()
-        if criteria:
-            user_parts.append({"type": "text", "text": f"GRADING CRITERIA:\n{criteria}"})
-
-        for pair in paper.pairs:
+        exam_template_id = self._provisional_template_id(paper.pairs)
+        attempts: list[QuestionAttempt] = []
+        for index, pair in enumerate(paper.pairs, start=1):
             label = self._normalize_pair_label(pair.question_label)
-            user_parts.append({"type": "text", "text": f"QUESTION {label}"})
-            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
+            attempts.append(
+                QuestionAttempt(
+                    paper_instance_id=paper_id,
+                    question_attempt_id=self._attempt_id(paper_id, index, label),
+                    exam_template_id=exam_template_id,
+                    canonical_question_id=f"{exam_template_id}:{index}:{label}",
+                    displayed_label=label,
+                    question_pdf=pair.question_pdf,
+                    answer_pdf=None,
+                    grading_criteria=(grading_criteria or "").strip() or None,
+                    question_only=True,
+                    metadata={"rubric_version": "initial", "pair_index": index},
+                )
+            )
 
-        resp = create_chat_completion(
-            model="gpt-5.2",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_parts},
-            ],
-            temperature=0.0,
-        )
-        raw_text = resp.choices[0].message.content or ""
-        scores = self._parse_score_map(raw_text)
-        for pair in paper.pairs:
-            label = self._normalize_pair_label(pair.question_label)
-            if label not in scores:
-                scores[label] = {
-                    "score": None,
-                    "mode": "manual_review",
-                    "max_score": None,
-                    "manual_review": True,
-                    "reason": "The scorer did not return a result for this question",
-                }
+        self._attempts[paper_id] = attempts
+        self._manifests[paper_id] = self._manifest_from_attempts(paper_id, exam_template_id, attempts)
+        consensus_results, worker_report = await self._question_worker_pool.score_attempts(attempts)
+        self._worker_reports[paper_id] = worker_report
+        scores = {
+            result.displayed_label: self._score_item_from_consensus(
+                result,
+                question_text=None,
+                answer_text=None,
+                question_only=True,
+            )
+            for result in consensus_results
+        }
+        self._consensus_scores[paper_id] = consensus_results
         self._scores[paper_id] = scores
         return scores
 
@@ -432,6 +546,26 @@ class AutoGraderEntry:
 
     def get_scores(self, paper_id: str) -> dict[str, dict[str, Any]]:
         return dict(self._scores.get(paper_id, {}))
+
+    def get_attempts(self, paper_id: str) -> list[QuestionAttempt]:
+        return [attempt.model_copy(deep=True) for attempt in self._attempts.get(paper_id, [])]
+
+    def get_manifest(self, paper_id: str) -> PaperManifest | None:
+        manifest = self._manifests.get(paper_id)
+        return manifest.model_copy(deep=True) if manifest is not None else None
+
+    def get_paper_score_summary(self, paper_id: str) -> PaperScoreSummary | None:
+        manifest = self._manifests.get(paper_id)
+        if manifest is None:
+            return None
+        return PaperScoreAggregator.aggregate(
+            manifest,
+            [score.model_copy(deep=True) for score in self._consensus_scores.get(paper_id, [])],
+        )
+
+    def get_worker_report(self, paper_id: str) -> QuestionWorkerRunReport | None:
+        report = self._worker_reports.get(paper_id)
+        return report.model_copy(deep=True) if report is not None else None
 
 
 async def _run_cli() -> None:

@@ -19,7 +19,13 @@ import student_bar_store as sbs
 import user_textbook_store as uts
 from bson import ObjectId
 from datetime import datetime, timezone
-from AutoGrader.public_api import AutoGraderGradeRequest, grade_paper_once
+from AutoGrader.public_api import (
+    AutoGraderBatchGradeRequest,
+    AutoGraderBatchPaperRequest,
+    AutoGraderGradeRequest,
+    grade_paper_once,
+    grade_papers_once,
+)
 
 from auth import verify_token
 import database
@@ -1457,6 +1463,17 @@ def _is_supported_upload(upload: UploadFile) -> bool:
     return ctype == "application/pdf"
 
 
+def _clean_upload_display_name(value: str | None, fallback: str) -> str:
+    cleaned = re.sub(r"[\x00-\x1f]+", "", value or "").strip().replace("\\", "/")
+    safe_parts = [
+        part.strip()
+        for part in cleaned.split("/")
+        if part.strip() not in {"", ".", ".."}
+    ]
+    display_name = "/".join(safe_parts)
+    return (display_name or fallback)[:300]
+
+
 @router.post("/api/autograder/grade")
 async def autograder_grade(
     question_file: UploadFile = File(...),
@@ -1538,6 +1555,119 @@ async def autograder_grade(
                 shutil.rmtree(generated_temp_dir, ignore_errors=True)
             except OSError:
                 pass
+
+
+@router.post("/api/autograder/grade-batch")
+async def autograder_grade_batch(
+    question_file: UploadFile = File(...),
+    answer_files: List[UploadFile] = File(...),
+    answer_display_names: List[str] = Form([]),
+    batch_id: str = Form("web-batch"),
+    grading_criteria: str = Form(""),
+):
+    if not _is_supported_upload(question_file):
+        raise HTTPException(status_code=400, detail="question_file must be pdf/jpg/jpeg/png")
+    if not answer_files:
+        raise HTTPException(status_code=400, detail="At least one answer file is required")
+    try:
+        max_batch_files = max(1, int(os.getenv("AUTOGRADER_MAX_BATCH_FILES", "200")))
+    except ValueError:
+        max_batch_files = 200
+    if len(answer_files) > max_batch_files:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A batch can contain at most {max_batch_files} answer files",
+        )
+    for answer_file in answer_files:
+        if not _is_supported_upload(answer_file):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{answer_file.filename or 'answer_file'} must be pdf/jpg/jpeg/png",
+            )
+
+    q_tmp_path: Optional[str] = None
+    answer_tmp_paths: List[str] = []
+    generated_temp_dirs: List[str] = []
+    try:
+        q_bytes = await question_file.read()
+        if not q_bytes:
+            raise HTTPException(status_code=400, detail="question_file is empty")
+        q_tmp = tempfile.NamedTemporaryFile(
+            prefix="autograder_batch_question_",
+            suffix=_suffix_from_upload(question_file),
+            delete=False,
+        )
+        q_tmp.write(q_bytes)
+        q_tmp.close()
+        q_tmp_path = q_tmp.name
+
+        normalized_batch_id = re.sub(r"[^a-zA-Z0-9_-]+", "-", batch_id.strip()) or "web-batch"
+        paper_requests: List[AutoGraderBatchPaperRequest] = []
+        for index, answer_file in enumerate(answer_files, start=1):
+            answer_bytes = await answer_file.read()
+            if not answer_bytes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{answer_file.filename or f'answer_file_{index}'} is empty",
+                )
+            answer_tmp = tempfile.NamedTemporaryFile(
+                prefix=f"autograder_batch_answer_{index}_",
+                suffix=_suffix_from_upload(answer_file),
+                delete=False,
+            )
+            answer_tmp.write(answer_bytes)
+            answer_tmp.close()
+            answer_tmp_paths.append(answer_tmp.name)
+            fallback_name = answer_file.filename or f"Answer {index}"
+            requested_display_name = (
+                answer_display_names[index - 1]
+                if index <= len(answer_display_names)
+                else None
+            )
+            display_name = _clean_upload_display_name(
+                requested_display_name,
+                fallback_name,
+            )
+            paper_requests.append(
+                AutoGraderBatchPaperRequest(
+                    paper_id=f"{normalized_batch_id}-{index}",
+                    answer_source=answer_tmp.name,
+                    display_name=display_name,
+                )
+            )
+
+        response = await grade_papers_once(
+            AutoGraderBatchGradeRequest(
+                question_source=q_tmp_path,
+                papers=paper_requests,
+                grading_criteria=grading_criteria.strip() or None,
+            )
+        )
+        payload = response.model_dump()
+        for paper in payload.get("papers", []):
+            temp_dir = paper.get("temp_dir")
+            if isinstance(temp_dir, str):
+                generated_temp_dirs.append(temp_dir)
+            paper["temp_dir"] = None
+        return payload
+    finally:
+        if q_tmp_path and os.path.exists(q_tmp_path):
+            try:
+                os.remove(q_tmp_path)
+            except OSError:
+                pass
+        for path in answer_tmp_paths:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        for temp_dir in generated_temp_dirs:
+            if os.path.isdir(temp_dir):
+                try:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                except OSError:
+                    pass
 
 
 @router.post("/api/upload_textbook")
