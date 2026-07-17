@@ -49,6 +49,19 @@ type BatchGradeResponse = {
   papers: PaperGradeResult[];
 };
 
+const DIRECTORY_INPUT_PROPS = {
+  webkitdirectory: "",
+  directory: "",
+} as Record<string, string>;
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function answerDisplayName(file: File) {
+  return file.webkitRelativePath || file.name;
+}
+
 function sortScoreEntries(scores: Record<string, ScoreItem>) {
   return Object.entries(scores).sort((a, b) => {
     const an = Number(a[0]);
@@ -69,6 +82,7 @@ export default function AutoGrader() {
   const [gradingCriteria, setGradingCriteria] = useState("");
   const questionInputRef = useRef<HTMLInputElement>(null);
   const answerInputRef = useRef<HTMLInputElement>(null);
+  const answerFolderInputRef = useRef<HTMLInputElement>(null);
   const [grading, setGrading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<PaperGradeResult[]>([]);
@@ -102,7 +116,10 @@ export default function AutoGrader() {
     const isBatch = answerFiles.length > 0;
     if (isBatch) {
       formData.append("batch_id", requestId);
-      answerFiles.forEach((file) => formData.append("answer_files", file));
+      answerFiles.forEach((file) => {
+        formData.append("answer_files", file);
+        formData.append("answer_display_names", answerDisplayName(file));
+      });
     } else {
       formData.append("paper_id", requestId);
     }
@@ -205,12 +222,44 @@ export default function AutoGrader() {
                 aria-label={t("autograder.uploadAnswer")}
                 onChange={(event) => setAnswerFiles(Array.from(event.target.files ?? []))}
               />
+              <input
+                {...DIRECTORY_INPUT_PROPS}
+                ref={answerFolderInputRef}
+                className="autograder-file-input-hidden"
+                type="file"
+                accept=".pdf,application/pdf"
+                multiple
+                aria-label={t("autograder.uploadAnswerFolder")}
+                onChange={(event) => {
+                  const pdfFiles = Array.from(event.target.files ?? [])
+                    .filter(isPdfFile)
+                    .sort((a, b) =>
+                      answerDisplayName(a).localeCompare(answerDisplayName(b), undefined, {
+                        numeric: true,
+                      }),
+                    );
+                  if (!pdfFiles.length) {
+                    setAnswerFiles([]);
+                    setError(t("autograder.noPdfsInFolder"));
+                    return;
+                  }
+                  setError("");
+                  setAnswerFiles(pdfFiles);
+                }}
+              />
               <button
                 type="button"
                 className="autograder-file-choose-btn"
                 onClick={() => answerInputRef.current?.click()}
               >
                 {t("autograder.chooseAnswers")}
+              </button>
+              <button
+                type="button"
+                className="autograder-file-choose-btn"
+                onClick={() => answerFolderInputRef.current?.click()}
+              >
+                {t("autograder.chooseFolder")}
               </button>
               <span
                 className={`autograder-file-status${answerFiles.length ? " autograder-file-status--picked" : ""}`}
@@ -223,7 +272,9 @@ export default function AutoGrader() {
             {answerFiles.length ? (
               <ul className="autograder-file-list" aria-label={t("autograder.selectedAnswerFiles")}>
                 {answerFiles.map((file, index) => (
-                  <li key={`${file.name}-${file.lastModified}-${index}`}>{file.name}</li>
+                  <li key={`${answerDisplayName(file)}-${file.lastModified}-${index}`}>
+                    {answerDisplayName(file)}
+                  </li>
                 ))}
               </ul>
             ) : null}

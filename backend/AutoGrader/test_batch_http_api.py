@@ -31,7 +31,7 @@ class BatchHttpApiTests(unittest.TestCase):
             self.assertTrue(all(os.path.isfile(path) for path in temporary_inputs))
             self.assertEqual(
                 [paper.display_name for paper in request.papers],
-                ["Student A.jpg", "Student B.jpg"],
+                ["Class A/Student.pdf", "Class B/Student.pdf"],
             )
             return AutoGraderBatchGradeResponse.model_validate(
                 {
@@ -39,7 +39,7 @@ class BatchHttpApiTests(unittest.TestCase):
                     "papers": [
                         {
                             "paper_id": request.papers[0].paper_id,
-                            "display_name": "Student A.jpg",
+                            "display_name": request.papers[0].display_name,
                             "pair_count": 1,
                             "grading_mode": "question_answer",
                             "pairs": ["5"],
@@ -59,7 +59,7 @@ class BatchHttpApiTests(unittest.TestCase):
                         },
                         {
                             "paper_id": request.papers[1].paper_id,
-                            "display_name": "Student B.jpg",
+                            "display_name": request.papers[1].display_name,
                             "pair_count": 1,
                             "grading_mode": "question_answer",
                             "pairs": ["5"],
@@ -89,11 +89,17 @@ class BatchHttpApiTests(unittest.TestCase):
             with TestClient(app) as client:
                 response = client.post(
                     "/api/autograder/grade-batch",
-                    data={"batch_id": "class demo"},
+                    data={
+                        "batch_id": "class demo",
+                        "answer_display_names": [
+                            "Class A/Student.pdf",
+                            "../Class B\\Student.pdf",
+                        ],
+                    },
                     files=[
                         ("question_file", ("Questions.jpg", b"question", "image/jpeg")),
-                        ("answer_files", ("Student A.jpg", b"answer-a", "image/jpeg")),
-                        ("answer_files", ("Student B.jpg", b"answer-b", "image/jpeg")),
+                        ("answer_files", ("Student.pdf", b"answer-a", "application/pdf")),
+                        ("answer_files", ("Student.pdf", b"answer-b", "application/pdf")),
                     ],
                 )
 
@@ -102,7 +108,7 @@ class BatchHttpApiTests(unittest.TestCase):
         self.assertEqual(payload["paper_count"], 2)
         self.assertEqual(
             [paper["display_name"] for paper in payload["papers"]],
-            ["Student A.jpg", "Student B.jpg"],
+            ["Class A/Student.pdf", "Class B/Student.pdf"],
         )
         self.assertEqual(
             [

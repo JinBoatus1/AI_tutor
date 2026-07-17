@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AutoGrader from "./AutoGrader";
 import { LocaleProvider } from "./i18n/LocaleContext";
@@ -85,6 +85,7 @@ describe("AutoGrader batch results", () => {
     expect(requestUrl).toBe("/api/autograder/grade-batch");
     const formData = requestInit.body as FormData;
     expect(formData.getAll("answer_files")).toHaveLength(2);
+    expect(formData.getAll("answer_display_names")).toEqual(["Student A.pdf", "Student B.pdf"]);
 
     expect(await screen.findByText("Feedback only for student A")).toBeInTheDocument();
     expect(screen.queryByText("Feedback only for student B")).not.toBeInTheDocument();
@@ -93,5 +94,59 @@ describe("AutoGrader batch results", () => {
     expect(await screen.findByText("Feedback only for student B")).toBeInTheDocument();
     expect(screen.queryByText("Feedback only for student A")).not.toBeInTheDocument();
     expect(screen.getByText("batch-2")).toBeInTheDocument();
+  });
+
+  it("imports only PDFs from a folder and submits their relative paths", async () => {
+    const response = {
+      paper_count: 2,
+      papers: [
+        paperResult("folder-1", "Class A/Student.pdf", "Class A feedback", 9),
+        paperResult("folder-2", "Class B/Student.pdf", "Class B feedback", 7),
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => response,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(
+      <LocaleProvider>
+        <AutoGrader />
+      </LocaleProvider>,
+    );
+
+    await user.upload(
+      screen.getByLabelText("Upload question file"),
+      new File(["question"], "Questions.pdf", { type: "application/pdf" }),
+    );
+    const classAPdf = new File(["answer-a"], "Student.pdf", { type: "application/pdf" });
+    const classBPdf = new File(["answer-b"], "Student.pdf", { type: "application/pdf" });
+    const ignoredImage = new File(["image"], "scan.png", { type: "image/png" });
+    Object.defineProperty(classAPdf, "webkitRelativePath", { value: "Class A/Student.pdf" });
+    Object.defineProperty(classBPdf, "webkitRelativePath", { value: "Class B/Student.pdf" });
+    Object.defineProperty(ignoredImage, "webkitRelativePath", { value: "Class B/scan.png" });
+
+    const folderInput = screen.getByLabelText("Upload answer folder");
+    expect(folderInput).toHaveAttribute("webkitdirectory");
+    expect(folderInput).toHaveAttribute("accept", ".pdf,application/pdf");
+    fireEvent.change(folderInput, {
+      target: { files: [classBPdf, ignoredImage, classAPdf] },
+    });
+
+    expect(screen.getByText("Class A/Student.pdf")).toBeInTheDocument();
+    expect(screen.getByText("Class B/Student.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("Class B/scan.png")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start grading" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const formData = requestInit.body as FormData;
+    expect(formData.getAll("answer_files")).toHaveLength(2);
+    expect(formData.getAll("answer_display_names")).toEqual([
+      "Class A/Student.pdf",
+      "Class B/Student.pdf",
+    ]);
   });
 });

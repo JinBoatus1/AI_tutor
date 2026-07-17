@@ -1463,6 +1463,17 @@ def _is_supported_upload(upload: UploadFile) -> bool:
     return ctype == "application/pdf"
 
 
+def _clean_upload_display_name(value: str | None, fallback: str) -> str:
+    cleaned = re.sub(r"[\x00-\x1f]+", "", value or "").strip().replace("\\", "/")
+    safe_parts = [
+        part.strip()
+        for part in cleaned.split("/")
+        if part.strip() not in {"", ".", ".."}
+    ]
+    display_name = "/".join(safe_parts)
+    return (display_name or fallback)[:300]
+
+
 @router.post("/api/autograder/grade")
 async def autograder_grade(
     question_file: UploadFile = File(...),
@@ -1550,6 +1561,7 @@ async def autograder_grade(
 async def autograder_grade_batch(
     question_file: UploadFile = File(...),
     answer_files: List[UploadFile] = File(...),
+    answer_display_names: List[str] = Form([]),
     batch_id: str = Form("web-batch"),
     grading_criteria: str = Form(""),
 ):
@@ -1557,8 +1569,15 @@ async def autograder_grade_batch(
         raise HTTPException(status_code=400, detail="question_file must be pdf/jpg/jpeg/png")
     if not answer_files:
         raise HTTPException(status_code=400, detail="At least one answer file is required")
-    if len(answer_files) > 20:
-        raise HTTPException(status_code=400, detail="A batch can contain at most 20 answer files")
+    try:
+        max_batch_files = max(1, int(os.getenv("AUTOGRADER_MAX_BATCH_FILES", "200")))
+    except ValueError:
+        max_batch_files = 200
+    if len(answer_files) > max_batch_files:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A batch can contain at most {max_batch_files} answer files",
+        )
     for answer_file in answer_files:
         if not _is_supported_upload(answer_file):
             raise HTTPException(
@@ -1599,7 +1618,16 @@ async def autograder_grade_batch(
             answer_tmp.write(answer_bytes)
             answer_tmp.close()
             answer_tmp_paths.append(answer_tmp.name)
-            display_name = answer_file.filename or f"Answer {index}"
+            fallback_name = answer_file.filename or f"Answer {index}"
+            requested_display_name = (
+                answer_display_names[index - 1]
+                if index <= len(answer_display_names)
+                else None
+            )
+            display_name = _clean_upload_display_name(
+                requested_display_name,
+                fallback_name,
+            )
             paper_requests.append(
                 AutoGraderBatchPaperRequest(
                     paper_id=f"{normalized_batch_id}-{index}",
