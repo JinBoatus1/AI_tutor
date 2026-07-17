@@ -34,3 +34,8 @@ def chat_sessions():
 def learning_bars():
     """Return the learning_bars collection, or None."""
     return _db["learning_bars"] if _db is not None else None
+
+
+def grades():
+    """Return the grades collection, or None."""
+    return _db["grades"] if _db is not None else None

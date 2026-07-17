@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import MathText from "../MathText";
 import { initialLadder, recordAttempt, advance, reveal, type LadderState, type GradeVerdict } from "./hintLadder";
 import { fetchHint, gradeChallenge } from "./challengeChat";
+import { SymbolPalette } from "./SymbolPalette";
 import type { ChallengeProblem } from "./types";
 
 /** The challenge stage: free-response attempt + the escalating hint ladder.
@@ -28,9 +29,25 @@ export function HintLadderPanel({
   const [error, setError] = useState<string | null>(null);
   const [askReveal, setAskReveal] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const solved = verdict === "correct";
   const canAct = attempt.trim().length > 0 && !loading;
+
+  // Insert a palette symbol at the caret (falls back to append if the ref is missing),
+  // then restore focus + caret just after the inserted glyph so typing continues.
+  const insertSymbol = (sym: string) => {
+    const ta = taRef.current;
+    const start = ta ? ta.selectionStart : attempt.length;
+    const end = ta ? ta.selectionEnd : attempt.length;
+    setAttempt(attempt.slice(0, start) + sym + attempt.slice(end));
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.focus();
+      const pos = start + sym.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  };
 
   const grade = async () => {
     if (!canAct) return;
@@ -86,6 +103,7 @@ export function HintLadderPanel({
         <MathText>{problem.prompt}</MathText>
       </p>
       <textarea
+        ref={taRef}
         className="pr-attempt"
         placeholder="Type what you've tried — even a first idea unlocks help."
         aria-label="Your proof attempt"
@@ -93,6 +111,7 @@ export function HintLadderPanel({
         onChange={(e) => setAttempt(e.target.value)}
         disabled={solved}
       />
+      {!solved && <SymbolPalette onInsert={insertSymbol} />}
 
       {hints.length > 0 && (
         <div className="pr-hints">

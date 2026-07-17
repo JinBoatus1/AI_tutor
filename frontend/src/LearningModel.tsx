@@ -25,6 +25,9 @@ import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { PracticePanel } from "./practice/PracticePanel";
 import { isProblemsSection, chapterOfProblems } from "./practice/isProblemsSection";
 import { getPracticeSet } from "./data/focsPracticeSets";
+import { GuidePanel } from "./guide/GuidePanel";
+import { isInductionGuideSection } from "./guide/chapterOfSection";
+import { INDUCTION_GUIDE } from "./guide/inductionGuide";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
 import { useLocale } from "./i18n/LocaleContext";
@@ -162,6 +165,7 @@ export default function LearningModel() {
   // from the outline click, NOT from the server-set dataMatchedTopic.
   const [activeSectionTitle, setActiveSectionTitle] = useState<string | null>(null);
   const [practiceViewNote, setPracticeViewNote] = useState(false);
+  const [guideViewNote, setGuideViewNote] = useState(false);
   const [referencePageImage, setReferencePageImage] = useState<string | null>(null);
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
   const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
@@ -261,6 +265,7 @@ export default function LearningModel() {
       setLeftPanelOpen(true);
       setActiveSectionTitle(detail.sectionTitle);
       setPracticeViewNote(false);
+      setGuideViewNote(false);
       setDataMatchedTopic(null);
       setMatchedSection(null);
       setReferencePageImage(null);
@@ -398,9 +403,11 @@ export default function LearningModel() {
     ? chapterOfProblems(activeSectionTitle)
     : null;
   const practiceActive = Boolean(practiceChapter && getPracticeSet(practiceChapter));
+  const guideActive = textbookId === "focs" && isInductionGuideSection(activeSectionTitle);
 
   const hasLeftPanelContent = Boolean(
     practiceActive ||
+      guideActive ||
       dataMatchedTopic ||
       matchedSection ||
       outlinePreviewLoading ||
@@ -992,6 +999,7 @@ export default function LearningModel() {
   closeSectionNoteRef.current = () => {
     sectionNoteToggle.setOpen(false);
     setPracticeViewNote(false);
+    setGuideViewNote(false);
   };
 
   useEffect(() => {
@@ -1034,7 +1042,7 @@ export default function LearningModel() {
   );
 
   const noteSplitActive = Boolean(
-    sectionNoteToggle.open && activeSectionNote && dataMatchedTopic
+    sectionNoteToggle.open && activeSectionNote && dataMatchedTopic && !practiceActive && !guideActive
   );
 
   const noteSplit = useVerticalSplitPct({
@@ -1252,6 +1260,58 @@ export default function LearningModel() {
                   chapterTitle={`Chapter ${practiceChapter}`}
                   token={token}
                   onViewNote={activeSectionNote ? () => setPracticeViewNote(true) : undefined}
+                />
+              )}
+            </div>
+            <div
+              className="textbook-note-split-handle"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label={t("learning.resizeNote")}
+              aria-valuenow={Math.round(practiceSplit.pct)}
+              onMouseDown={practiceSplit.onResizeStart}
+              title={t("learning.resizeNoteTitle")}
+            >
+              <span className="textbook-note-split-handle-grip" aria-hidden />
+            </div>
+            <div className="textbook-pages-pane">{textbookBody}</div>
+          </div>
+        ) : guideActive ? (
+          <div className="textbook-note-split" ref={practiceSplit.containerRef}>
+            <div
+              className="textbook-note-pane"
+              data-onboarding="chapter-guide"
+              style={{ flex: `0 0 ${practiceSplit.pct}%` }}
+            >
+              {guideViewNote && activeSectionNote ? (
+                <div className="left-panel-section-note">
+                  <button
+                    type="button"
+                    onClick={() => setGuideViewNote(false)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#0f766e",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      padding: "6px 0",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    ← Back to walkthrough
+                  </button>
+                  <SectionNotePanel
+                    note={activeSectionNote}
+                    panelId={sectionNoteToggle.panelId}
+                    actions={sectionNoteActions}
+                  />
+                </div>
+              ) : (
+                <GuidePanel
+                  script={INDUCTION_GUIDE}
+                  textbookId={textbookId}
+                  onViewNote={activeSectionNote ? () => setGuideViewNote(true) : undefined}
+                  onOpenProblems={() => void handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION)}
                 />
               )}
             </div>

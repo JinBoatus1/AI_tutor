@@ -1,30 +1,111 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import "./Grades.css";
-import { computeStanding, goalSeek, type Course } from "./grades/mockEngine";
-import { demoCourse, emptyManualCourse, fakeParseSyllabus } from "./grades/mockData";
-import { loadSavedCourse, saveCourse } from "./grades/gradesStorage";
+import type { Course, LadderRow, Standing, StandingResp, WinningScheme } from "./grades/types";
+import { emptyManualCourse } from "./grades/mockData";
+import {
+  fetchCourse,
+  saveCourse,
+  fetchStanding,
+  importLegacyCourseIfAny,
+  parseSyllabus,
+} from "./grades/gradesStorage";
 import RubricEditor from "./grades/RubricEditor";
+import Gradebook from "./grades/Gradebook";
+import { materializeCourse } from "./grades/rubric";
 import { useLocale } from "./i18n/LocaleContext";
+import { useAuth } from "./context/AuthContext";
 
 /**
- * /grades — "My Course" (Lane D, mock-backed).
- * Built to the locked design (plan-design-review 2026-06-03): state-driven IA,
- * plain-English rubric editor, pre-listed gradebook with inline edit, goal-seek
- * ladder + item picker. Numbers come from a CLIENT mock engine so the page is
- * interactive; the real numbers are server-computed once the backend is wired.
+ * /grades — "My Course". Server-authoritative (T6): the backend owns persistence AND all
+ * grade math (standing + goal-seek ladder via /api/grades). Login required (D3); grades
+ * sync across devices. Syllabus upload is still a front-end mock (out of scope here).
  */
 type Phase = "firstrun" | "parsing" | "confirming" | "ready";
 
 export default function Grades() {
   const { t } = useLocale();
+  const { user, token, loading: authLoading, setShowSignIn } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="gr-page">
+        <p className="gr-parsing-text">{t("grades.loading")}</p>
+      </div>
+    );
+  }
+  if (!user || !token) return <SignedOut onSignIn={() => setShowSignIn(true)} />;
+  return <GradesAuthed token={token} />;
+}
+
+function SignedOut({ onSignIn }: { onSignIn: () => void }) {
+  const { t } = useLocale();
+  return (
+    <div className="gr-page">
+      <section className="gr-firstrun">
+        <div className="gr-fr-card">
+          <div className="gr-fr-mark">∑</div>
+          <h2 className="gr-fr-title">{t("grades.signInTitle")}</h2>
+          <p className="gr-fr-body">{t("grades.signInBody")}</p>
+          <button className="gr-btn-primary gr-fr-cta" onClick={onSignIn}>
+            {t("grades.signInCta")}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function GradesAuthed({ token }: { token: string }) {
+  const { t } = useLocale();
   const [phase, setPhase] = useState<Phase>("ready");
-  const [course, setCourse] = useState<Course>(() => loadSavedCourse() ?? demoCourse());
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const courseBeforeEdit = useRef<Course | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Initial load from the server. If the server has no course, try a one-time import of a
+  // course saved to localStorage while logged out (T7); otherwise first-run.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        let c = await fetchCourse(token);
+        if (!c) c = await importLegacyCourseIfAny(token);
+        if (!alive) return;
+        setCourse(c);
+        setPhase(c ? "ready" : "firstrun");
+      } catch {
+        if (!alive) return;
+        setCourse(null);
+        setPhase("firstrun");
+      } finally {
+        if (alive) setLoaded(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  // Debounced persistence so per-keystroke edits don't spam PUT.
+  const persist = useCallback(
+    (next: Course) => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        saveCourse(token, next).catch(() => {
+          /* transient; next edit retries */
+        });
+      }, 400);
+    },
+    [token],
+  );
 
   const updateCourse = (next: Course) => {
     setCourse(next);
-    saveCourse(next);
+    persist(next);
   };
 
   const openEdit = () => {
@@ -32,15 +113,22 @@ export default function Grades() {
     setEditing(true);
   };
 
-  const startParse = () => {
+  const startParse = (file: File) => {
+    setParseError(null);
     setPhase("parsing");
-    fakeParseSyllabus().then((c) => {
-      updateCourse(c);
-      setPhase("confirming");
-    });
+    parseSyllabus(token, file)
+      .then((c) => {
+        // T3: pre-generate fillable rows so the gradebook is usable the moment they confirm.
+        updateCourse(materializeCourse(c));
+        setPhase("confirming");
+      })
+      .catch((e) => {
+        setParseError(e?.message || "Could not read that syllabus.");
+        setPhase("firstrun");
+      });
   };
   const startManual = () => {
-    updateCourse(emptyManualCourse());
+    updateCourse(materializeCourse(emptyManualCourse()));
     setPhase("confirming");
   };
 
@@ -58,33 +146,39 @@ export default function Grades() {
     setPhase("ready");
   };
 
+  if (!loaded) {
+    return (
+      <div className="gr-page">
+        <p className="gr-parsing-text">{t("grades.loading")}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="gr-page">
-      <header className="gr-head">
-        <h1 className="gr-title">
-          {phase === "ready" ? course.name : t("grades.title")}
-          {phase === "ready" && course.term ? (
-            <span className="gr-sub"> <span className="gr-dot">·</span> {course.term}</span>
-          ) : null}
-        </h1>
-        <div className="gr-head-actions">
-          <span className="gr-mockpill">{t("grades.previewMock")}</span>
-          {phase === "ready" && (
-            <>
-              <button className="gr-btn-ghost" onClick={openEdit}>
-                ⚙ {t("grades.editRubric")}
-              </button>
-              <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
-                {t("grades.newCourse")}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      {phase === "ready" && !editing && course && (
+        <header className="gr-head">
+          <div className="gr-masthead">
+            <div className="gr-eyebrow">{t("grades.reportCard")}</div>
+            <h1 className="gr-course">{course.name}</h1>
+            {course.term ? <div className="gr-term">{course.term}</div> : null}
+          </div>
+          <div className="gr-head-actions">
+            <button className="gr-btn-ghost" onClick={openEdit}>
+              ⚙ {t("grades.editRubric")}
+            </button>
+            <button className="gr-btn-ghost" onClick={() => setPhase("firstrun")}>
+              {t("grades.newCourse")}
+            </button>
+          </div>
+        </header>
+      )}
 
-      {phase === "firstrun" && <FirstRun onUpload={startParse} onManual={startManual} />}
+      {phase === "firstrun" && (
+        <FirstRun onUpload={startParse} onManual={startManual} error={parseError} />
+      )}
       {phase === "parsing" && <Parsing />}
-      {(phase === "confirming" || editing) && (
+      {(phase === "confirming" || editing) && course && (
         <RubricEditor
           course={course}
           parsed={phase === "confirming"}
@@ -93,30 +187,129 @@ export default function Grades() {
           onCancel={cancelRubricEdit}
         />
       )}
-      {phase === "ready" && !editing && (
-        <>
-          <StandingHero course={course} />
-          <GoalSeek course={course} />
-          <Gradebook course={course} onChange={updateCourse} />
-        </>
+      {phase === "ready" && !editing && course && (
+        <ReadyView token={token} course={course} onChange={updateCourse} />
       )}
     </div>
   );
 }
 
-function FirstRun({ onUpload, onManual }: { onUpload: () => void; onManual: () => void }) {
+/**
+ * Fetches server-computed standing + ladder whenever the course (or chosen unknown item)
+ * changes, debounced so live gradebook edits don't fire a request per keystroke.
+ */
+function useServerStanding(
+  token: string,
+  course: Course,
+  unknownItemId: string | undefined,
+): StandingResp | null {
+  const [data, setData] = useState<StandingResp | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const id = setTimeout(() => {
+      fetchStanding(token, course, unknownItemId)
+        .then((d) => {
+          if (alive) setData(d);
+        })
+        .catch(() => {
+          /* keep last good numbers */
+        });
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
+  }, [token, course, unknownItemId]);
+  return data;
+}
+
+function ReadyView({
+  token,
+  course,
+  onChange,
+}: {
+  token: string;
+  course: Course;
+  onChange: (c: Course) => void;
+}) {
+  const ungraded = useMemo(
+    () =>
+      course.categories.flatMap((cat) =>
+        cat.items.filter((it) => it.score == null).map((it) => ({ cat, it })),
+      ),
+    [course],
+  );
+  const totalItems = useMemo(
+    () => course.categories.reduce((n, cat) => n + cat.items.length, 0),
+    [course],
+  );
+  const gradedItems = totalItems - ungraded.length;
+  const [selId, setSelId] = useState<string>("");
+  const sel = ungraded.find((u) => u.it.id === selId) ?? ungraded[0];
+  const resp = useServerStanding(token, course, sel?.it.id);
+
+  const breakdown = resp?.breakdown;
+  return (
+    <>
+      <StandingHero
+        standing={resp?.standing ?? null}
+        graded={gradedItems}
+        total={totalItems}
+        winningScheme={breakdown?.winningScheme ?? null}
+      />
+      <GoalSeek
+        ladder={resp?.ladder ?? null}
+        ungraded={ungraded}
+        sel={sel}
+        onSelect={setSelId}
+      />
+      <Gradebook
+        course={course}
+        onChange={onChange}
+        catStandings={breakdown?.categories ?? null}
+        boosts={breakdown?.replaceBoosts ?? null}
+      />
+    </>
+  );
+}
+
+function FirstRun({
+  onUpload,
+  onManual,
+  error,
+}: {
+  onUpload: (file: File) => void;
+  onManual: () => void;
+  error: string | null;
+}) {
   const { t } = useLocale();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (f) onUpload(f);
+  };
   return (
     <section className="gr-firstrun">
       <div className="gr-fr-card">
+        <div className="gr-fr-eyebrow">{t("grades.reportCard")}</div>
         <div className="gr-fr-mark">∑</div>
+        <h2 className="gr-fr-title">{t("grades.firstrunTitle")}</h2>
         <p className="gr-fr-body">{t("grades.firstrunBody")}</p>
-        <button className="gr-btn-primary gr-fr-cta" onClick={onUpload}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          hidden
+          onChange={onPick}
+        />
+        <button className="gr-btn-primary gr-fr-cta" onClick={() => fileRef.current?.click()}>
           {t("grades.uploadSyllabus")}
         </button>
         <button className="gr-linkbtn" onClick={onManual}>
           {t("grades.enterManually")}
         </button>
+        {error && <p className="gr-fr-error">{error}</p>}
       </div>
     </section>
   );
@@ -133,29 +326,62 @@ function Parsing() {
   );
 }
 
-function StandingHero({ course }: { course: Course }) {
+export function StandingHero({
+  standing,
+  graded,
+  total,
+  winningScheme = null,
+}: {
+  standing: Standing | null;
+  graded: number;
+  total: number;
+  winningScheme?: WinningScheme | null;
+}) {
   const { t } = useLocale();
-  const s = useMemo(() => computeStanding(course), [course]);
+  const percent = standing?.percent ?? null;
+  const letter = standing?.letter ?? "—";
   // Split a trailing +/− off the letter so it can render as a small serif superscript.
-  const letter = s.letter ?? "—";
   const letterMain = letter.length > 1 ? letter.slice(0, -1) : letter;
   const letterSup = letter.length > 1 ? letter.slice(-1) : "";
+  const pctGraded = total > 0 ? Math.round((graded / total) * 100) : 0;
   return (
-    <section className="gr-standing" aria-label={t("grades.standing")}>
-      {s.percent == null ? (
-        <div className="gr-standing-empty">{t("grades.standingEmpty")}</div>
+    <section className="gr-hero" aria-label={t("grades.standing")}>
+      {percent == null ? (
+        <div className="gr-hero-empty">{t("grades.standingEmpty")}</div>
       ) : (
         <>
-          <div className="gr-mark">
-            {letterMain}
-            {letterSup && <sup>{letterSup}</sup>}
-          </div>
-          <div className="gr-standing-side">
-            <div className="gr-standing-num">
-              {s.percent.toFixed(1)}<small>%</small>
+          <div className="gr-hero-mark">
+            <div className="gr-hero-eyebrow">{t("grades.currentGrade")}</div>
+            <div className="gr-hero-letter">
+              {letterMain}
+              {letterSup && <sup>{letterSup}</sup>}
             </div>
-            <div className="gr-standing-basis">{t("grades.onGradedSoFar")}</div>
+          </div>
+          <div className="gr-hero-stats">
+            <div className="gr-hero-pct">
+              {percent.toFixed(1)}<small>%</small>
+            </div>
+            <div className="gr-hero-basis">{t("grades.onGradedSoFar")}</div>
+            {total > 0 && (
+              <div className="gr-progress">
+                <div className="gr-progress-track">
+                  <div className="gr-progress-fill" style={{ width: `${pctGraded}%` }} />
+                </div>
+                <div className="gr-progress-cap">
+                  <span>{t("grades.gradedLabel")}</span>
+                  <span>{t("grades.gradedCount", { n: String(graded), total: String(total) })}</span>
+                </div>
+              </div>
+            )}
             <span className="gr-seal">● {t("grades.standing")}</span>
+            {winningScheme && (
+              <div className="gr-hero-scheme">
+                {t("grades.gradedUnder", {
+                  scheme: winningScheme.name ?? t("grades.primaryWeights"),
+                  count: String(winningScheme.count),
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -163,107 +389,36 @@ function StandingHero({ course }: { course: Course }) {
   );
 }
 
-function Gradebook({ course, onChange }: { course: Course; onChange: (c: Course) => void }) {
+type Ungraded = { cat: { name: string }; it: { id: string; name: string; maxScore: number } };
+
+function GoalSeek({
+  ladder,
+  ungraded,
+  sel,
+  onSelect,
+}: {
+  ladder: LadderRow[] | null;
+  ungraded: Ungraded[];
+  sel: Ungraded | undefined;
+  onSelect: (id: string) => void;
+}) {
   const { t } = useLocale();
-  const setScore = (catId: string, itemId: string, raw: string) => {
-    const score = raw.trim() === "" ? null : Number(raw);
-    onChange({
-      ...course,
-      categories: course.categories.map((cat) =>
-        cat.id !== catId
-          ? cat
-          : { ...cat, items: cat.items.map((it) => (it.id === itemId ? { ...it, score } : it)) },
-      ),
-    });
-  };
-  const addItem = (catId: string) =>
-    onChange({
-      ...course,
-      categories: course.categories.map((cat) =>
-        cat.id !== catId
-          ? cat
-          : {
-              ...cat,
-              items: [
-                ...cat.items,
-                { id: `${catId}-${Date.now()}`, name: `Item ${cat.items.length + 1}`, score: null, maxScore: 100 },
-              ],
-            },
-      ),
-    });
+  // Server returns every cutoff letter; the UI shows the top 4 non-F letters.
+  const rows: LadderRow[] = (ladder ?? []).filter((r) => r.letter !== "F").slice(0, 4);
+
+  const reachable = rows.find((r) => r.status === "ok");
+  const allLocked = rows.length > 0 && rows.every((r) => r.status === "locked");
+  const bestLocked = rows.find((r) => r.status === "locked");
+  const targetLetter = reachable?.letter ?? rows[0]?.letter ?? "A";
 
   return (
-    <section className="gr-card gr-gradebook">
-      <h2 className="gr-sec-label">{t("grades.gradebook")}</h2>
-      {course.categories.map((cat) => (
-        <div className="gr-gb-cat" key={cat.id}>
-          <div className="gr-gb-cat-head">
-            <span className="gr-gb-cat-name">{cat.name}</span>
-            <span className="gr-gb-cat-weight">{cat.weight}%</span>
-          </div>
-          {cat.items.length === 0 && <div className="gr-gb-empty">{t("grades.noItems")}</div>}
-          {cat.items.map((it) => (
-            <div className="gr-gb-row" key={it.id}>
-              <span className="gr-gb-name">{it.name}</span>
-              <span className="gr-gb-leader" />
-              {it.score == null && <span className="gr-gb-upcoming">{t("grades.upcoming")}</span>}
-              <span className="gr-gb-score">
-                <input
-                  className="gr-gb-input"
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="—"
-                  value={it.score ?? ""}
-                  aria-label={`${it.name} score`}
-                  onChange={(e) => setScore(cat.id, it.id, e.target.value)}
-                />
-                <span className="gr-gb-max">/ {it.maxScore}</span>
-              </span>
-            </div>
-          ))}
-          <button className="gr-linkbtn gr-gb-add" onClick={() => addItem(cat.id)}>
-            {t("grades.addGrade")}
-          </button>
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function GoalSeek({ course }: { course: Course }) {
-  const { t } = useLocale();
-  const ungraded = useMemo(
-    () =>
-      course.categories.flatMap((cat) =>
-        cat.items.filter((it) => it.score == null).map((it) => ({ cat, it })),
-      ),
-    [course],
-  );
-  const [selId, setSelId] = useState<string>("");
-  const sel = ungraded.find((u) => u.it.id === selId) ?? ungraded[0];
-  const ladder = useMemo(() => {
-    if (!sel) return [];
-    return course.cutoffs
-      .filter((x) => x.letter !== "F")
-      .slice(0, 4)
-      .map((x) => ({ letter: x.letter, res: goalSeek(course, x.letter, sel.cat.name, sel.it.id) }));
-  }, [course, sel]);
-
-  // Hero line: the highest letter still reachable by scoring on this item.
-  const reachable = ladder.find((r) => r.res.status === "ok");
-  const allLocked = ladder.length > 0 && ladder.every((r) => r.res.status === "locked");
-  const bestLocked = ladder.find((r) => r.res.status === "locked");
-  const targetLetter = reachable?.letter ?? ladder[0]?.letter ?? "A";
-
-  return (
-    <section className="gr-card gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
-      <hr className="gr-rule" />
-      <div className="gr-sec-label">
+    <section className="gr-goal" aria-label={t("grades.pathTo", { letter: targetLetter })}>
+      <div className="gr-sec">
         <span>{t("grades.pathTo", { letter: targetLetter })}</span>
         {sel && ungraded.length > 1 ? (
-          <label className="gr-goal-on">
+          <label className="gr-sec-aside">
             {t("grades.on")}
-            <select value={sel.it.id} onChange={(e) => setSelId(e.target.value)} aria-label="Upcoming item">
+            <select value={sel.it.id} onChange={(e) => onSelect(e.target.value)} aria-label="Upcoming item">
               {ungraded.map((u) => (
                 <option key={u.it.id} value={u.it.id}>
                   {u.it.name}
@@ -282,46 +437,49 @@ function GoalSeek({ course }: { course: Course }) {
         <p className="gr-goal-done">{t("grades.allGraded")}</p>
       ) : (
         <>
-          <div className="gr-path">
-            {reachable ? (
+          <div className="gr-goal-focal">
+            {reachable && reachable.needed != null ? (
               <>
-                <span className="gr-path-q">{t("grades.youNeed")}</span>
-                <span className="gr-path-num">
-                  {reachable.res.needed!.toFixed(1)}
+                <span className="gr-goal-q">{t("grades.youNeed")}</span>
+                <span className="gr-goal-num">
+                  {reachable.needed.toFixed(1)}
                   <small> / {sel.it.maxScore}</small>
                 </span>
                 <span className="gr-hand">
-                  {reachable.res.needed! <= sel.it.maxScore * 0.7 ? t("grades.totallyDoable") : t("grades.youGotThis")}
+                  {reachable.needed <= sel.it.maxScore * 0.7 ? t("grades.totallyDoable") : t("grades.youGotThis")}
                 </span>
               </>
             ) : allLocked ? (
               <>
-                <span className="gr-path-q">{t("grades.alreadyAt")}</span>
-                <span className="gr-path-num">{ladder[0].letter}</span>
+                <span className="gr-goal-q">{t("grades.alreadyAt")}</span>
+                <span className="gr-goal-num">{rows[0].letter}</span>
                 <span className="gr-hand">{t("grades.lockedIn")}</span>
               </>
             ) : (
               <>
-                <span className="gr-path-q">{t("grades.onTrackFor")}</span>
-                <span className="gr-path-num">{bestLocked?.letter ?? targetLetter}</span>
+                <span className="gr-goal-q">{t("grades.onTrackFor")}</span>
+                <span className="gr-goal-num">{bestLocked?.letter ?? targetLetter}</span>
                 <span className="gr-hand">✎</span>
               </>
             )}
           </div>
 
-          <ul className="gr-goal-list">
-            {ladder.map(({ letter, res }) => (
-              <li className="gr-goal-row" key={letter}>
-                <span className="gr-goal-letter">{letter}</span>
-                <span className="gr-goal-leader" />
-                {res.status === "ok" ? (
-                  <span className="gr-goal-need">
-                    {t("grades.scoreOn", { score: res.needed!.toFixed(1), item: sel.it.name })}
+          <ul className="gr-ladder">
+            {rows.map((r) => (
+              <li
+                className={`gr-ladder-row${reachable && r.letter === reachable.letter ? " is-target" : ""}`}
+                key={r.letter}
+              >
+                <span className="gr-ladder-letter">{r.letter}</span>
+                <span className="gr-ladder-bar" />
+                {r.status === "ok" && r.needed != null ? (
+                  <span className="gr-ladder-need">
+                    {t("grades.scoreOn", { score: r.needed.toFixed(1), item: sel.it.name })}
                   </span>
-                ) : res.status === "locked" ? (
-                  <span className="gr-goal-locked">{t("grades.alreadyLockedIn")}</span>
+                ) : r.status === "locked" ? (
+                  <span className="gr-ladder-locked">{t("grades.alreadyLockedIn")}</span>
                 ) : (
-                  <span className="gr-goal-unreach">{t("grades.outOfReach")}</span>
+                  <span className="gr-ladder-unreach">{t("grades.outOfReach")}</span>
                 )}
               </li>
             ))}

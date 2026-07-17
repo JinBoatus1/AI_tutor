@@ -241,5 +241,264 @@ class TestValidate(unittest.TestCase):
         self.assertIsInstance(validate_rubric(c), list)
 
 
+def _rl_course(final_score, m_scores=(80, 60), weights=(10, 10, 10)):
+    """Exams: 2 midterms + 1 final (replacer). weights are points-of-100. cutoff A=90."""
+    import grades_math as gm
+    items = [
+        gm.Item(name="M1", score=m_scores[0], max_score=100, weight=weights[0]),
+        gm.Item(name="M2", score=m_scores[1], max_score=100, weight=weights[1]),
+        gm.Item(name="Final", score=final_score, max_score=100, weight=weights[2], replacer=True),
+    ]
+    return gm.Course(
+        name="C",
+        categories=[gm.Category(name="Exams", weight=30, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)],
+    )
+
+
+def test_replace_lowest_boost_active():
+    # Final 0.90 > lowest midterm M2 0.60 -> M2 lifted to 0.90.
+    # earned = 10*0.80 + 10*0.90(lifted) + 10*0.90 = 8 + 9 + 9 = 26 ; graded_weight = 30
+    import grades_math as gm
+    s = gm.compute_standing(_rl_course(90))
+    assert s.earned_points == 26.0
+    assert s.graded_weight == 30.0
+    assert s.percent == 26.0 / 30.0 * 100.0
+
+
+def test_replace_lowest_boost_inactive():
+    # Final 0.50 < lowest midterm 0.60 -> no boost.
+    # earned = 10*0.80 + 10*0.60 + 10*0.50 = 8 + 6 + 5 = 19
+    import grades_math as gm
+    s = gm.compute_standing(_rl_course(50))
+    assert s.earned_points == 19.0
+
+
+def test_replace_lowest_no_boost_when_replacer_ungraded():
+    # Only midterms graded (final stripped as null upstream): behaves like fixedWeights.
+    import grades_math as gm
+    items = [
+        gm.Item(name="M1", score=80, max_score=100, weight=10),
+        gm.Item(name="M2", score=60, max_score=100, weight=10),
+    ]
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=20, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    s = gm.compute_standing(course)
+    assert s.earned_points == 8.0 + 6.0  # no boost
+
+
+def test_replace_lowest_only_replacer_graded_no_lowest():
+    import grades_math as gm
+    items = [gm.Item(name="Final", score=90, max_score=100, weight=10, replacer=True)]
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=10, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    assert gm.compute_standing(course).earned_points == 9.0
+
+
+def test_validate_replace_lowest_warns_on_replacer_count():
+    import grades_math as gm
+    items = [gm.Item(name="M1", score=80, max_score=100, weight=10),
+             gm.Item(name="M2", score=60, max_score=100, weight=10)]  # zero replacers
+    course = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=20, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    warns = gm.validate_rubric(course)
+    assert any("exactly one" in w for w in warns)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_goal_seek_scheme_min_picks_favorable():
+    # Midterm 0.5 (w60), Final ungraded (w40). Target B=70. alt = M40/F60.
+    #   primary: 60*0.5 + 40*x = 30 + 40x = 70 -> x=1.0 (needed 100)
+    #   alt:     40*0.5 + 60*x = 20 + 60x = 70 -> x=0.8333 (needed 83.33)
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=50, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="final-heavy", weights=[40.0, 60.0])]
+    r = gm.goal_seek(course, "B", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "ok"
+    assert abs(r.needed_score - (50.0 / 0.6)) < 1e-6  # 83.333...
+
+
+def test_goal_seek_scheme_already_met_wins():
+    # Midterm 1.0 (w60). Target C=70. Primary total(0)=60 < 70 (ok). Alt mid-heavy [80,20]: 80 >= 70 -> already_met.
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=100, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="C", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="mid-heavy", weights=[80.0, 20.0])]
+    r = gm.goal_seek(course, "C", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "already_met"
+
+
+def test_goal_seek_no_weightings_unchanged():
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="M", score=50, max_score=100)]),
+        gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1), items=[])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    r = gm.goal_seek(course, "B", "Final", unknown_max_score=100, unknown_weight=None)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 100.0) < 1e-6
+
+
+def _rl_goal_course(m_scores, final_score=None):
+    """Exams (ReplaceLowest), category weight 100. M1,M2 weight 20 each; Final weight 60 (replacer),
+    graded only if final_score given. Item weights sum to 100, so earned points ARE the percentage
+    — matching the FixedWeights/rank goal_seek convention."""
+    import grades_math as gm
+    items = [gm.Item(name="M1", score=m_scores[0], max_score=100, weight=20),
+             gm.Item(name="M2", score=m_scores[1], max_score=100, weight=20)]
+    if final_score is not None:
+        items.append(gm.Item(name="Final", score=final_score, max_score=100, weight=60, replacer=True))
+    return gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=100, rule=gm.ReplaceLowest(), items=items)],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)])
+
+
+def test_goal_seek_replacer_unknown_boost_side():
+    # M1=1.0(w20), M2=0.5(w20); Final unknown replacer(w60). x>0.5 -> M2 lifted to x:
+    # total = 20*1 + 20*x + 60*x = 20 + 80x. =90 -> x=0.875 -> needed 87.5.
+    import grades_math as gm
+    c = _rl_goal_course((100, 50))
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 87.5) < 1e-6
+
+
+def test_goal_seek_replacer_unknown_below_breakpoint():
+    # M1=1.0(w20), M2=0.95(w20); Final unknown replacer(w60). x<=0.95 (no boost):
+    # total = 20 + 19 + 60x = 39 + 60x. =90 -> 60x=51 -> x=0.85 (<0.95, consistent). needed 85.
+    import grades_math as gm
+    c = _rl_goal_course((100, 95))
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 85.0) < 1e-6
+
+
+def test_goal_seek_nonreplacer_unknown_full_piecewise():
+    # M1=1.0(w20), Final=1.0 replacer(w60) graded; M2 is the UNKNOWN non-replacer(w20).
+    # For x<1.0 M2 is lowest non-rep, lifted to 1.0: total = 20 + 60 + 20x + 20*(1-x) = 100 (constant)
+    # >= 90 at every x -> already_met, needed 0.
+    import grades_math as gm
+    c = gm.Course(name="C",
+        categories=[gm.Category(name="Exams", weight=100, rule=gm.ReplaceLowest(), items=[
+            gm.Item(name="M1", score=100, max_score=100, weight=20),
+            gm.Item(name="Final", score=100, max_score=100, weight=60, replacer=True),
+        ])],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)])
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=20, unknown_is_replacer=False)
+    assert r.status in ("already_met", "ok")
+    assert (r.needed_score or 0.0) < 1e-6
+
+
+def test_goal_seek_replace_lowest_requires_weight():
+    import grades_math as gm, pytest
+    c = _rl_goal_course((100, 50))
+    with pytest.raises(ValueError):
+        gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=None, unknown_is_replacer=True)
+
+
+def test_goal_seek_replace_lowest_infeasible():
+    # M1=0(w20), M2=0(w20); Final unknown replacer(w60). Best case x=1: base 60 + boost 20 = 80 < 90.
+    import grades_math as gm
+    c = _rl_goal_course((0, 0))
+    r = gm.goal_seek(c, "A", "Exams", unknown_max_score=100, unknown_weight=60, unknown_is_replacer=True)
+    assert r.status == "infeasible"
+
+
+def _two_cat_scheme_course(m_frac, f_frac, with_alt=True):
+    """Midterm(w60, 1 uniform item) + Final(w40, 1 uniform item). Alt scheme = Midterm 40 / Final 60.
+    Both items graded, weights sum to 100, so earned points == percent."""
+    import grades_math as gm
+    course = gm.Course(
+        name="C",
+        categories=[
+            gm.Category(name="Midterm", weight=60, rule=gm.Uniform(n_slots=1),
+                        items=[gm.Item(name="M", score=m_frac * 100, max_score=100)]),
+            gm.Category(name="Final", weight=40, rule=gm.Uniform(n_slots=1),
+                        items=[gm.Item(name="F", score=f_frac * 100, max_score=100)]),
+        ],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90), gm.Cutoff(letter="F", min_pct=0)],
+    )
+    if with_alt:
+        course.weightings = [gm.WeightScheme(name="final-heavy", weights=[40.0, 60.0])]
+    return course
+
+
+def test_apply_scheme_reweights_and_scales_fixed_items():
+    import grades_math as gm
+    from grades_math import apply_scheme
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Tests", weight=50, rule=gm.FixedWeights(),
+                    items=[gm.Item(name="T1", score=100, max_score=100, weight=20),
+                           gm.Item(name="T2", score=100, max_score=100, weight=30)])],
+        cutoffs=[])
+    out = apply_scheme(course, [100.0])  # category weight doubled -> item weights x2
+    assert out.categories[0].weight == 100.0
+    assert [it.weight for it in out.categories[0].items] == [40.0, 60.0]
+    u = gm.Course(name="C", categories=[gm.Category(name="U", weight=30, rule=gm.Uniform(n_slots=2),
+                  items=[gm.Item(name="a", score=1, max_score=1)])], cutoffs=[])
+    assert apply_scheme(u, [60.0]).categories[0].items[0].weight is None
+
+
+def test_standing_scheme_max_primary_wins():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(1.0, 0.5))
+    assert abs(s.percent - 80.0) < 1e-9
+
+
+def test_standing_scheme_max_alt_wins():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(0.5, 1.0))
+    assert abs(s.percent - 80.0) < 1e-9
+
+
+def test_standing_no_weightings_is_unchanged():
+    import grades_math as gm
+    s = gm.compute_standing(_two_cat_scheme_course(0.5, 1.0, with_alt=False))
+    assert abs(s.percent - 70.0) < 1e-9
+
+
+def test_apply_scheme_zero_weight_category_guard():
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Empty", weight=0, rule=gm.Uniform(n_slots=0), items=[]),
+        gm.Category(name="Final", weight=100, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="F", score=90, max_score=100)])],
+        cutoffs=[gm.Cutoff(letter="A", min_pct=90)])
+    course.weightings = [gm.WeightScheme(name="alt", weights=[0.0, 100.0])]
+    s = gm.compute_standing(course)
+    assert abs(s.percent - 90.0) < 1e-9
+
+
+def test_goal_seek_scheme_scales_fixedweights_unknown_weight():
+    # Exercises the per-scheme unknown_weight scaling for a FixedWeights unknown category.
+    # Tests(FixedWeights w50): T1 graded 1.0 (w25); T2 is the UNKNOWN (w25, stripped as null upstream).
+    # Final(uniform w50) graded 0.5. Target B=70.
+    #   primary [50,50]: fixed_other(Final)=25, Tests T1=25, base=50, w_u=25 -> (70-50)/25=0.8 -> needed 80.
+    #   alt tests-heavy [80,20]: apply_scheme scales T1 w25->40, Final w50->20; unknown_weight 25->40.
+    #     fixed_other(Final)=10, Tests T1=40, base=50, w_u=40 -> (70-50)/40=0.5 -> needed 50.
+    #   min over schemes -> 50. (If the scaling were missing, alt would also give 80 and the min stays 80.)
+    import grades_math as gm
+    course = gm.Course(name="C", categories=[
+        gm.Category(name="Tests", weight=50, rule=gm.FixedWeights(),
+                    items=[gm.Item(name="T1", score=100, max_score=100, weight=25)]),
+        gm.Category(name="Final", weight=50, rule=gm.Uniform(n_slots=1),
+                    items=[gm.Item(name="F", score=50, max_score=100)])],
+        cutoffs=[gm.Cutoff(letter="B", min_pct=70), gm.Cutoff(letter="F", min_pct=0)])
+    course.weightings = [gm.WeightScheme(name="tests-heavy", weights=[80.0, 20.0])]
+    r = gm.goal_seek(course, "B", "Tests", unknown_max_score=100, unknown_weight=25, unknown_is_replacer=False)
+    assert r.status == "ok"
+    assert abs(r.needed_score - 50.0) < 1e-6

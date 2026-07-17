@@ -36,7 +36,7 @@ Model
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, Union
 
 
@@ -69,7 +69,27 @@ class RankWeights:
     slot_weights: tuple[float, ...]
 
 
-Rule = Union[Uniform, DropLowest, RankWeights]
+@dataclass(frozen=True)
+class FixedWeights:
+    """Per-item FIXED weights: each item carries its own `weight` (POSITIONAL, not
+    rank-assigned). Item i always contributes `item.weight` points regardless of how
+    it scores relative to siblings — e.g. "three tests weighted 10%, 15%, 25%
+    respectively". The rule itself holds no numbers; the weights live on the Items
+    (see Item.weight). Item weights should sum to the owning category's `weight`.
+
+    Contrast RankWeights, which SORTS weights onto items by score. Do NOT route
+    FixedWeights through slot_weights_desc (it has no rule-level weights)."""
+
+
+@dataclass(frozen=True)
+class ReplaceLowest:
+    """Per-item FIXED weights (like FixedWeights) with ONE item flagged `replacer`
+    (the final). The replacer counts in its own slot AND, if it scores higher than
+    the lowest graded non-replacer, that lowest item's fraction is lifted to the
+    replacer's. The weights live on the Items; exactly one Item has replacer=True."""
+
+
+Rule = Union[Uniform, DropLowest, RankWeights, FixedWeights, ReplaceLowest]
 
 
 # --------------------------------------------------------------------------- #
@@ -80,6 +100,8 @@ class Item:
     name: str
     score: float
     max_score: float
+    weight: Optional[float] = None  # only meaningful when the category rule is FixedWeights
+    replacer: bool = False  # only meaningful when the category rule is ReplaceLowest
 
     @property
     def fraction(self) -> float:
@@ -103,10 +125,20 @@ class Cutoff:
 
 
 @dataclass
+class WeightScheme:
+    """An alternate per-category weight vector (positional to Course.categories). Each scheme
+    should sum to 100. The course grade is the MAX over the primary weights + all schemes."""
+
+    name: str
+    weights: list[float]
+
+
+@dataclass
 class Course:
     name: str
     categories: list[Category] = field(default_factory=list)
     cutoffs: list[Cutoff] = field(default_factory=list)
+    weightings: list[WeightScheme] = field(default_factory=list)
 
 
 @dataclass
@@ -166,6 +198,44 @@ def _used_weight(weights_desc: list[float], n_items: int) -> float:
 
 
 # --------------------------------------------------------------------------- #
+# Per-category earned / graded-weight (branches rank-based vs positional fixed)
+# --------------------------------------------------------------------------- #
+def _replace_lowest_slots(slots: list[tuple[float, bool, float]]) -> float:
+    """Earned points for a ReplaceLowest category. Each slot = (weight, is_replacer, fraction).
+    Base = sum(w*frac); then if a replacer is present alongside >=1 non-replacer and scores
+    higher than the lowest non-replacer, that lowest slot is lifted to the replacer fraction."""
+    base = sum(w * f for (w, _r, f) in slots)
+    reps = [(w, f) for (w, r, f) in slots if r]
+    non = [(w, f) for (w, r, f) in slots if not r]
+    if not reps or not non:
+        return base
+    frac_rep = max(f for (_w, f) in reps)
+    w_low, f_low = min(non, key=lambda wf: wf[1])
+    if frac_rep > f_low:
+        return base + w_low * (frac_rep - f_low)
+    return base
+
+
+def _category_earned(cat: "Category") -> float:
+    """Points earned in a category from its (graded) items."""
+    if isinstance(cat.rule, ReplaceLowest):
+        return _replace_lowest_slots([(it.weight or 0.0, it.replacer, it.fraction) for it in cat.items])
+    if isinstance(cat.rule, FixedWeights):
+        # POSITIONAL: each item contributes its OWN weight (no rank sorting).
+        return sum((it.weight or 0.0) * it.fraction for it in cat.items)
+    wts = slot_weights_desc(cat.rule, cat.weight)
+    return _earned_for_values(wts, [it.fraction for it in cat.items])
+
+
+def _category_graded_weight(cat: "Category") -> float:
+    """Renormalization base: total weight of the graded slots in a category."""
+    if isinstance(cat.rule, (FixedWeights, ReplaceLowest)):
+        return sum((it.weight or 0.0) for it in cat.items)
+    wts = slot_weights_desc(cat.rule, cat.weight)
+    return _used_weight(wts, len(cat.items))
+
+
+# --------------------------------------------------------------------------- #
 # Cutoffs
 # --------------------------------------------------------------------------- #
 def letter_for(percent: Optional[float], cutoffs: list[Cutoff]) -> Optional[str]:
@@ -185,16 +255,34 @@ def min_pct_for_letter(letter: str, cutoffs: list[Cutoff]) -> Optional[float]:
 
 
 # --------------------------------------------------------------------------- #
+# Alternate weighting schemes
+# --------------------------------------------------------------------------- #
+def apply_scheme(course: Course, weights: list[float]) -> Course:
+    """Return a copy of `course` re-weighted to `weights[i]` per category. Slot-weighted rules
+    (uniform/dropLowest/rankWeights) pick up the new weight through `category.weight`; per-item
+    rules (fixedWeights/replaceLowest) have their item weights scaled by weights[i]/old_weight so
+    intra-category proportions are preserved. A category whose ORIGINAL weight is 0 keeps 0-weight
+    items (contributes nothing) — this is the div-by-zero guard."""
+    new_cats: list[Category] = []
+    for cat, w in zip(course.categories, weights):
+        if cat.weight > 0:
+            scale = w / cat.weight
+            items = [replace(it, weight=(it.weight * scale)) if it.weight is not None else it for it in cat.items]
+        else:
+            items = [replace(it, weight=0.0) if it.weight is not None else it for it in cat.items]
+        new_cats.append(replace(cat, weight=w, items=items))
+    return replace(course, categories=new_cats, weightings=[])
+
+
+# --------------------------------------------------------------------------- #
 # Current standing (grade on graded work so far)
 # --------------------------------------------------------------------------- #
-def compute_standing(course: Course) -> Standing:
+def _standing_core(course: Course) -> Standing:
     earned = 0.0
     graded_weight = 0.0
     for cat in course.categories:
-        wts = slot_weights_desc(cat.rule, cat.weight)
-        fracs = [it.fraction for it in cat.items]
-        earned += _earned_for_values(wts, fracs)
-        graded_weight += _used_weight(wts, len(fracs))
+        earned += _category_earned(cat)
+        graded_weight += _category_graded_weight(cat)
     if graded_weight <= 0:
         return Standing(percent=None, letter=None, earned_points=0.0, graded_weight=0.0)
     percent = earned / graded_weight * 100.0
@@ -204,6 +292,92 @@ def compute_standing(course: Course) -> Standing:
         earned_points=earned,
         graded_weight=graded_weight,
     )
+
+
+def compute_standing(course: Course) -> Standing:
+    """Standing under the most favorable weighting scheme. With no `weightings`, delegates to the
+    core unchanged (byte-for-byte for every existing rule)."""
+    if not course.weightings:
+        return _standing_core(course)
+    best = _standing_core(course)  # the primary scheme
+    for scheme in course.weightings:
+        cand = _standing_core(apply_scheme(course, scheme.weights))
+        if cand.percent is not None and (best.percent is None or cand.percent > best.percent):
+            best = cand
+    return best
+
+
+# --------------------------------------------------------------------------- #
+# Result transparency: per-category breakdown, winning scheme, replace boost
+# (READ-only views of data compute_standing already produces; no math change)
+# --------------------------------------------------------------------------- #
+PRIMARY_SCHEME = "__primary__"  # sentinel: the course's own category weights won
+
+
+@dataclass(frozen=True)
+class CategoryStanding:
+    name: str
+    weight: float
+    percent: Optional[float]  # None when the category has no graded items
+    graded: bool
+
+
+@dataclass(frozen=True)
+class ReplaceBoost:
+    category_name: str
+    replacer: str  # the item whose score did the replacing
+    lifted: str  # the lowest non-replacer it lifted
+    delta_pct: float  # how much the lift raised the OVERALL standing percent
+
+
+def category_breakdown(course: Course) -> list["CategoryStanding"]:
+    """Per-category standing, index-aligned with course.categories. Scheme-invariant:
+    a category's earned/graded_weight ratio is unchanged by scaling its overall weight."""
+    out: list[CategoryStanding] = []
+    for cat in course.categories:
+        gw = _category_graded_weight(cat)
+        pct = (_category_earned(cat) / gw * 100.0) if gw > 0 else None
+        out.append(CategoryStanding(cat.name, cat.weight, pct, gw > 0))
+    return out
+
+
+def winning_scheme(course: Course) -> Optional[tuple[str, int]]:
+    """(winner_name, candidate_count) or None when the course has no alternate weightings.
+    Winner = the candidate (primary + each scheme) maximizing standing percent; ties keep the
+    earlier candidate (primary first), mirroring compute_standing's strict `>`."""
+    if not course.weightings:
+        return None
+    best_name = PRIMARY_SCHEME
+    best = _standing_core(course)
+    for scheme in course.weightings:
+        cand = _standing_core(apply_scheme(course, scheme.weights))
+        if cand.percent is not None and (best.percent is None or cand.percent > best.percent):
+            best_name, best = scheme.name, cand
+    return best_name, len(course.weightings) + 1
+
+
+def replace_boosts(course: Course) -> list["ReplaceBoost"]:
+    """One entry per ReplaceLowest category whose replace-if-higher actually fired.
+    delta_pct = boost_points / total_graded_weight * 100 (the lift to the overall standing),
+    computed on the base course — matches _replace_lowest_slots' `w_low*(frac_rep - f_low)`."""
+    total_gw = sum(_category_graded_weight(c) for c in course.categories)
+    out: list[ReplaceBoost] = []
+    if total_gw <= 0:
+        return out
+    for cat in course.categories:
+        if not isinstance(cat.rule, ReplaceLowest):
+            continue
+        reps = [it for it in cat.items if it.replacer]
+        non = [it for it in cat.items if not it.replacer]
+        if not reps or not non:
+            continue
+        rep = max(reps, key=lambda it: it.fraction)
+        low = min(non, key=lambda it: it.fraction)
+        if rep.fraction <= low.fraction:
+            continue
+        boost_points = (low.weight or 0.0) * (rep.fraction - low.fraction)
+        out.append(ReplaceBoost(cat.name, rep.name, low.name, boost_points / total_gw * 100.0))
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -226,34 +400,103 @@ def compute_standing(course: Course) -> Standing:
 #  total() is non-decreasing (a higher score never lowers your grade), so the first
 #  crossing is the minimum needed score.
 # --------------------------------------------------------------------------- #
-def goal_seek(
+def _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter):
+    """Minimum x in [0,1] with total(x) >= target_pct, given a continuous piecewise-linear
+    `total` whose only kinks are at `breakpoints` (which must include 0.0 and 1.0). Shared by
+    the ReplaceLowest goal-seek (and, later, the 2A-2 scheme goal-seek). The rank path keeps
+    its own inline copy (regression-locked)."""
+    target_pct = float(target_pct)
+    if total(0.0) >= target_pct:
+        return GoalSeekResult("already_met", 0.0, 0.0, target_letter, target_pct)
+    if total(1.0) < target_pct:
+        return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+    for a, b in zip(breakpoints, breakpoints[1:]):
+        ta, tb = total(a), total(b)
+        if tb < target_pct:
+            continue
+        x_star = a if tb == ta else a + (target_pct - ta) * (b - a) / (tb - ta)
+        return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+    return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+
+_GS_RANK = {"already_met": 0, "ok": 1, "infeasible": 2}
+
+
+def _better_goal(a: Optional[GoalSeekResult], b: GoalSeekResult) -> GoalSeekResult:
+    """Pick the more favorable goal-seek result across schemes: already_met > ok(min needed) >
+    infeasible. The student may pick whichever scheme is easiest."""
+    if a is None:
+        return b
+    ra, rb = _GS_RANK.get(a.status, 3), _GS_RANK.get(b.status, 3)
+    if rb < ra:
+        return b
+    if rb > ra:
+        return a
+    if a.status == "ok" and b.needed_score is not None and (
+        a.needed_score is None or b.needed_score < a.needed_score
+    ):
+        return b
+    return a
+
+
+def _goal_seek_core(
     course: Course,
     target_letter: str,
     unknown_category: str,
     unknown_max_score: float,
+    unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
 ) -> GoalSeekResult:
     """Minimum score on ONE ungraded item to reach `target_letter`.
 
     Treats every existing item as final (single-unknown solve). The unknown is an
     extra slot in `unknown_category`; its fraction x in [0, 1] is the variable.
+
+    `unknown_weight` is REQUIRED for a FixedWeights unknown category (the ungraded
+    item's own fixed weight); ignored for rank-based rules (weight comes from the rule).
     """
     target_pct = min_pct_for_letter(target_letter, course.cutoffs)
     if target_pct is None:
         raise ValueError(f"no cutoff defined for letter {target_letter!r}")
 
-    # Fixed contribution from every category except the unknown's.
+    # Fixed contribution from every category except the unknown's (branches per rule).
     fixed_other = 0.0
     unknown_cat: Optional[Category] = None
     for cat in course.categories:
         if cat.name == unknown_category and unknown_cat is None:
             unknown_cat = cat
             continue
-        wts = slot_weights_desc(cat.rule, cat.weight)
-        fixed_other += _earned_for_values(wts, [it.fraction for it in cat.items])
+        fixed_other += _category_earned(cat)
     if unknown_cat is None:
         raise ValueError(f"unknown_category {unknown_category!r} not found")
     if unknown_max_score <= 0:
         return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+
+    # FixedWeights: the unknown item's weight is CONSTANT -> total(x) is linear, no
+    # rank breakpoints. total(x) = fixed_other + (graded fixed items) + w_u * x.
+    if isinstance(unknown_cat.rule, FixedWeights):
+        if unknown_weight is None:
+            raise ValueError("goal_seek on a FixedWeights category requires unknown_weight")
+        base = fixed_other + _category_earned(unknown_cat)  # graded items already fixed
+        w_u = float(unknown_weight)
+        if base >= target_pct:
+            return GoalSeekResult("already_met", 0.0, 0.0, target_letter, target_pct)
+        if w_u <= 0 or base + w_u < target_pct:
+            return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
+        x_star = (target_pct - base) / w_u
+        return GoalSeekResult("ok", x_star * unknown_max_score, x_star, target_letter, target_pct)
+
+    if isinstance(unknown_cat.rule, ReplaceLowest):
+        if unknown_weight is None:
+            raise ValueError("goal_seek on a ReplaceLowest category requires unknown_weight")
+        w_u = float(unknown_weight)
+        existing = [(it.weight or 0.0, it.replacer, it.fraction) for it in unknown_cat.items]
+
+        def total(x: float) -> float:
+            return fixed_other + _replace_lowest_slots(existing + [(w_u, unknown_is_replacer, x)])
+
+        breakpoints = sorted({0.0, 1.0, *(min(max(f, 0.0), 1.0) for (_w, _r, f) in existing)})
+        return _solve_piecewise(total, breakpoints, target_pct, unknown_max_score, target_letter)
 
     u_wts = slot_weights_desc(unknown_cat.rule, unknown_cat.weight)
     others = [it.fraction for it in unknown_cat.items]
@@ -288,6 +531,36 @@ def goal_seek(
     return GoalSeekResult("infeasible", None, None, target_letter, target_pct)
 
 
+def goal_seek(
+    course: Course,
+    target_letter: str,
+    unknown_category: str,
+    unknown_max_score: float,
+    unknown_weight: Optional[float] = None,
+    unknown_is_replacer: bool = False,
+) -> GoalSeekResult:
+    """Minimum needed score across the primary + alternate weighting schemes (the student picks
+    the most favorable). With no `weightings`, delegates to the core unchanged."""
+    if not course.weightings:
+        return _goal_seek_core(course, target_letter, unknown_category, unknown_max_score,
+                               unknown_weight, unknown_is_replacer)
+    idx = next((i for i, c in enumerate(course.categories) if c.name == unknown_category), None)
+    if idx is None:
+        raise ValueError(f"unknown_category {unknown_category!r} not found")
+    orig_w = course.categories[idx].weight
+    schemes = [[c.weight for c in course.categories]] + [s.weights for s in course.weightings]
+    best: Optional[GoalSeekResult] = None
+    for w in schemes:
+        scaled_uw = unknown_weight
+        if unknown_weight is not None and orig_w > 0:
+            scaled_uw = unknown_weight * (w[idx] / orig_w)
+        res = _goal_seek_core(apply_scheme(course, w), target_letter, unknown_category,
+                              unknown_max_score, scaled_uw, unknown_is_replacer)
+        best = _better_goal(best, res)
+    assert best is not None
+    return best
+
+
 # --------------------------------------------------------------------------- #
 # Rubric validation (non-blocking warnings, per design decision D7)
 # --------------------------------------------------------------------------- #
@@ -318,6 +591,26 @@ def validate_rubric(course: Course, tol: float = 0.01) -> list[str]:
                 warnings.append(
                     f"'{cat.name}': drops {cat.rule.k} of {cat.rule.n_slots} slots - nothing would count."
                 )
+        elif isinstance(cat.rule, FixedWeights):
+            # Weights live on the items; they should sum to the category weight.
+            s = sum((it.weight or 0.0) for it in cat.items)
+            if cat.items and abs(s - cat.weight) > tol:
+                warnings.append(
+                    f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
+                )
+            n_slots = len(cat.items)  # items ARE the slots here
+        elif isinstance(cat.rule, ReplaceLowest):
+            s = sum((it.weight or 0.0) for it in cat.items)
+            if cat.items and abs(s - cat.weight) > tol:
+                warnings.append(
+                    f"'{cat.name}': item weights sum to {s:g} but the category weight is {cat.weight:g}."
+                )
+            n_reps = sum(1 for it in cat.items if it.replacer)
+            if cat.items and n_reps != 1:
+                warnings.append(
+                    f"'{cat.name}': replace-lowest needs exactly one item marked as the replacer (got {n_reps})."
+                )
+            n_slots = len(cat.items)
         else:
             n_slots = 0
 
