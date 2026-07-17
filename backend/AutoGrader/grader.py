@@ -4,6 +4,7 @@ import hashlib
 import json
 import tempfile
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,16 @@ class WorkerPoolBase(ABC):
 # The paper-level abstractions above remain as compatibility contracts for the job API.
 
 
+@dataclass
+class _PreparedPaper:
+    paper_id: str
+    attempts: list[QuestionAttempt]
+    gradable_attempts: list[QuestionAttempt]
+    attempt_context: dict[str, dict[str, Any]]
+    manual_results: list[ConsensusQuestionScore]
+    scores: dict[str, dict[str, Any]]
+
+
 class AutoGraderEntry:
     """Pair papers and run independent per-question evaluators."""
 
@@ -124,6 +135,10 @@ class AutoGraderEntry:
         if image.mode != "RGB":
             image = image.convert("RGB")
         return QuestionSplitter.image_to_pdf_bytes(image)
+
+    @staticmethod
+    def _source_fingerprint(source_path: str | Path) -> str:
+        return hashlib.sha256(Path(source_path).read_bytes()).hexdigest()
 
     @staticmethod
     def _normalize_pair_label(label: str) -> str:
@@ -248,6 +263,7 @@ class AutoGraderEntry:
             metadata={
                 "temp_dir": str(temp_dir),
                 "question_source": str(question_source),
+                "question_fingerprint": self._source_fingerprint(question_source),
                 "answer_source": str(answer_source),
                 "pair_count": len(pairs),
             },
@@ -282,6 +298,7 @@ class AutoGraderEntry:
             metadata={
                 "temp_dir": str(temp_dir),
                 "question_source": str(question_source),
+                "question_fingerprint": self._source_fingerprint(question_source),
                 "answer_source": None,
                 "pair_count": len(pairs),
                 "grading_mode": "question_only",
@@ -291,19 +308,27 @@ class AutoGraderEntry:
         self._paper_temp_dirs[paper_id] = temp_dir
         return record
 
-    async def score_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
-        """Recognize pairs once, then grade each question with independent agents."""
+    async def _prepare_paper_scoring(
+        self,
+        paper_id: str,
+        grading_criteria: str | None,
+    ) -> _PreparedPaper | None:
         paper = self._papers.get(paper_id)
         if paper is None or not paper.pairs:
             self._scores[paper_id] = {}
-            return {}
+            return None
 
         inspections = await self._recognizer.inspect_pairs(paper.pairs)
         inspect_by_label = {
             self._normalize_pair_label(label): data
             for label, data in inspections.items()
         }
-        exam_template_id = self._provisional_template_id(paper.pairs, inspect_by_label)
+        source_fingerprint = str(paper.metadata.get("question_fingerprint") or "").strip()
+        exam_template_id = (
+            f"exam-{source_fingerprint[:16]}"
+            if source_fingerprint
+            else self._provisional_template_id(paper.pairs, inspect_by_label)
+        )
         attempts: list[QuestionAttempt] = []
         gradable_attempts: list[QuestionAttempt] = []
         attempt_context: dict[str, dict[str, Any]] = {}
@@ -363,24 +388,89 @@ class AutoGraderEntry:
 
         self._attempts[paper_id] = attempts
         self._manifests[paper_id] = self._manifest_from_attempts(paper_id, exam_template_id, attempts)
-        if not gradable_attempts:
-            self._consensus_scores[paper_id] = manual_results
-            self._scores[paper_id] = scores
-            return scores
+        return _PreparedPaper(
+            paper_id=paper_id,
+            attempts=attempts,
+            gradable_attempts=gradable_attempts,
+            attempt_context=attempt_context,
+            manual_results=manual_results,
+            scores=scores,
+        )
 
-        consensus_results, worker_report = await self._question_worker_pool.score_attempts(gradable_attempts)
-        self._worker_reports[paper_id] = worker_report
+    def _finalize_prepared_paper(
+        self,
+        prepared: _PreparedPaper,
+        consensus_results: list[ConsensusQuestionScore],
+    ) -> dict[str, dict[str, Any]]:
+        scores = dict(prepared.scores)
         for result in consensus_results:
-            context = attempt_context[result.question_attempt_id]
+            context = prepared.attempt_context[result.question_attempt_id]
             scores[context["label"]] = self._score_item_from_consensus(
                 result,
                 question_text=context["question_text"],
                 answer_text=context["answer_text"],
                 question_only=False,
             )
-        self._consensus_scores[paper_id] = [*manual_results, *consensus_results]
-        self._scores[paper_id] = scores
+        self._consensus_scores[prepared.paper_id] = [*prepared.manual_results, *consensus_results]
+        self._scores[prepared.paper_id] = scores
         return scores
+
+    async def score_papers(
+        self,
+        paper_ids: list[str],
+        grading_criteria: str | None = None,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """Score registered papers together so matching questions share worker batches."""
+        prepared_papers: list[_PreparedPaper] = []
+        for paper_id in paper_ids:
+            prepared = await self._prepare_paper_scoring(paper_id, grading_criteria)
+            if prepared is not None:
+                prepared_papers.append(prepared)
+
+        all_gradable_attempts = [
+            attempt
+            for prepared in prepared_papers
+            for attempt in prepared.gradable_attempts
+        ]
+        pre_worker_manual_count = sum(
+            len(prepared.manual_results)
+            for prepared in prepared_papers
+        )
+        consensus_results: list[ConsensusQuestionScore] = []
+        if all_gradable_attempts:
+            consensus_results, worker_report = await self._question_worker_pool.score_attempts(
+                all_gradable_attempts
+            )
+            worker_report.manual_review_count += pre_worker_manual_count
+            for prepared in prepared_papers:
+                self._worker_reports[prepared.paper_id] = worker_report.model_copy(deep=True)
+        elif pre_worker_manual_count:
+            worker_report = QuestionWorkerRunReport(
+                worker_count=self._question_worker_pool.worker_count,
+                manual_review_count=pre_worker_manual_count,
+            )
+            for prepared in prepared_papers:
+                self._worker_reports[prepared.paper_id] = worker_report.model_copy(deep=True)
+
+        results_by_paper: dict[str, list[ConsensusQuestionScore]] = {}
+        for result in consensus_results:
+            results_by_paper.setdefault(result.paper_instance_id, []).append(result)
+
+        output: dict[str, dict[str, dict[str, Any]]] = {
+            paper_id: dict(self._scores.get(paper_id, {}))
+            for paper_id in paper_ids
+        }
+        for prepared in prepared_papers:
+            output[prepared.paper_id] = self._finalize_prepared_paper(
+                prepared,
+                results_by_paper.get(prepared.paper_id, []),
+            )
+        return output
+
+    async def score_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
+        """Recognize pairs once, then grade each question with independent agents."""
+        results = await self.score_papers([paper_id], grading_criteria)
+        return results.get(paper_id, {})
 
     async def score_question_paper(self, paper_id: str, grading_criteria: str | None = None) -> dict[str, dict[str, Any]]:
         """Use independent agents to derive and verify reference answers per question."""

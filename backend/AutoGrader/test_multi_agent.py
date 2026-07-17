@@ -132,6 +132,24 @@ class _FakeRecognizer:
         }
 
 
+class _DriftingFakeRecognizer:
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    async def inspect_pairs(self, pairs: list[QuestionAnswerPdfPair]) -> dict[str, dict]:
+        self.call_count += 1
+        return {
+            pair.question_label: {
+                "label": pair.question_label,
+                "can_grade": pair.question_label != "6",
+                "reason": "Needs manual review" if pair.question_label == "6" else None,
+                "question_text": f"OCR variant {self.call_count} for question {pair.question_label}",
+                "answer_text": f"Student answer {pair.question_label}",
+            }
+            for pair in pairs
+        }
+
+
 def _attempt(
     attempt_id: str = "paper-a:1:5",
     *,
@@ -391,6 +409,38 @@ class MultiAgentScorerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(worker_report.attempts_completed, 2)
         snapshot = await pool.snapshot()
         self.assertTrue(all(item.status == QuestionAttemptStatus.COMPLETED for item in snapshot))
+
+    async def test_entry_scores_matching_questions_from_multiple_papers_in_shared_batches(self) -> None:
+        scorer = MultiAgentQuestionScorer(
+            [
+                _FakeEvaluator("one", 8.0),
+                _FakeEvaluator("two", 8.0),
+                _FakeEvaluator("three", 8.0),
+            ],
+            arbitrator=None,
+        )
+        entry = AutoGraderEntry(question_scorer=scorer, recognizer=_DriftingFakeRecognizer())
+        for paper_id in ("paper-a", "paper-b"):
+            entry._papers[paper_id] = PaperQuestionAnswerPairs(
+                paper_id=paper_id,
+                pairs=[
+                    QuestionAnswerPdfPair(question_label="5", question_pdf=b"q5", answer_pdf=paper_id.encode()),
+                    QuestionAnswerPdfPair(question_label="6", question_pdf=b"q6", answer_pdf=paper_id.encode()),
+                ],
+                metadata={"question_fingerprint": "shared-question-source"},
+            )
+
+        results = await entry.score_papers(["paper-a", "paper-b"])
+        report = entry.get_worker_report("paper-a")
+
+        self.assertEqual(set(results), {"paper-a", "paper-b"})
+        self.assertEqual(results["paper-a"]["5"]["question_attempt_id"], "paper-a:1:5")
+        self.assertEqual(results["paper-b"]["5"]["question_attempt_id"], "paper-b:1:5")
+        self.assertIsNotNone(report)
+        assert report is not None
+        self.assertEqual(report.batches_completed, 1)
+        self.assertEqual(report.attempts_completed, 2)
+        self.assertEqual(report.manual_review_count, 2)
 
     async def test_batch_rejects_attempt_from_another_canonical_question(self) -> None:
         scorer = MultiAgentQuestionScorer(

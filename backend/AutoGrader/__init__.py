@@ -39,11 +39,16 @@ from .multi_agent import (
     QuestionEvaluatorBase,
 )
 from .public_api import (
+    AutoGraderBatchGradeRequest,
+    AutoGraderBatchGradeResponse,
+    AutoGraderBatchPaperRequest,
+    AutoGraderBatchPaperResponse,
     AutoGraderExternalApi,
     AutoGraderGradeRequest,
     AutoGraderGradeResponse,
     AutoGraderScoreItem,
     grade_paper_once,
+    grade_papers_once,
 )
 from .question_pool import InMemoryQuestionPool
 from .recognizer import QuestionAnswerRecognizer
@@ -77,6 +82,10 @@ __all__ = [
     "QuestionAnswerPdfPair",
     "PaperQuestionAnswerPairs",
     "AutoGraderScoreItem",
+    "AutoGraderBatchPaperRequest",
+    "AutoGraderBatchGradeRequest",
+    "AutoGraderBatchPaperResponse",
+    "AutoGraderBatchGradeResponse",
     "AutoGraderGradeRequest",
     "AutoGraderGradeResponse",
     "AutoGraderExternalApi",
@@ -108,6 +117,7 @@ __all__ = [
     "AutoGraderEntry",
     "InMemoryAutoGrader",
     "grade_paper_once",
+    "grade_papers_once",
     "register_autograder",
     "get_autograder",
     "has_autograder",
