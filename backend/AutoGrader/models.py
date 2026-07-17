@@ -241,4 +241,14 @@ class PaperScoreSummary(BaseModel):
     message: str = ""
 
 
+class QuestionWorkerRunReport(BaseModel):
+    worker_count: int
+    batches_completed: int = 0
+    attempts_completed: int = 0
+    manual_review_count: int = 0
+    failed_batches: int = 0
+    retried_batches: int = 0
+    errors: list[str] = Field(default_factory=list)
+
+
 # TODO: Add compatibility-layer models here if we ever need to support the legacy single-file upload protocol.

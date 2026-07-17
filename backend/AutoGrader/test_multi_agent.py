@@ -384,6 +384,11 @@ class MultiAgentScorerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(summary.complete)
         self.assertEqual(summary.total_score, 16)
         self.assertEqual(summary.total_max_score, 20)
+        worker_report = entry.get_worker_report("paper-a")
+        self.assertIsNotNone(worker_report)
+        assert worker_report is not None
+        self.assertEqual(worker_report.batches_completed, 2)
+        self.assertEqual(worker_report.attempts_completed, 2)
         snapshot = await pool.snapshot()
         self.assertTrue(all(item.status == QuestionAttemptStatus.COMPLETED for item in snapshot))
 

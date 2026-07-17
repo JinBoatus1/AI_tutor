@@ -7,7 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass
 
-from .models import QuestionAttempt, QuestionAttemptStatus, QuestionBatchTask
+from .models import QuestionAttempt, QuestionAttemptStatus, QuestionBatchTask, QuestionRubric
 
 
 @dataclass
@@ -23,7 +23,28 @@ class InMemoryQuestionPool:
 
     def __init__(self) -> None:
         self._records: dict[str, _PoolRecord] = {}
+        self._rubrics: dict[tuple[str, str], QuestionRubric] = {}
         self._lock = asyncio.Lock()
+
+    @staticmethod
+    def _group_key(attempt: QuestionAttempt) -> tuple[str, str, str, str | None]:
+        return (
+            attempt.exam_template_id,
+            attempt.canonical_question_id,
+            str(attempt.metadata.get("rubric_version", "initial")),
+            attempt.grading_criteria,
+        )
+
+    async def register_rubric(self, rubric: QuestionRubric) -> None:
+        key = (rubric.canonical_question_id, rubric.version)
+        async with self._lock:
+            existing = self._rubrics.get(key)
+            if existing is not None and existing != rubric:
+                raise ValueError(
+                    f"Rubric collision for canonical question {rubric.canonical_question_id!r} "
+                    f"version {rubric.version!r}"
+                )
+            self._rubrics[key] = rubric.model_copy(deep=True)
 
     async def add_attempts(self, attempts: list[QuestionAttempt]) -> None:
         now = time.monotonic()
@@ -37,8 +58,24 @@ class InMemoryQuestionPool:
                         or existing.attempt.displayed_label != attempt.displayed_label
                         or existing.attempt.question_pdf != attempt.question_pdf
                         or existing.attempt.answer_pdf != attempt.answer_pdf
-                        or existing.attempt.grading_criteria != attempt.grading_criteria
                     ):
+                        raise ValueError(f"Question attempt id collision: {attempt.question_attempt_id!r}")
+                    existing_version = str(existing.attempt.metadata.get("rubric_version", "initial"))
+                    new_version = str(attempt.metadata.get("rubric_version", "initial"))
+                    if existing_version != new_version:
+                        if existing.attempt.status == QuestionAttemptStatus.LEASED:
+                            raise ValueError(
+                                f"Cannot requeue leased question attempt {attempt.question_attempt_id!r}"
+                            )
+                        existing.attempt = attempt.model_copy(
+                            deep=True,
+                            update={"status": QuestionAttemptStatus.PENDING},
+                        )
+                        existing.enqueued_at = now
+                        existing.lease_id = None
+                        existing.lease_expires_at = None
+                        continue
+                    if existing.attempt.grading_criteria != attempt.grading_criteria:
                         raise ValueError(f"Question attempt id collision: {attempt.question_attempt_id!r}")
                     continue
                 self._records[attempt.question_attempt_id] = _PoolRecord(
@@ -67,16 +104,18 @@ class InMemoryQuestionPool:
         now = time.monotonic()
         async with self._lock:
             self._release_expired_leases(now)
+            active_canonical_keys = {
+                (record.attempt.exam_template_id, record.attempt.canonical_question_id)
+                for record in self._records.values()
+                if record.attempt.status == QuestionAttemptStatus.LEASED
+            }
             groups: dict[tuple[str, str, str, str | None], list[_PoolRecord]] = {}
             for record in self._records.values():
                 if record.attempt.status != QuestionAttemptStatus.PENDING:
                     continue
-                key = (
-                    record.attempt.exam_template_id,
-                    record.attempt.canonical_question_id,
-                    str(record.attempt.metadata.get("rubric_version", "initial")),
-                    record.attempt.grading_criteria,
-                )
+                key = self._group_key(record.attempt)
+                if key[:2] in active_canonical_keys:
+                    continue
                 groups.setdefault(key, []).append(record)
             if not groups:
                 return None
@@ -105,9 +144,28 @@ class InMemoryQuestionPool:
                 canonical_question_id=canonical_question_id,
                 rubric_version=rubric_version,
                 attempts=[record.attempt.model_copy(deep=True) for record in selected_records],
+                rubric=(
+                    self._rubrics[(canonical_question_id, rubric_version)].model_copy(deep=True)
+                    if (canonical_question_id, rubric_version) in self._rubrics
+                    else None
+                ),
                 grading_criteria=grading_criteria,
                 metadata={"lease_expires_at_monotonic": expires_at},
             )
+
+    async def renew_batch(self, task: QuestionBatchTask, *, lease_seconds: float = 120.0) -> None:
+        now = time.monotonic()
+        new_expiry = now + max(1.0, float(lease_seconds))
+        async with self._lock:
+            for attempt in task.attempts:
+                record = self._records.get(attempt.question_attempt_id)
+                if record is None or record.lease_id != task.task_id:
+                    raise ValueError(f"Task {task.task_id!r} does not own attempt {attempt.question_attempt_id!r}")
+                if record.lease_expires_at is None or record.lease_expires_at <= now:
+                    raise ValueError(f"Task {task.task_id!r} lease expired before renewal")
+            for attempt in task.attempts:
+                self._records[attempt.question_attempt_id].lease_expires_at = new_expiry
+            task.metadata["lease_expires_at_monotonic"] = new_expiry
 
     async def complete_batch(self, task: QuestionBatchTask, *, manual_review_ids: set[str] | None = None) -> None:
         manual_review_ids = manual_review_ids or set()

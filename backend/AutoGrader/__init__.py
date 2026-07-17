@@ -24,6 +24,7 @@ from .models import (
     QuestionBatchTask,
     QuestionRubric,
     QuestionAnswerPdfPair,
+    QuestionWorkerRunReport,
     RubricCriterion,
     SourceItem,
     SourceType,
@@ -47,6 +48,12 @@ from .public_api import (
 from .question_pool import InMemoryQuestionPool
 from .recognizer import QuestionAnswerRecognizer
 from .service import get_autograder, has_autograder, register_autograder
+from .worker_pool import (
+    ConcurrentQuestionWorkerPool,
+    InMemoryQuestionResultStore,
+    MultiPaperGradingCoordinator,
+    QuestionBatchScorer,
+)
 
 __all__ = [
     "SourceType",
@@ -66,6 +73,7 @@ __all__ = [
     "PaperManifestQuestion",
     "PaperManifest",
     "PaperScoreSummary",
+    "QuestionWorkerRunReport",
     "QuestionAnswerPdfPair",
     "PaperQuestionAnswerPairs",
     "AutoGraderScoreItem",
@@ -93,6 +101,10 @@ __all__ = [
     "MultiAgentQuestionScorer",
     "PaperScoreAggregator",
     "InMemoryQuestionPool",
+    "InMemoryQuestionResultStore",
+    "ConcurrentQuestionWorkerPool",
+    "MultiPaperGradingCoordinator",
+    "QuestionBatchScorer",
     "AutoGraderEntry",
     "InMemoryAutoGrader",
     "grade_paper_once",

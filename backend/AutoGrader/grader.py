@@ -25,11 +25,13 @@ from .models import (
     PaperScoreSummary,
     QuestionAttempt,
     QuestionAnswerPdfPair,
+    QuestionWorkerRunReport,
 )
 from .multi_agent import MultiAgentQuestionScorer, PaperScoreAggregator
 from .question_pool import InMemoryQuestionPool
 from .recognizer import QuestionAnswerRecognizer
 from .question_splitter import DocumentSplitter, QuestionDetector, QuestionSplitter
+from .worker_pool import ConcurrentQuestionWorkerPool
 
 
 class AutoGraderBase(ABC):
@@ -85,6 +87,7 @@ class AutoGraderEntry:
         *,
         question_scorer: MultiAgentQuestionScorer | None = None,
         question_pool: InMemoryQuestionPool | None = None,
+        question_worker_pool: ConcurrentQuestionWorkerPool | None = None,
         recognizer: QuestionAnswerRecognizer | None = None,
     ) -> None:
         self._papers: dict[str, PaperQuestionAnswerPairs] = {}
@@ -92,10 +95,24 @@ class AutoGraderEntry:
         self._attempts: dict[str, list[QuestionAttempt]] = {}
         self._manifests: dict[str, PaperManifest] = {}
         self._consensus_scores: dict[str, list[ConsensusQuestionScore]] = {}
+        self._worker_reports: dict[str, QuestionWorkerRunReport] = {}
         self._paper_temp_dirs: dict[str, Path] = {}
         self._recognizer = recognizer or QuestionAnswerRecognizer()
-        self._question_scorer = question_scorer or MultiAgentQuestionScorer.default()
-        self._question_pool = question_pool or InMemoryQuestionPool()
+        if question_worker_pool is not None:
+            if question_scorer is not None and question_scorer is not question_worker_pool.scorer:
+                raise ValueError("question_scorer must match the supplied question_worker_pool")
+            if question_pool is not None and question_pool is not question_worker_pool.question_pool:
+                raise ValueError("question_pool must match the supplied question_worker_pool")
+            self._question_worker_pool = question_worker_pool
+            self._question_scorer = question_worker_pool.scorer
+            self._question_pool = question_worker_pool.question_pool
+        else:
+            self._question_scorer = question_scorer or MultiAgentQuestionScorer.default()
+            self._question_pool = question_pool or InMemoryQuestionPool()
+            self._question_worker_pool = ConcurrentQuestionWorkerPool(
+                self._question_pool,
+                self._question_scorer,
+            )
 
     @staticmethod
     def _load_document_bytes(source_path: str | Path) -> bytes:
@@ -346,27 +363,13 @@ class AutoGraderEntry:
 
         self._attempts[paper_id] = attempts
         self._manifests[paper_id] = self._manifest_from_attempts(paper_id, exam_template_id, attempts)
-        await self._question_pool.add_attempts(attempts)
         if not gradable_attempts:
-            await self._question_pool.mark_direct_results(
-                {attempt.question_attempt_id for attempt in attempts},
-                manual_review_ids={attempt.question_attempt_id for attempt in attempts},
-            )
             self._consensus_scores[paper_id] = manual_results
             self._scores[paper_id] = scores
             return scores
 
-        consensus_results = await self._question_scorer.score_many(gradable_attempts)
-        gradable_ids = {attempt.question_attempt_id for attempt in gradable_attempts}
-        manual_review_ids = {
-            result.question_attempt_id
-            for result in consensus_results
-            if result.manual_review
-        } | {attempt.question_attempt_id for attempt in attempts if attempt.question_attempt_id not in gradable_ids}
-        await self._question_pool.mark_direct_results(
-            {attempt.question_attempt_id for attempt in attempts},
-            manual_review_ids=manual_review_ids,
-        )
+        consensus_results, worker_report = await self._question_worker_pool.score_attempts(gradable_attempts)
+        self._worker_reports[paper_id] = worker_report
         for result in consensus_results:
             context = attempt_context[result.question_attempt_id]
             scores[context["label"]] = self._score_item_from_consensus(
@@ -407,17 +410,8 @@ class AutoGraderEntry:
 
         self._attempts[paper_id] = attempts
         self._manifests[paper_id] = self._manifest_from_attempts(paper_id, exam_template_id, attempts)
-        await self._question_pool.add_attempts(attempts)
-        consensus_results = await self._question_scorer.score_many(attempts)
-        manual_review_ids = {
-            result.question_attempt_id
-            for result in consensus_results
-            if result.manual_review
-        }
-        await self._question_pool.mark_direct_results(
-            {attempt.question_attempt_id for attempt in attempts},
-            manual_review_ids=manual_review_ids,
-        )
+        consensus_results, worker_report = await self._question_worker_pool.score_attempts(attempts)
+        self._worker_reports[paper_id] = worker_report
         scores = {
             result.displayed_label: self._score_item_from_consensus(
                 result,
@@ -478,6 +472,10 @@ class AutoGraderEntry:
             manifest,
             [score.model_copy(deep=True) for score in self._consensus_scores.get(paper_id, [])],
         )
+
+    def get_worker_report(self, paper_id: str) -> QuestionWorkerRunReport | None:
+        report = self._worker_reports.get(paper_id)
+        return report.model_copy(deep=True) if report is not None else None
 
 
 async def _run_cli() -> None:

@@ -54,6 +54,17 @@ The in-memory question pool can lease a `QuestionBatchTask` containing the same
 canonical question from multiple papers. Batches with different rubric versions or
 grading criteria are kept separate.
 
+`ConcurrentQuestionWorkerPool` runs several async workers over that pool. Each worker
+holds only one canonical question at a time, and the scheduler prevents the same
+canonical question from being active in two workers simultaneously. Synchronous model
+client calls are delegated to Python worker threads by `MultiAgentQuestionScorer`.
+
+`MultiPaperGradingCoordinator` registers paper manifests and attempts before starting
+the workers. Results are stored idempotently by `question_attempt_id`, checked against
+their paper and canonical question ownership, and then joined back through each paper's
+manifest. Worker completion order therefore cannot move a score or feedback item to
+another paper.
+
 Optional environment settings:
 
 - `AUTOGRADER_MODEL` (default `gpt-5.2`)
@@ -61,6 +72,10 @@ Optional environment settings:
 - `AUTOGRADER_EVALUATOR_RETRIES` (default `1`)
 - `AUTOGRADER_DISAGREEMENT_THRESHOLD` (default `0.15`)
 - `AUTOGRADER_ENABLE_ARBITRATION` (default enabled)
+- `AUTOGRADER_QUESTION_WORKERS` (default `4`)
+- `AUTOGRADER_QUESTION_BATCH_SIZE` (default `16`)
+- `AUTOGRADER_QUESTION_LEASE_SECONDS` (default `300`)
+- `AUTOGRADER_QUESTION_BATCH_RETRIES` (default `1`)
 
 ## API Contract
 
