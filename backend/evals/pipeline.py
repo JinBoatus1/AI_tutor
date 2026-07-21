@@ -7,8 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from evals.config import EvalPipelineConfig, load_scenarios
+from evals.comparative_report import write_persona_report_artifacts
+from evals.config import EvalPipelineConfig, _DEFAULT_PERSONAS, load_scenarios
 from evals.evaluate import run_evaluation
+from evals.product_critique import evaluate_persona_product_review
 from evals.report import write_report_artifacts
 from evals.simulate import run_simulation
 from evals.tutor_agent import ChatTurn, TutorContext
@@ -128,4 +130,100 @@ def run_simulate_evaluate(
             ),
             "statuses": [c.get("evaluation_status") for c in convos],
         },
+    }
+
+
+def run_persona_product_review(
+    config: EvalPipelineConfig | None = None,
+    *,
+    output_dir: Path | str | None = None,
+    scenario_ids: list[str] | None = None,
+    smoke: bool = False,
+    include_ta: bool = False,
+    tutor_fn: Callable[[list[ChatTurn], TutorContext], tuple[str, dict[str, Any]]] | None = None,
+    user_fn_factory: Callable | None = None,
+) -> dict[str, Any]:
+    """Full pipeline: simulate → evaluate → persona product critique → comparative report."""
+    cfg = config or EvalPipelineConfig.from_yaml()
+    cfg.scenario_file_path = _DEFAULT_PERSONAS
+    cfg.num_conversations_per_scenario = 1
+    cfg.max_turns = 5 if not smoke else 3
+
+    if smoke and scenario_ids is None:
+        scenario_ids = [
+            "persona-lazy-homework",
+            "persona-deep-learner",
+            "persona-exam-cram",
+        ]
+
+    if not include_ta and scenario_ids is None:
+        doc = load_scenarios(cfg.scenario_file_path)
+        scenario_ids = [
+            s["scenario_id"]
+            for s in doc.get("scenarios", [])
+            if s.get("persona_type") == "student"
+        ]
+
+    if output_dir is not None:
+        cfg.output_dir = Path(output_dir)
+    elif cfg.output_dir.name == "latest":
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        cfg.output_dir = cfg.output_dir.parent / f"persona_{ts}_{uuid.uuid4().hex[:8]}"
+
+    scenarios_doc = load_scenarios(cfg.scenario_file_path)
+    simulation = run_simulation(
+        cfg,
+        scenario_ids=scenario_ids,
+        tutor_fn=tutor_fn,
+        user_fn_factory=user_fn_factory,
+    )
+    evaluation = run_evaluation(simulation, cfg, scenarios_doc=scenarios_doc)
+
+    persona_report = evaluate_persona_product_review(
+        simulation=simulation,
+        evaluation=evaluation,
+        scenarios_doc=scenarios_doc,
+        model=cfg.model,
+    )
+
+    threshold_results = check_thresholds(evaluation, cfg)
+    artifact_paths = write_report_artifacts(
+        simulation=simulation,
+        evaluation=evaluation,
+        scenarios_doc=scenarios_doc,
+        output_dir=cfg.output_dir,
+        threshold_results=threshold_results,
+        generate_html=cfg.generate_html_report,
+    )
+    persona_paths = write_persona_report_artifacts(
+        persona_report=persona_report,
+        simulation=simulation,
+        evaluation=evaluation,
+        output_dir=cfg.output_dir,
+    )
+    artifact_paths.update(persona_paths)
+
+    reviews = persona_report.get("persona_reviews") or []
+    synthesis = persona_report.get("comparative_synthesis") or {}
+
+    return {
+        "run_id": cfg.output_dir.name,
+        "output_dir": str(cfg.output_dir),
+        "pipeline": "persona_product_review",
+        "persona_count": len(reviews),
+        "simulation_id": simulation.get("simulation_id"),
+        "evaluation_id": evaluation.get("evaluation_id"),
+        "thresholds": threshold_results,
+        "artifacts": artifact_paths,
+        "executive_summary": synthesis.get("executive_summary"),
+        "student_priorities": synthesis.get("student_only_priorities"),
+        "consensus_improvements": synthesis.get("consensus_improvements"),
+        "persona_summaries": [
+            {
+                "persona_label": r.get("persona_label"),
+                "goal_satisfaction": r.get("goal_satisfaction"),
+                "top_improvement": (r.get("improvements") or [{}])[0].get("suggestion"),
+            }
+            for r in reviews
+        ],
     }

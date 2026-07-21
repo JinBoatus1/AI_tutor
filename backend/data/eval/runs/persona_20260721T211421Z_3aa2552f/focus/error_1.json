@@ -1,0 +1,20 @@
+{
+  "schema_version": "v1",
+  "scenarios": [
+    {
+      "scenario_id": "persona-exam-cram",
+      "user_id": "S02-exam-cram",
+      "persona_type": "student",
+      "persona_label": "复习学生",
+      "goal": "你期末还有 3 天，只想快速掌握 Induction 和 Proof by Contradiction 的考点、典型题型和易错点，不需要从头学理论。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是大三学生，平时学得一般，考前突击。你需要「考点清单 + 例题 + 易错点」，不需要长篇推导。你希望 tutor 直接告诉你「期末会考什么、怎么复习最高效」。",
+      "knowledge": [
+        {
+          "content": "期末覆盖 Ch.4 证明方法和 Ch.5 Induction，占 40 分。你 Induction 基本不会。"
+        }
+      ],
+      "evaluation_focus": "从「考前复习」视角评价：是否有复习模式、能否快速定位薄弱章节、chat 能否给出 exam-oriented 总结。"
+    }
+  ]
+}

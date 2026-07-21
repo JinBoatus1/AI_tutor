@@ -11,6 +11,7 @@ import yaml
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 _DEFAULT_SCENARIOS = _BACKEND_DIR / "evals" / "scenarios" / "scenarios.json"
+_DEFAULT_PERSONAS = _BACKEND_DIR / "evals" / "scenarios" / "user_personas.json"
 _DEFAULT_CONFIG = _BACKEND_DIR / "eval_config.yaml"
 
 
@@ -22,6 +23,29 @@ def load_scenarios(path: Path | str | None = None) -> dict[str, Any]:
 
 def scenario_by_id(scenarios_doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {s["scenario_id"]: s for s in scenarios_doc.get("scenarios", [])}
+
+
+def expand_scenario_product_context(scenarios_doc: dict[str, Any], scenario: dict[str, Any]) -> dict[str, Any]:
+    """Replace {{product_context}} placeholder in persona scenarios."""
+    product_ctx = scenarios_doc.get("product_context") or ""
+    expanded = dict(scenario)
+    ctx = str(expanded.get("agent_context") or "")
+    if "{{product_context}}" in ctx:
+        expanded["agent_context"] = ctx.replace("{{product_context}}", product_ctx)
+    elif not ctx.strip() and product_ctx:
+        expanded["agent_context"] = product_ctx
+    return expanded
+
+
+def prepare_scenarios_for_simulation(scenarios_doc: dict[str, Any]) -> dict[str, Any]:
+    """Return scenarios doc with expanded agent_context for each scenario."""
+    return {
+        **scenarios_doc,
+        "scenarios": [
+            expand_scenario_product_context(scenarios_doc, s)
+            for s in scenarios_doc.get("scenarios", [])
+        ],
+    }
 
 
 def _resolve_backend_path(raw_path: str) -> Path:

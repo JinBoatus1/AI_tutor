@@ -7,8 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from deps import create_chat_completion
-from evals.config import EvalPipelineConfig
-from evals.config import load_scenarios
+from evals.config import EvalPipelineConfig, load_scenarios, prepare_scenarios_for_simulation
 from evals.tutor_agent import ChatTurn, TutorContext, call_tutor_agent
 
 SIMULATOR_VERSION = "ai-tutor-evals-v1"
@@ -107,7 +106,7 @@ def run_simulation(
     user_fn_factory: Callable[[dict[str, Any]], Callable[[list[dict[str, Any]]], str]] | None = None,
 ) -> dict[str, Any]:
     """Run multi-turn simulations and return ArkSim-compatible simulation.json payload."""
-    scenarios_doc = load_scenarios(config.scenario_file_path)
+    scenarios_doc = prepare_scenarios_for_simulation(load_scenarios(config.scenario_file_path))
     all_scenarios = scenarios_doc.get("scenarios", [])
     if scenario_ids:
         allowed = set(scenario_ids)

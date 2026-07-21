@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from evals.config import EvalPipelineConfig
-from evals.pipeline import run_simulate_evaluate
+from evals.pipeline import run_persona_product_review, run_simulate_evaluate
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -21,7 +21,24 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--smoke", action="store_true", help="Smoke mode: 2 scenarios, 4 turns max")
     run_p.add_argument("--scenario", action="append", dest="scenarios", help="Limit to scenario_id (repeatable)")
 
+    persona_p = sub.add_parser("persona-review", help="Multi-persona product critique + comparative report")
+    persona_p.add_argument("--output-dir", type=str, default=None)
+    persona_p.add_argument("--smoke", action="store_true", help="3 student personas, 3 turns each")
+    persona_p.add_argument("--include-ta", action="store_true", help="Include lazy TA persona")
+    persona_p.add_argument("--scenario", action="append", dest="scenarios")
+
     args = parser.parse_args(argv)
+    if args.command == "persona-review":
+        result = run_persona_product_review(
+            output_dir=args.output_dir,
+            scenario_ids=args.scenarios,
+            smoke=args.smoke,
+            include_ta=args.include_ta,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(f"\nComparative report: {result['artifacts'].get('comparative_report', 'n/a')}", file=sys.stderr)
+        return 0
+
     if args.command != "simulate-evaluate":
         parser.print_help()
         return 2

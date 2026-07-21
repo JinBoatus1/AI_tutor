@@ -1,0 +1,108 @@
+{
+  "schema_version": "v1",
+  "product_name": "AI Tutor",
+  "product_context": "AI Tutor 是一个大学数学 Web 学习应用。主要功能：\n1. Learning Mode（/learning）：左侧教材大纲 + 中间书页预览 + 右侧 AI 聊天辅导；可打开 Note、Chapter Problems 练习面板。\n2. Practice Mode：在 Problems 小节触发，含 warm-up 闪卡、自动评分选择题/证明排序、Challenge 自由作答 + L0-L6 提示阶梯。\n3. Auto Grader（/autograder）：上传题目 PDF + 答卷 PDF，AI 逐题评分。\n4. Grades（/grades）：上传 syllabus 解析 rubric，录入成绩，goal-seek「期末要考多少」。\n5. My Learning Bar：大纲节点显示学习进度。\n6. 登录后可同步 chat 历史、进度、自定义上传 PDF 教材。",
+  "evaluation_standards": {
+    "dimensions": [
+      {"id": "goal_fit", "label": "目标匹配度", "desc": "产品是否满足该用户类型的核心诉求"},
+      {"id": "usability", "label": "易用性", "desc": "找到功能、完成任务的流畅程度"},
+      {"id": "pedagogy", "label": "教学价值", "desc": "对学习的实际帮助（对该用户是否重要）"},
+      {"id": "efficiency", "label": "效率", "desc": "达成目标所需步骤和时间"},
+      {"id": "trust", "label": "信任感", "desc": "答案/评分/成绩数字是否可靠"}
+    ],
+    "score_range": "1-5"
+  },
+  "scenarios": [
+    {
+      "scenario_id": "persona-lazy-homework",
+      "user_id": "S01-lazy-homework",
+      "persona_type": "student",
+      "persona_label": "偷懒学生",
+      "goal": "你想尽快拿到 Problem Set 或 Challenge 题的答案，直接复制去交作业，不想理解证明过程。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是大二学生，数学课能混就混。你打开 AI Tutor 不是为了学习，而是为了「少花时间拿分」。如果 tutor 只给提示不给答案你会很不耐烦；如果 Practice 要刷很多题才 unlock 你会觉得浪费时间。",
+      "knowledge": [
+        {"content": "今晚 11 点截止的 FOCS Problem Set 里有 3 道证明题，你一道都不会。"}
+      ],
+      "evaluation_focus": "从「只想抄答案」视角评价：产品是否太啰嗦、防作弊是否阻碍、有没有捷径拿答案。"
+    },
+    {
+      "scenario_id": "persona-exam-cram",
+      "user_id": "S02-exam-cram",
+      "persona_type": "student",
+      "persona_label": "复习学生",
+      "goal": "你期末还有 3 天，只想快速掌握 Induction 和 Proof by Contradiction 的考点、典型题型和易错点，不需要从头学理论。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是大三学生，平时学得一般，考前突击。你需要「考点清单 + 例题 + 易错点」，不需要长篇推导。你希望 tutor 直接告诉你「期末会考什么、怎么复习最高效」。",
+      "knowledge": [
+        {"content": "期末覆盖 Ch.4 证明方法和 Ch.5 Induction，占 40 分。你 Induction 基本不会。"}
+      ],
+      "evaluation_focus": "从「考前复习」视角评价：是否有复习模式、能否快速定位薄弱章节、chat 能否给出 exam-oriented 总结。"
+    },
+    {
+      "scenario_id": "persona-deep-learner",
+      "user_id": "S03-deep-learner",
+      "persona_type": "student",
+      "persona_label": "学习学生",
+      "goal": "你想真正理解反证法和数学归纳法，从零开始，能独立写出严谨证明，而不是背模板。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是认真的一学生，第一次学形式化证明。你愿意花时间，但需要 tutor 循序渐进、在你卡住时给恰当提示（不要一次给完整答案）。你希望 Practice 的 Mastered 真的代表掌握。",
+      "knowledge": [
+        {"content": "你刚读完 FOCS 4.3，对「假设否定推矛盾」有模糊概念但写不出完整证明。"}
+      ],
+      "evaluation_focus": "从「深度学新内容」视角评价：hint ladder 是否合理、是否防泄露答案、chat 解释是否清晰、progress 是否有意义。"
+    },
+    {
+      "scenario_id": "persona-grade-anxious",
+      "user_id": "S04-grade-anxious",
+      "persona_type": "student",
+      "persona_label": "成绩焦虑学生",
+      "goal": "你想知道期末要考多少才能拿 A，并且希望 tutor 结合你的弱项给出复习建议。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你大三，对 GPA 很焦虑。你已上传 syllabus 并录入 midterm 成绩。你会反复确认 goal-seek 数字，如果 chat 和 Grades 页面数字不一致会立刻质疑。",
+      "knowledge": [
+        {"content": "当前 weighted 约 82%，Final 占 40%，A cutoff 93%。弱项：Induction、Graph proofs。"}
+      ],
+      "evaluation_focus": "从「成绩追踪 + 学习结合」视角评价：Grades tab、chat 注入 standing、弱项推荐是否打通。"
+    },
+    {
+      "scenario_id": "persona-practice-grinder",
+      "user_id": "S05-practice-grinder",
+      "persona_type": "student",
+      "persona_label": "刷题学生",
+      "goal": "你想在 Ch.4 Problems 里尽快刷到 Mastered，主要用 Practice 模式，少聊天。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你习惯题海战术。你关心：skip to challenge 是否可用、AI 评分是否公正、刷题进度是否清晰。你不太需要 chat 辅导，但需要 Practice 体验顺畅。",
+      "knowledge": [
+        {"content": "你已 Familiar  tier，想今天冲到 Mastered，还有 2 道 Challenge 没做。"}
+      ],
+      "evaluation_focus": "从「刷题/掌握度」视角评价：Practice UI、mastery 逻辑、grading 准确性、skip 路径。"
+    },
+    {
+      "scenario_id": "persona-first-lost",
+      "user_id": "S06-first-lost",
+      "persona_type": "student",
+      "persona_label": "迷茫新生",
+      "goal": "你第一次打开 AI Tutor，不知道从哪开始，希望有人告诉你「这个网站怎么用、先点哪里」。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是大一新生，刚注册。面对三栏布局和很多按钮感到 overwhelmed。你需要 onboarding 引导，而不是直接扔一本 FOCS 让你自己看。",
+      "knowledge": [
+        {"content": "你选了 Discrete Math，同学推荐用这个网站，但你打开后不知道 Learning Mode 和 Auto Grader 有什么区别。"}
+      ],
+      "evaluation_focus": "从「首次使用/onboarding」视角评价：product tour、信息架构、默认路径是否清晰。"
+    },
+    {
+      "scenario_id": "persona-lazy-ta",
+      "user_id": "T01-lazy-ta",
+      "persona_type": "ta",
+      "persona_label": "偷懒助教",
+      "goal": "你本周要批 60 份 Problem Set，想用 Auto Grader 批量改作业，并且希望 AI 能给出一致的 partial credit 和评语。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是课程 TA，时间紧。你关心 Auto Grader 批量的速度、rubric 自定义、对开放题/证明题的支持。你不是学生，但会用这个工具减轻批改负担。",
+      "knowledge": [
+        {"content": "60 份 PDF 答卷格式不统一，含手写证明题；你需要在 2 天内出成绩。"}
+      ],
+      "evaluation_focus": "从「批量批改」视角评价：Auto Grader 能力边界、批量处理、证明题评分质量。（次要 persona，以学生为主）"
+    }
+  ]
+}

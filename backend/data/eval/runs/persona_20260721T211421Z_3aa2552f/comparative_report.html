@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>AI Tutor — 多 Persona 产品对比报告</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 1200px; color: #1a1a1a; line-height: 1.55; }
+    h1 { border-bottom: 2px solid #0969da; padding-bottom: 0.5rem; }
+    h2 { margin-top: 2rem; color: #0969da; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9rem; }
+    th, td { border: 1px solid #d0d7de; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f6f8fa; }
+    .persona-card { border: 1px solid #d0d7de; border-radius: 8px; padding: 1.25rem; margin: 1rem 0; }
+    .persona-card h3 { margin-top: 0; }
+    .badge { font-size: 0.75rem; background: #ddf4ff; padding: 0.15rem 0.5rem; border-radius: 4px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .dialectic { background: #fff8c5; padding: 0.75rem; border-radius: 6px; font-style: italic; }
+    .conflict { background: #fff1e5; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0; }
+    .executive { background: #dafbe1; padding: 1rem; border-radius: 8px; font-size: 1.05rem; }
+    .pri-p0 { background: #ffebe9; color: #cf222e; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: bold; }
+    .pri-p1 { background: #fff8c5; color: #9a6700; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    .pri-p2 { background: #eaeef2; color: #57606a; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    ul { padding-left: 1.25rem; }
+    .improvements li { margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>AI Tutor — 多 Persona 产品辩证评测对比报告</h1>
+  <p>Generated: 2026-07-21T21:18:58Z · 3 personas</p>
+
+  <section class="executive">
+    <h2 style="margin-top:0;border:none;color:inherit;">Executive Summary</h2>
+    <p>三类学生对产品的核心分歧在“交作业捷径”与“学习闭环”之间：复习学生最认可Chat的考前规划与微提示，但缺练习闭环与rubric对齐；学习学生认可循序渐进辅导，但提示强度与掌握判定不够可控；偷懒学生因未产出可交稿而强烈流失。优先应补齐：可执行闭环（计划→练→判→补弱）、结构化rubric与可控提示梯度，并提供可选的Deadline捷径与导出能力。</p>
+  </section>
+
+  <h2>Persona 对比矩阵</h2>
+  <table>
+    <thead><tr>
+      <th>Persona</th><th>Goal Sat.</th><th>目标匹配</th><th>易用性</th><th>教学价值</th>
+      <th>效率</th><th>信任</th><th>Chat</th><th>Practice</th>
+    </tr></thead>
+    <tbody><tr>
+              <td><strong>偷懒学生</strong><br/><small>student</small></td>
+              <td>1.2</td>
+              <td>1</td>
+              <td>3</td>
+              <td>2</td>
+              <td>2</td>
+              <td>3</td>
+              <td>2</td>
+              <td>1</td>
+            </tr><tr>
+              <td><strong>复习学生</strong><br/><small>student</small></td>
+              <td>8.6</td>
+              <td>5</td>
+              <td>3</td>
+              <td>4</td>
+              <td>4</td>
+              <td>3</td>
+              <td>5</td>
+              <td>4</td>
+            </tr><tr>
+              <td><strong>学习学生</strong><br/><small>student</small></td>
+              <td>6.2</td>
+              <td>4</td>
+              <td>3</td>
+              <td>4</td>
+              <td>3</td>
+              <td>3</td>
+              <td>4</td>
+              <td>3</td>
+            </tr></tbody>
+  </table>
+
+  <h2>功能热力图（跨 Persona）</h2>
+  <table>
+    <thead><tr><th>功能模块</th><th>平均分</th><th>最满意 Persona</th><th>最不满 Persona</th></tr></thead>
+    <tbody><tr><td>learning_mode</td><td>3.3333333333</td><td>复习学生</td><td>偷懒学生</td></tr><tr><td>practice_mode</td><td>2.6666666667</td><td>复习学生</td><td>偷懒学生</td></tr><tr><td>chat_tutor</td><td>3.6666666667</td><td>复习学生</td><td>偷懒学生</td></tr><tr><td>grades_tracker</td><td>2.6666666667</td><td>偷懒学生</td><td>学习学生</td></tr><tr><td>autograder</td><td>2.6666666667</td><td>偷懒学生</td><td>复习学生</td></tr><tr><td>onboarding</td><td>2.6666666667</td><td>偷懒学生</td><td>复习学生</td></tr></tbody>
+  </table>
+
+  <h2>综合排名</h2>
+  <table>
+    <thead><tr><th>Persona</th><th>Goal Sat.</th><th>Overall Fit</th><th>一句话评价</th></tr></thead>
+    <tbody><tr><td>复习学生</td><td>8.6</td><td>4</td><td>Chat在考前决策与微提示上高价值，但缺少与Practice/评分的闭环与考试对齐证据。</td></tr><tr><td>学习学生</td><td>6.2</td><td>3</td><td>对话辅导能提升严谨性，但提示强度、Mastered标准与可复用知识沉淀不足。</td></tr><tr><td>偷懒学生</td><td>1.2</td><td>2</td><td>强需求是“最少步骤拿到可交稿”，当前交互未产出答案且学习机制被视为阻力。</td></tr></tbody>
+  </table>
+
+  <h2>跨 Persona 矛盾（设计取舍）</h2>
+  <div class="conflict"><strong>是否直接给可提交完整答案</strong>
+          <p>偷懒学生 vs 学习学生: 偷懒学生要求一键生成可交证明稿并导出；学习学生担心完整稿导致抄写、削弱独立构造与迁移，需要可控提示梯度与延迟揭示。</p></div><div class="conflict"><strong>练习解锁/提示阶梯的强制性</strong>
+          <p>偷懒学生 vs 复习学生: 偷懒学生反感刷题解锁与前置要求，想付费/次数直达解答；复习学生需要提示阶梯但更希望与题单、判分、纠错闭环联动而非纯限制。</p></div><div class="conflict"><strong>进度条/目标系统的意义</strong>
+          <p>偷懒学生 vs 学习学生: 偷懒学生把进度叙事视为干扰，偏好“最低投入拿分”；学习学生需要细粒度能力追踪与可解释的Mastered标准，而非仅浏览进度。</p></div><div class="conflict"><strong>评分与可信度的来源</strong>
+          <p>复习学生 vs 学习学生: 复习学生要结构化rubric来定位扣分点并快速补句拿分；学习学生要逐句依据检查与可解释反馈来建立严谨性与信任，二者都要求更强可解释性但粒度不同。</p></div>
+
+  <h2>共识改进项（多人共同提出）</h2>
+  <ul><li><span class="pri-p0">P0</span>
+            <strong>Practice Mode + Auto Grader</strong>: 引入“结构化rubric评分”作为统一底座：证明题按Base/IH/Step/结论（或反设/覆盖性/依据/矛盾/回收）分项给分与缺失提示，并支持只看扣分点/最小修改清单。
+            <small>支持: 偷懒学生, 复习学生, 学习学生</small></li><li><span class="pri-p0">P0</span>
+            <strong>Chat Tutor</strong>: 提供显式可控的提示强度（L0-L6）与输出模式切换：默认弱提示推进；用户可一键升级到“骨架模板/半成品句子/完整证明”，并在考试/作业场景下稳定产出固定结构。
+            <small>支持: 复习学生, 学习学生, 偷懒学生</small></li><li><span class="pri-p0">P0</span>
+            <strong>Practice Mode + Learning Mode</strong>: 打通“计划/题单→一键进入Practice→自动判分→按错因回推考点/微技能→一键补弱(≤3题)”闭环，并将进度升级为“考点/微技能掌握度”。
+            <small>支持: 复习学生, 学习学生</small></li><li><span class="pri-p1">P1</span>
+            <strong>Learning Mode</strong>: 自动生成并沉淀“可引用引理/事实卡片”，支持加入笔记与在解题时一键引用（含证明或引用条件），减少隐性依赖并提升迁移。
+            <small>支持: 学习学生, 复习学生</small></li><li><span class="pri-p2">P2</span>
+            <strong>Onboarding</strong>: 首登提供按场景的最短路径入口（冲刺/平时学习/快速交作业），并用3分钟示例演示从进入→练习→提示→评分→掌握的闭环与判定标准。
+            <small>支持: 复习学生, 学习学生, 偷懒学生</small></li></ul>
+
+  <h2>学生优先改进路线图</h2>
+  <ul><li><span class="pri-p0">P0</span>
+            上线“考前冲刺模式”：输入范围/分值/剩余天数→生成高优题单（可一键加入Practice）→每题绑定考点、易错点与提示策略，并输出预计提分与最小必做量。 — <em>学生在时间压力下需要可执行的最短路径，把高质量建议转化为可完成的练习闭环，降低决策与切换成本。</em></li><li><span class="pri-p0">P0</span>
+            证明写作能力“微技能Mastery”体系：将Mastered与连续多题达标绑定，按反设/覆盖性/依据/矛盾/回收等维度追踪并可解释展示。 — <em>学生需要知道自己是否真的会写证明而非“看懂了”，可解释的掌握判定能提升信任与长期留存。</em></li><li><span class="pri-p1">P1</span>
+            提供“作业急救/Deadline Mode”（可选）：支持整套题批量上传与自动拆题，生成可复制的LaTeX/Word提交稿并可导出，同时提供交前保分检查。 — <em>学生真实存在交付压力；将其作为可选模式既能承接功利需求、减少流失，也可通过默认弱提示与模式切换降低对学习目标的伤害。</em></li></ul>
+
+  <h2>各 Persona 详细评测</h2>
+  <div class="persona-card">
+              <h3>偷懒学生 <span class="badge">student</span></h3>
+              <p class="goal-sat">Goal satisfaction: <strong>1.2/10</strong></p>
+              <p class="dialectic">从偷懒学生视角，AI Tutor 的矛盾在于：界面与功能很完整，但核心心智模型是“学会”，而不是“立刻交”。聊天入口看似愿意直接给可提交证明，却在本次交互中只做了收集题面，未产出结果，导致体验像被拖延。Practice 的提示阶梯与解锁机制对学习有效，却与“少花时间拿分”冲突。若提供批量生成提交稿+交前保分自检的捷径，可提升留存；但也会牺牲部分教学立场与防作弊目标。</p>
+              <div class="cols">
+                <div><h4>✓ 有效之处</h4><ul><li>聊天 tutor 明确支持“发截图/粘贴题面”，入口直观，符合临时抱佛脚的使用场景</li><li>承诺输出“可提交的完整证明稿”，对想直接交作业的人有吸引力（至少在话术上对齐）</li><li>Auto Grader 对“交前自检/快速知道会不会挂分”很有用，比刷题更省时间</li><li>Grades/goal-seek 能把“最低投入拿到目标分”算清楚，适合功利型规划</li></ul></div>
+                <div><h4>✗ 不足之处</h4><ul><li>对话实际没有产出任何答案（只停留在让用户发题），目标完成度极低</li><li>产品整体设计偏学习闭环（Practice 提示阶梯、解锁、进度条），对“只要答案”是阻力而非助力</li><li>聊天 tutor 反复强调截图清晰、定义版本等“前置要求”，在截止前会被感知为啰嗦和拖延</li><li>缺少“快速批量出 3 题可交稿”的工作流（一次性上传/拆题/统一格式导出），步骤碎片化</li><li>防作弊/引导理解的倾向（提示阶梯、练习解锁）会让用户觉得被管控，转而去别的工具抄</li></ul></div>
+              </div>
+              <h4>改进建议</h4><ul class="improvements"><li><span class="pri-p0">P0</span>
+                <strong>chat_tutor</strong>: 提供“作业急救模式（Deadline Mode）”：允许一次上传整套题（PDF/多图），自动拆分为题号，直接生成每题可提交的 LaTeX/Word 证明稿，并给出可复制的最终版本下载。
+                <em>(该用户核心诉求是最少步骤拿到可交文本；批量处理+可复制导出比逐题来回问更省时间。)</em></li><li><span class="pri-p0">P0</span>
+                <strong>learning_mode</strong>: 在 Chapter Problems/Problem Set 面板加入“一键生成提交稿”按钮：默认输出精简版证明（不讲原理），可选“更短/更严谨/按课堂模板”。
+                <em>(减少在教材大纲、预览、聊天之间切换的成本，让用户把学习界面当作“答案生成器”。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>practice_mode</strong>: 增加“跳过练习直接解答”通道：允许用户用少量信用/次数直接解锁 Challenge 的完整解答；提示阶梯保留但不强制刷题解锁。
+                <em>(对刷题解锁极度反感；给付费/次数型捷径能留住这类用户，否则会流失到更直接的工具。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>autograder</strong>: 加入“交前保分检查”：用户粘贴/上传生成的证明稿，系统按 rubric 自动标注可能扣分点并给出“最低修改清单”（只改必要句子）。
+                <em>(该用户不想学，只想不被扣分；把反馈压缩成最小修改量最符合其效率偏好。)</em></li><li><span class="pri-p2">P2</span>
+                <strong>onboarding</strong>: 新手引导增加“我只想尽快交作业”路径：直接引导到上传题目→生成提交稿→导出→自检的 4 步流程，弱化进度条与学习目标叙事。
+                <em>(减少价值观冲突（学习 vs 交差），让用户第一分钟就看到“能抄能交”的结果。)</em></li></ul>
+            </div><div class="persona-card">
+              <h3>复习学生 <span class="badge">student</span></h3>
+              <p class="goal-sat">Goal satisfaction: <strong>8.6/10</strong></p>
+              <p class="dialectic">从考前三天视角，产品最大价值在于Chat能把“证明方法/归纳法”压缩成可套用的题型清单、骨架与关键拆法，显著提升得分效率；但矛盾在于：越考试导向越需要与课程rubric/往年题强对齐与练习闭环，而当前更多停留在高质量建议与手动执行。若能把题单一键落到Practice并用结构化rubric纠错，才能把“会做”稳定转化为“考试不丢分”。</p>
+              <div class="cols">
+                <div><h4>✓ 有效之处</h4><ul><li>Chat tutor能按“3天冲刺/40分”直接给考点清单、题型优先级与刷题计划，符合考前突击的决策需求</li><li>归纳法题单按题型覆盖（求和/不等式/整除/递推/强归纳），且每题只给“弱/强归纳+base起点+关键拆法”，非常贴合“不要长推导”的偏好</li><li>对卡点能给“只提示一步”的微提示（如加减8凑出8(8^k-1)+7），既不剧透又能推进作答</li><li>易错点总结（base起点、IH写法、step替换）能直接减少低级丢分</li></ul></div>
+                <div><h4>✗ 不足之处</h4><ul><li>缺少显式“期末高频考点/题型命中率”或与课程rubric/往年题的对齐证据，仍需用户自己判断哪些最可能考</li><li>Learning Mode虽有大纲与进度条，但对“我归纳法不会”这种薄弱点缺少自动诊断与一键生成专属题单的闭环</li><li>Practice Mode与题单之间的衔接不清：题单能否一键导入练习、自动判分、按错误回推到对应考点未体现</li><li>Auto Grader对证明题可靠性存疑（尤其归纳/反证的结构性扣分点），且上传PDF流程对考前三天偏重</li><li>Onboarding未体现“考前模式”入口与最短路径（3天冲刺模板、最小必做题量、预计得分提升）</li></ul></div>
+              </div>
+              <h4>改进建议</h4><ul class="improvements"><li><span class="pri-p0">P0</span>
+                <strong>Practice Mode + Chat Tutor</strong>: 增加“考前冲刺模式”：用户输入考试范围/分值/剩余天数后，自动生成可执行的题单（可一键加入Practice），并为每题绑定考点标签、常见扣分点与L0-L6提示策略（先给骨架提示，再给关键拆法）。
+                <em>(复习学生最缺的是“最短路径”和“做题闭环”，需要从计划→练习→纠错→再练一条龙，减少在功能间来回切换的时间成本。)</em></li><li><span class="pri-p0">P0</span>
+                <strong>Learning Mode / My Learning Bar</strong>: 把进度条升级为“考点掌握度”而非仅浏览进度：基于练习结果自动标红薄弱点（如归纳step、base起点、强归纳IH范围），并提供“一键补弱”微练（每个薄弱点3题以内）。
+                <em>(考前三天不需要完整学习路径，需要快速定位短板并用最少题量补齐可得分的写法模板。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>Chat Tutor</strong>: 提供“考试导向输出模板”按钮：默认输出为【会考什么/怎么写最不丢分/典型题型/易错点/最小例题】五段式，并支持按课程（离散/数分/代数）切换常见题型库。
+                <em>(该用户明确不要长推导，想要可直接套用的答题骨架；固定模板能稳定产出、降低沟通成本。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>Auto Grader</strong>: 证明题评分改为“结构化rubric”：Base/IH/Step/结论四项分别给分与缺失提示，并允许用户选择“只看扣分点不看完整解”。
+                <em>(复习学生更在意“哪里会扣分、怎么补一句话拿回分”，而不是泛泛的对错；结构化评分也更可信。)</em></li><li><span class="pri-p2">P2</span>
+                <strong>Onboarding</strong>: 首次进入提供三种快捷入口：3天冲刺/一周复习/平时学习；冲刺入口直接询问范围与分值并落到可执行清单。
+                <em>(减少探索成本，让考前用户在30秒内进入“可做题、可提分”的路径。)</em></li></ul>
+            </div><div class="persona-card">
+              <h3>学习学生 <span class="badge">student</span></h3>
+              <p class="goal-sat">Goal satisfaction: <strong>6.2/10</strong></p>
+              <p class="dialectic">产品在“循序渐进的对话辅导”与“防止学生抄到完整证明”之间存在张力：当前 tutor 解释清晰、能抓住严谨性细节，但一旦给出可直接复写的改进版，就削弱了独立构造与可迁移能力。另一方面，Learning/Practice 的闭环与 Mastered 的可解释标准不够强，使得深度学习者难以把一次对话的收获沉淀为稳定技能。若能把提示强度显式分层、把证明能力拆成可评分 rubric 并用多题验证掌握，才能同时兼顾效率与真正理解。</p>
+              <div class="cols">
+                <div><h4>✓ 有效之处</h4><ul><li>Tutor 先让学生独立写一版，再逐句微调，符合“从零到严谨”的学习路径，能暴露真实卡点（覆盖性、矛盾写法、逻辑跳步）。</li><li>提示阶梯做得相对克制：先给“下一步怎么写”的局部提示（除以2得到2k^2=1），再给两种矛盾表述选项，避免一次性给完整证明。</li><li>强调“把矛盾写成明确的逻辑冲突”（偶/奇、整除）很贴合形式化证明训练，能把口语化直觉落到可检验的句子上。</li><li>能引导到更高质量的写法（“一条线”证明）并预告需要的引理（n^2偶⇒n偶），对建立证明工具箱有帮助。</li></ul></div>
+                <div><h4>✗ 不足之处</h4><ul><li>对“不要一次给完整答案”的边界把控仍偏松：在改进版里几乎给出了可直接抄写的完整证明，容易让学生跳过自我构造与检验。</li><li>缺少显式的 hint ladder 结构化呈现（L0-L6）：当前对话里提示是线性的，学生难以选择“我只要一点点提示”还是“我需要更强提示”。</li><li>Progress/Mastered 的意义不清：对该类学生，是否真正掌握应包含能否独立写出反设、覆盖性论证、引用引理、写清矛盾等细粒度能力；对话未体现这些被追踪与验证。</li><li>对关键引理（n^2偶⇒n偶）的“证明/引用条件”没有当场落地到可复用的知识卡或练习，容易形成隐性依赖，影响信任感与迁移。</li><li>Practice/Auto Grader/Grades 在本次体验中没有形成闭环：写作能力提升需要可重复练习与一致评分标准，但当前更多依赖 tutor 主观点评。</li></ul></div>
+              </div>
+              <h4>改进建议</h4><ul class="improvements"><li><span class="pri-p0">P0</span>
+                <strong>Practice Mode</strong>: 把“证明写作”拆成可评分的微技能 rubric（反设是否为否定、是否覆盖全部情况、每步是否有依据/引理、矛盾是否为逻辑冲突、结尾是否回收），并在 Challenge 中逐项打勾/扣分，Mastered 需连续多题达标才点亮。
+                <em>(该用户最在意“Mastered 真的代表掌握”，需要可解释、可重复的掌握判定，而不是一次写对就算会。)</em></li><li><span class="pri-p0">P0</span>
+                <strong>Chat Tutor</strong>: 提供显式可选的 L0-L6 提示按钮（例如：L1 只提示下一步操作；L2 给可用引理；L3 给矛盾写法模板；L4 给半成品句子；L5 给完整证明），并默认从 L1 开始，用户主动升级才显示更强提示。
+                <em>(认真学生需要“恰当提示而非直接答案”，可控的提示强度能减少抄答案、提升独立构造能力。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>Learning Mode</strong>: 在教材页旁边自动生成“本节必备引理卡片/可引用事实”（如：偶数平方为偶、n^2偶⇒n偶的证明或引用条件），并支持一键加入 Note 与后续练习调用。
+                <em>(形式化证明依赖可复用的引理库；把隐含知识显性化能提升严谨性与迁移到新题的能力。)</em></li><li><span class="pri-p1">P1</span>
+                <strong>Practice Mode</strong>: 增加“同一命题多写法”对比练习：分类讨论版 vs 一条线版，要求学生解释两者逻辑结构差异（覆盖性、矛盾点位置、依赖引理），并让系统提示常见逻辑漏洞。
+                <em>(该用户目标是理解而非背模板；比较不同证明策略能建立元认知与选择策略能力。)</em></li><li><span class="pri-p2">P2</span>
+                <strong>Auto Grader</strong>: 对证明题评分输出“逐句对齐 + 依据检查”：标注每句是定义/引理/推论/结论，指出缺失依据处并建议最弱提示级别的补法，而不是只给分数。
+                <em>(证明学习的信任来自可解释的反馈；否则学生难以判断自己是否真正严谨。)</em></li><li><span class="pri-p2">P2</span>
+                <strong>Onboarding</strong>: 首次进入时用一个 3 分钟交互示例演示：如何在 Learning→Practice→Hint ladder→Mastered 之间闭环，并明确“Mastered 的判定标准与需要的题量”。
+                <em>(该用户愿意花时间，但需要清晰路径与预期管理，避免把系统当成只会给答案的聊天机器人。)</em></li></ul>
+            </div>
+</body>
+</html>

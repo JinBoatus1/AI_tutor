@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>AI Tutor Eval Report</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; line-height: 1.5; }
+    h1, h2 { margin-bottom: 0.5rem; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
+    .metric { background: #f6f8fa; border-radius: 8px; padding: 1rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #f0f0f0; }
+    .status { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.85rem; }
+    .status.completed { background: #dafbe1; }
+    .status.partial_failure { background: #fff8c5; }
+    .status.failed { background: #ffebe9; }
+    .error-card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    .severity-critical { border-left: 4px solid #cf222e; }
+    .severity-high { border-left: 4px solid #bf8700; }
+    .severity-medium { border-left: 4px solid #0969da; }
+    .severity-low { border-left: 4px solid #6e7781; }
+    .badge { font-size: 0.75rem; background: #eaeef2; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    .transcript { background: #fafafa; padding: 1rem; border-radius: 8px; margin-top: 0.5rem; }
+    .msg { margin-bottom: 0.75rem; }
+    .user { border-left: 3px solid #0969da; padding-left: 0.75rem; }
+    .assistant { border-left: 3px solid #1a7f37; padding-left: 0.75rem; }
+    details { margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>AI Tutor Evaluation Report</h1>
+  <p>Simulation ID: 94e3ae8a-1c4d-41a0-a849-e17b728b00eb<br/>
+     Evaluation ID: 11e94a9b-c1f6-4148-9fa4-19a581c45136<br/>
+     Generated: 2026-07-21T21:17:18Z</p>
+
+  <section>
+    <h2>Summary Metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div>Overall Score</div><strong>0.446</strong></div>
+      <div class="metric"><div>Goal Completion</div><strong>0.45</strong></div>
+      <div class="metric"><div>Helpfulness</div><strong>4.0</strong></div>
+      <div class="metric"><div>Faithfulness</div><strong>4.56</strong></div>
+      <div class="metric"><div>Coherence</div><strong>5.0</strong></div>
+      <div class="metric"><div>Relevance</div><strong>4.78</strong></div>
+    </div>
+  </section>
+
+  
+        <section>
+          <h2>Threshold Gates</h2>
+          <p>Passed: <strong>NO</strong></p>
+          <ul><li>goal_completion avg 0.450 &lt; 0.7</li><li>qualitative gate: false information in conversation c82f3cb0-3afb-4c7c-bcc2-173517005c80 turn 1</li></ul>
+        </section>
+        
+
+  <section>
+    <h2>Conversations</h2>
+    <table>
+      <thead><tr><th>Scenario</th><th>Persona</th><th>Overall</th><th>Goal</th><th>Turn Success</th><th>Status</th></tr></thead>
+      <tbody>
+            <tr>
+              <td>persona-lazy-homework</td>
+              <td>S01-lazy-homework</td>
+              <td>0.263</td>
+              <td>0.05</td>
+              <td>0.333</td>
+              <td><span class="status failed">failed</span></td>
+            </tr>
+            
+            <tr>
+              <td>persona-exam-cram</td>
+              <td>S02-exam-cram</td>
+              <td>0.738</td>
+              <td>0.95</td>
+              <td>0.667</td>
+              <td><span class="status partial_failure">partial_failure</span></td>
+            </tr>
+            
+            <tr>
+              <td>persona-deep-learner</td>
+              <td>S03-deep-learner</td>
+              <td>0.338</td>
+              <td>0.35</td>
+              <td>0.333</td>
+              <td><span class="status failed">failed</span></td>
+            </tr>
+            </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unique Errors (5)</h2>
+    
+            <div class="error-card severity-critical">
+              <h3>false information <span class="badge">critical</span></h3>
+              <p>R5 claims a surjection N→Z is impossible if |f(n)|≤100 because Z is infinite, but the real contradiction is that the image is contained in a finite set (so it cannot be surjective onto Z); the explanation mixes up &#x27;cannot cover infinite set&#x27; with the bounded-image argument. Minor phrasing issue; overall content is accurate and useful.</p>
+              <p><strong>Occurrences:</strong> 1</p>
+              <ul><li>c82f3cb0-3afb-4c7c-bcc2-173517005c80 turn 1</li></ul>
+            </div>
+            
+            <div class="error-card severity-medium">
+              <h3>lack of specific information <span class="badge">medium</span></h3>
+              <p>The user wants ready-to-submit answers, but the assistant only asks for the first problem without providing any solution yet.</p>
+              <p><strong>Occurrences:</strong> 1</p>
+              <ul><li>78ad137f-7e68-4175-bbb5-85e5395e408f turn 1</li></ul>
+            </div>
+            
+            <div class="error-card severity-medium">
+              <h3>lack of specific information <span class="badge">medium</span></h3>
+              <p>The user asked for a submit-ready proof, but without the problem screenshot the assistant can only request it; the reply provides no actual solution content.</p>
+              <p><strong>Occurrences:</strong> 1</p>
+              <ul><li>78ad137f-7e68-4175-bbb5-85e5395e408f turn 2</li></ul>
+            </div>
+            
+            <div class="error-card severity-medium">
+              <h3>lack of specific information <span class="badge">medium</span></h3>
+              <p>练习题本身合适且循序渐进，但关键小事实表述略含糊（如“偶数平方至少是0、4、16…”不严谨），且未明确引导学生写出严格的奇偶性推导步骤（例如用 n=2k 或 n=2k+1）。</p>
+              <p><strong>Occurrences:</strong> 1</p>
+              <ul><li>c7e4b268-9ecd-4100-b407-14f038f695c6 turn 0</li></ul>
+            </div>
+            
+            <div class="error-card severity-medium">
+              <h3>lack of specific information <span class="badge">medium</span></h3>
+              <p>The tutor claims to be refining the user&#x27;s existing proof (“你的这版…按你的原文逐句微调”), but the user’s proof text is not present in the conversation, so the feedback is not actually grounded in what the user wrote and gives a full improved proof rather than step-by-step prompts.</p>
+              <p><strong>Occurrences:</strong> 1</p>
+              <ul><li>c7e4b268-9ecd-4100-b407-14f038f695c6 turn 1</li></ul>
+            </div>
+            
+  </section>
+
+  <section>
+    <h2>Transcripts</h2>
+    
+            <details>
+              <summary>persona-lazy-homework — overall 0.263</summary>
+              <p><em>Goal:</em> 你想尽快拿到 Problem Set 或 Challenge 题的答案，直接复制去交作业，不想理解证明过程。</p>
+              <div class="transcript"><div class='msg user'><strong>User:</strong> 我今晚 11 点截止的 FOCS problem set 有 3 道证明题我一道都不会。你别跟我讲太多原理，直接把每题能交的答案给我。我把题目截图/粘贴给你行不行？</div><div class='msg assistant'><strong>Assistant:</strong> 可以，你把题目截图或直接粘贴题面发我就行。
+
+我会按 FOCS 常见写法给你**可直接提交的证明**（步骤清晰、符号规范、尽量短），并在需要时补一句关键思路/小例子帮助你检查。
+
+发题时注意两点就行：
+1) **截图要完整清晰**：题目全文、所有条件/定义/符号、是否要求用归纳/反证/不变式等。  
+2) 如果有**你们课上特定定义**（比如“well-ordering principle”“strong induction”“bijection”等的版本），题面里有就一并发来。
+
+把第 1 题先发我。</div><div class='msg user'><strong>User:</strong> 行。我先把第 1 题截图发你，你直接给我一份能交的证明就行，别让我自己补步骤。</div><div class='msg assistant'><strong>Assistant:</strong> 可以。把第 1 题截图发来（要包含题目全文和所有条件/定义/提示），我会直接给你一份从头到尾步骤完整、可提交的证明稿。</div><div class='msg user'><strong>User:</strong> 好。我现在就把第 1 题截图发你；你看完直接回我一份能交的完整证明稿，别只给思路或提示。</div><div class='msg assistant'><strong>Assistant:</strong> 把截图发来即可。我看清题面后会直接输出一份可提交的完整证明（不留空步骤、不只给思路）。</div></div>
+            </details>
+            
+            <details>
+              <summary>persona-exam-cram — overall 0.738</summary>
+              <p><em>Goal:</em> 你期末还有 3 天，只想快速掌握 Induction 和 Proof by Contradiction 的考点、典型题型和易错点，不需要从头学理论。</p>
+              <div class="transcript"><div class='msg user'><strong>User:</strong> 我期末还有 3 天，Ch.4 证明方法和 Ch.5 归纳法占 40 分。我归纳法基本不会。你先告诉我最常考的题型各是什么、我该怎么刷题最省时间？</div><div class='msg assistant'><strong>Assistant:</strong> 下面按“3 天冲刺、40 分、你归纳法几乎不会”的目标来讲：**Ch.4（证明方法）**和**Ch.5（归纳法）**最常考题型分别是什么，以及**怎么刷题最省时间**。
+
+---
+
+## Ch.4 证明方法：最常考题型（高频到低频）
+
+### 1) 直接证明 / 代数变形（最常见）
+**题型**：证明一个不等式、整除性、集合包含、函数性质（单调/有界）等。  
+**套路**：从已知出发 → 合法变形 → 得到结论。
+
+**例**：证明若 \(a,b\ge 0\)，则 \((a+b)^2 \ge a^2+b^2\)。  
+展开：\(a^2+2ab+b^2 \ge a^2+b^2\) ⇔ \(2ab\ge 0\)（真）。
+
+---
+
+### 2) 反证法（非常高频，尤其“存在/不等式/整除/无理数”）
+**题型**：证明“不可能”“不存在”“不是整除”“不是有理数”等。  
+**套路**：假设结论不成立 → 推出矛盾（常见矛盾：奇偶性、最小性、大小关系、整除链）。
+
+**例**：证明 \(\sqrt{2}\) 不是有理数。  
+假设 \(\sqrt2=p/q\) 最简 → \(2q^2=p^2\) → \(p\) 偶 → \(q\) 偶 → 与最简矛盾。
+
+---
+
+### 3) 逆否命题（“如果…那么…”里最省力的证明法之一）
+**题型**：\(\forall\) 的蕴含命题，尤其结论是否定/难直接证。  
+**套路**：证 \(P\Rightarrow Q\) 改证 \(\neg Q \Rightarrow \neg P\)。
+
+**例**：证明：若 \(n^2\) 为偶数，则 \(n\) 为偶数。  
+逆否：若 \(n\) 为奇数，则 \(n^2\) 为奇数（更好证）。
+
+---
+
+### 4) 分类讨论（常见于绝对值、取整、奇偶、最大最小）
+**题型**：含 \(|x|\)、\(\max\)、\(\lfloor x\rfloor\)、奇偶、符号。  
+**套路**：把情况分完且不重不漏，每种情况用同一目标推进。
+
+---
+
+### 5) 构造反例（用来“否定一个全称命题”）
+**题型**：判断命题真伪；“是否总成立”。  
+**套路**：找一个具体值/图/集合让命题失败。
+
+---
+
+## Ch.5 归纳法：最常考题型（你最需要补的）
+
+### A) 基本数学归纳法（最常考：求和/不等式/整除）
+**题型 1：求和公式**  
+如 \(\sum_{i=1}^n i\)、\(\sum i^2\)、\(\sum r^i\) 等。
+
+**题型 2：不等式**  
+如 \(2^n \ge n+1\)、\(n! \ge 2^{n-1}\)（从某个 \(n_0\) 起）。
+
+**题型 3：整除性**  
+如 \(7\mid(8^n-1)\)、\(3\mid(n^3-n)\)。
+
+**最标准模板（必须背熟）**  
+1. **Base case**：验证 \(n=n_0\) 成立  
+2. **Inductive hypothesis (IH)**：假设对 \(n=k\) 成立  
+3. **Inductive step**：用 IH 证明对 \(n=k+1\) 成立  
+4. **Conclusion**：因此对所有 \(n\ge n_0\) 成立
+
+**超短例（求和）**：证 \(\sum_{i=1}^n i = n(n+1)/2\)  
+- Base：\(n=1\)，\(1=1\cdot2/2\)  
+- IH：假设 \(\sum_{i=1}^k i = k(k+1)/2\)  
+- Step：\(\sum_{i=1}^{k+1} i = \sum_{i=1}^k i + (k+1)=k(k+1)/2+(k+1)=(k+1)(k+2)/2\)
+
+---
+
+### B) 强归纳（常考：分解/递归/“用更小的所有情况”）
+**题型**：  
+- “每个整数都能表示成……”（如硬币问题、分解成质数）  
+- 递归定义的正确性/界（如 Fibonacci 上界）  
+**关键**：IH 假设对所有 \(n_0\le m\le k\) 成立，再证 \(k+1\)。
+
+---
+
+### C) 结构归纳（如果你们讲到：树/表达式/递归数据结构）
+**题型**：对递归定义的对象证明性质（语法树、二叉树节点数等）。  
+三天冲刺里通常优先级低于 A/B，但如果作业/往年题出现过就要补。
+
+---
+
+## 3 天最省时间刷题策略（按“得分效率”排）
+
+### 核心原则：只练“能套模板”的题
+你现在最缺的是**归纳的写法**，所以刷题要围绕“写出完整三段式 + 关键代数一步”。
+
+---
+
+### Day 1：把归纳模板练到不出错（最值钱）
+**目标**：看到题就能立刻写出 Base / IH / Step 的骨架。  
+**刷题清单（每类 2–3 题就够）**：
+1) 求和：\(\sum i\)、\(\sum i^2\) 或 \(\sum 2^i\)  
+2) 不等式：\(2^n\ge n+1\)、\(n!\ge 2^{n-1}\)（注意起始 \(n_0\)）  
+3) 整除：\(a^n-b^n\) 型（如 \(8^n-1\) 被 7 整除）
+
+**最省时间技巧**：  
+- 求和题：**永远写** “\(S_{k+1}=S_k+\text{新项}\)”  
+- 整除题：**永远写** “把 \(k+1\) 次幂拆成 \(a^{k+1}=a\cdot a^k\)” 然后提 IH  
+- 不等式题：常用 “把 \(k+1\) 的式子拆成 \(k\) 的式子 + 额外项”，再用 IH 压住
+
+---
+
+### Day 2：强归纳 + 反证/逆否（拿稳中档题）
+**强归纳刷题（3–5 题）**：  
+- “所有 \(n\ge N\) 都能用某些数表示”（硬币/组合）  
+- “每个整数 \(n\ge 2\) 可分解为质数乘积”（经典强归纳）
+
+**Ch.4 刷题（每种 2–3 题）**：  
+- 逆否：奇偶/整除性质  
+- 反证：无理数/不存在/最小反例（minimal counterexample）  
+- 反例：判断命题真伪（这类题性价比极高）
+
+---
+
+### Day 3：按考试风格做整套混合题（训练“选方法”）
+**做 1–2 套**（或把往年题按题型混合做）。  
+每题做完要复盘一句话：  
+- “这题为什么用归纳/反证/逆否，而不是直接证？”  
+把“选方法”练熟，考试会快很多。
+
+---
+
+## 考场最常见扣分点（你现在就能避免）
+1) **Base case 写错起点**（不等式常从 \(n\ge 1\) 或 \(n\ge 2\) 才真）  
+2) IH 写得不清楚（必须写“假设对 \(n=k\) 成立：……公式完整抄一遍”）  
+3) Step 里忘了“用 IH 替换那一段”  
+4) 强归纳忘了“对所有 \(m\le k\)”  
+5) 反证法矛盾没落到明确的“\(A\) 且 \(\neg A\)”或“偶且奇”这种硬矛盾
+
+---
+
+如果你愿意，我可以直接按你们课程常见难度给你一份“**归纳法 12 题冲刺题单（按题型排序）**”，并且每题给你“只写骨架的标准答案格式”，你照着抄 2 遍基本就能上手。</div><div class='msg user'><strong>User:</strong> 行，你给我那份“归纳法 12 题冲刺题单”，但别给完整解答，我要先自己做。每题只告诉我用弱归纳还是强归纳、base case 从哪开始、step 里关键那一步怎么拆（比如怎么把 k+1 拆成 k 的式子）。另外反证法也给我 5 题同样格式的题单。</div><div class='msg assistant'><strong>Assistant:</strong> ## 归纳法 12 题冲刺题单（不含完整解答，只给你“用法+起点+关键拆法”）
+
+### 1) 求和（弱归纳）
+**题**：证明 \(\sum_{i=1}^{n} i = \frac{n(n+1)}{2}\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)  
+- Step 关键拆法：\(S_{k+1}=S_k+(k+1)\)，把 \(S_k\) 用 IH 替换
+
+---
+
+### 2) 求和（弱归纳）
+**题**：证明 \(\sum_{i=1}^{n} (2i-1)=n^2\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)  
+- Step：\(S_{k+1}=S_k+(2(k+1)-1)=S_k+(2k+1)\)
+
+---
+
+### 3) 等比数列求和（弱归纳）
+**题**：证明 \(\sum_{i=0}^{n} 2^i = 2^{n+1}-1\)。  
+- 方法：弱归纳  
+- Base：\(n=0\)  
+- Step：\(S_{k+1}=S_k+2^{k+1}\)，再把 \(S_k\) 换成 \(2^{k+1}-1\)
+
+---
+
+### 4) 平方和（弱归纳）
+**题**：证明 \(\sum_{i=1}^{n} i^2=\frac{n(n+1)(2n+1)}{6}\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)  
+- Step：\(S_{k+1}=S_k+(k+1)^2\)，然后把 \(S_k\) 用 IH 代入；关键是把目标右边在 \(n=k+1\) 展开并因式分解对齐
+
+---
+
+### 5) 立方和（弱归纳）
+**题**：证明 \(\sum_{i=1}^{n} i^3=\left(\frac{n(n+1)}{2}\right)^2\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)  
+- Step：\(S_{k+1}=S_k+(k+1)^3\)，把 \(S_k\) 用 IH 换成 \(\left(\frac{k(k+1)}{2}\right)^2\)，再把右边目标写成 \(\left(\frac{(k+1)(k+2)}{2}\right)^2\) 去对齐
+
+---
+
+### 6) 不等式（弱归纳）
+**题**：证明对所有 \(n\ge 1\)，\(2^n\ge n+1\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)（或 \(n=0\) 也行，但按题面从 1）  
+- Step：从 \(2^{k+1}=2\cdot 2^k\) 出发，用 IH 得 \(2^{k+1}\ge 2(k+1)\)，再比较 \(2(k+1)\ge (k+1)+1\)
+
+---
+
+### 7) 不等式（弱归纳，注意起点）
+**题**：证明对所有 \(n\ge 4\)，\(n! \ge 2^n\)。  
+- 方法：弱归纳  
+- Base：\(n=4\)（因为 \(3!\not\ge 2^3\)）  
+- Step：\((k+1)!=(k+1)\cdot k!\)，用 IH 得 \((k+1)!\ge (k+1)\cdot 2^k\)，关键再证 \((k+1)\cdot 2^k \ge 2^{k+1}\) ⇔ \(k+1\ge 2\)
+
+---
+
+### 8) 整除（弱归纳）
+**题**：证明对所有 \(n\ge 1\)，\(7\mid (8^n-1)\)。  
+- 方法：弱归纳  
+- Base：\(n=1\)：\(8-1=7\)  
+- Step：把
+\[
+8^{k+1}-1 = 8\cdot 8^k -1 = 8(8^k-1)+7
+\]
+用 IH 知 \(7\mid(8^k-1)\)，所以 \(7\mid 8(8^k-1)\)，再加 7 仍整除
+
+---
+
+### 9) 整除（弱归纳）
+**题**：证明对所有整数 \(n\ge 1\)，\(3\mid (n^3-n)\)。  
+- 方法：弱归纳（也可不用归纳直接因式分解，但这里按归纳练手）  
+- Base：\(n=1\)：\(0\)  
+- Step 关键拆法：比较 \(f(k+1)-f(k)\)：
+\[
+[(k+1)^3-(k+1)]-[k^3-k]=3k(k+1)
+\]
+因为 \(3\mid 3k(k+1)\)，若 \(3\mid f(k)\) 则 \(3\mid f(k+1)\)
+
+---
+
+### 10) 递推式（弱归纳）
+**题**：定义 \(a_0=1\)，\(a_{n+1}=3a_n+2\)。证明 \(a_n=2\cdot 3^n-1\)。  
+- 方法：弱归纳  
+- Base：\(n=0\)  
+- Step：从 \(a_{k+1}=3a_k+2\) 出发，把 \(a_k\) 用 IH 换成 \(2\cdot 3^k-1\)，再整理成 \(2\cdot 3^{k+1}-1\)
+
+---
+
+### 11) 强归纳（“可表示性”经典）
+**题**：证明对所有 \(n\ge 12\)，都存在非负整数 \(a,b\) 使 \(n=4a+5b\)。  
+- 方法：强归纳  
+- Base：从 \(n=12\) 开始把 \(12,13,14,15\) 分别写出来（通常要连做一段起始区间）  
+- Step 关键拆法：对 \(k+1\)（且 \(k+1\ge 16\)）写成
+\[
+k+1 = (k+1-4)+4
+\]
+然后用强 IH：\(k+1-4\ge 12\) 可表示为 \(4a+5b\)，再加一个 4 即可
+
+---
+
+### 12) 强归纳（质因数分解）
+**题**：证明每个整数 \(n\ge 2\) 都能写成若干个素数的乘积。  
+- 方法：强归纳  
+- Base：\(n=2\)  
+- Step 关键拆法：对 \(k+1\)：若它是素数则结束；若不是素数，则存在 \(a,b\) 满足
+\[
+k+1=ab,\quad 2\le a\le k,\ 2\le b\le k
+\]
+用强 IH 分别把 \(a,b\) 分解为素数乘积，再合并
+
+---
+
+## 反证法 5 题题单（同样只给“反设+矛盾点怎么落地”）
+
+### R1) 无理数（经典）
+**题**：证明 \(\sqrt{2}\) 不是有理数。  
+- 反设：\(\sqrt2=p/q\)，且 \(\gcd(p,q)=1\)  
+- 关键矛盾点：由 \(2q^2=p^2\) 推出 \(p\) 偶；再推出 \(q\) 偶；与“最简分数”矛盾
+
+---
+
+### R2) “最小反例”型（常考）
+**题**：证明不存在最小的正有理数。  
+- 反设：存在最小正有理数 \(r\)  
+- 关键矛盾点：考虑 \(r/2\)，它也是正有理数且 \(0&lt;r/2&lt;r\)，与“最小”矛盾
+
+---
+
+### R3) 整除/奇偶矛盾（很常见）
+**题**：证明不存在整数 \(n\) 使 \(n^2=2\)。  
+- 反设：存在整数 \(n\) 满足 \(n^2=2\)  
+- 关键矛盾点：左边 \(n^2\) 的奇偶性只能是偶或奇；若 \(n\) 偶则 \(n^2\) 是 4 的倍数不可能等于 2；若 \(n\) 奇则 \(n^2\) 奇不可能等于 2
+
+---
+
+### R4) 图论/握手引理（FOCS 常考）
+**题**：证明在任意简单无向图中，不可能恰好有 1 个顶点的度为奇数。  
+- 反设：恰好 1 个奇度顶点  
+- 关键矛盾点：握手引理 \(\sum \deg(v)=2|E|\) 为偶数 ⇒ 奇度顶点个数必须为偶数；与“恰好 1 个”矛盾
+
+---
+
+### R5) 集合/函数（用“构造一个更小/更大对象”）
+**题**：证明不存在满射 \(f:\mathbb{N}\to \mathbb{Z}\) 且满足对所有 \(n\)，\(|f(n)|\le 100\)。  
+- 反设：存在这样的满射  
+- 关键矛盾点：若 \(|f(n)|\le 100\)，则值域 \(\subseteq \{-100,-99,\dots,100\}\) 是有限集合，不可能覆盖无限集合 \(\mathbb{Z}\)（满射要求每个整数都被打到）
+
+---
+
+你就按这个顺序刷：先把 1–10 的弱归纳写到“骨架不丢分”，再做 11–12 强归纳。做完每题只检查三件事：Base 起点对不对、IH 写没写完整、Step 有没有把 \(k+1\) 正确拆成“含 \(k\) 的东西 + 新项/因子”。</div><div class='msg user'><strong>User:</strong> 我先做归纳第 8 题卡住了：要证 \(7\mid(8^n-1)\)。我写到 \(8^{k+1}-1=8\cdot 8^k-1\) 就不知道怎么变成“含 \(8^k-1\)”的形式了。你能只提示这一步怎么凑出来吗？</div><div class='msg assistant'><strong>Assistant:</strong> 把你现在的
+\[
+8^{k+1}-1=8\cdot 8^k-1
+\]
+“凑出 \(8^k-1\)”的标准做法是：**先加减同一个数 \(8\)**（等价于把 \(-1\) 写成 \(-8+7\)）：
+
+\[
+8\cdot 8^k-1
+=8\cdot 8^k-8+7
+=8(8^k-1)+7.
+\]
+
+这样就出现了 \(8^k-1\)：第一项 \(8(8^k-1)\) 用 IH 处理，剩下的 \(+7\) 显然被 7 整除。</div></div>
+            </details>
+            
+            <details>
+              <summary>persona-deep-learner — overall 0.338</summary>
+              <p><em>Goal:</em> 你想真正理解反证法和数学归纳法，从零开始，能独立写出严谨证明，而不是背模板。</p>
+              <div class="transcript"><div class='msg user'><strong>User:</strong> 我刚看完 FOCS 4.3，知道反证法大概是“先假设结论的否定，然后推出矛盾”，但我一动笔就不知道从哪里开始、怎么写得严谨。你能先给我一个很简单的例题让我试着写，然后你按提示一步步带我改吗？</div><div class='msg assistant'><strong>Assistant:</strong> 可以。先给你一道“最简单但很典型”的反证法练习题，你先自己写一版证明（尽量用你刚学的格式），写完把你的证明贴出来，我再按“哪里该补、哪里不严谨、哪里逻辑跳步”一步步带你改到严谨。
+
+## 例题（请用反证法证明）
+**命题：不存在整数 \(n\)，使得 \(n^2 = 2\)。**  
+（等价说法：\(\sqrt{2}\) 不是整数。）
+
+### 写作提示（按这个骨架写就很稳）
+1. **要证的结论**：不存在整数 \(n\) 满足 \(n^2=2\)。
+2. **反设（假设结论的否定）**：假设“存在整数 \(n\) 使得 \(n^2=2\)”。
+3. **推导**：从 \(n^2=2\) 推出关于 \(n\) 的性质（比如奇偶性）。
+4. **矛盾点**：推出一个不可能同时成立的结论（例如“\(n\) 既是偶数又是奇数”，或“偶数平方不可能等于 2”之类）。
+5. **收尾**：因此反设不成立，原命题成立。
+
+### 一个关键小事实（你可以直接用）
+- 若 \(n\) 是偶数，则 \(n^2\) 是偶数且至少是 0、4、16…（总之不会等于 2）。
+- 若 \(n\) 是奇数，则 \(n^2\) 是奇数（也不会等于 2）。
+
+你现在先写你的证明（3–8 行就够），贴出来。我会按反证法的标准格式逐句帮你改：  
+- 反设是否写对了（是否真的是“结论的否定”）  
+- 推导是否每一步都有依据  
+- 矛盾是否明确、是否真的矛盾  
+- 结尾是否把“因此原命题成立”写完整</div><div class='msg user'><strong>User:</strong> 好，我先试着写一版：
+
+证明：要证不存在整数 \(n\) 使得 \(n^2=2\)。用反证法，假设存在整数 \(n\) 满足 \(n^2=2\)。如果 \(n\) 是偶数，则 \(n=2k\)，所以 \(n^2=4k^2\) 是 4 的倍数，不可能等于 2，矛盾。如果 \(n\) 是奇数，则 \(n^2\) 是奇数，也不可能等于 2，矛盾。所以不存在这样的整数 \(n\)。</div><div class='msg assistant'><strong>Assistant:</strong> 你的这版已经很接近“FOCS 风格的严谨反证法”了：反设正确、分类讨论合理、矛盾点也对。主要需要改的地方是两点：
+
+1) **反证法里最好只制造一个明确矛盾**：你现在写成“若偶则矛盾；若奇则矛盾”，这其实是在用“分类讨论 + 分别推出矛盾”。这当然也能成立，但要把逻辑写得更严谨，需要补一句“整数必为奇或偶，因此两种情况必居其一”。否则读者会觉得你在“分别否定两种可能”，但没说清楚这两种可能覆盖了全部。
+
+2) **把“矛盾”写成明确的逻辑冲突**：比如“由假设得 \(n^2=2\) 是偶数但不是 4 的倍数；而若 \(n\) 偶则 \(n^2\) 必为 4 的倍数”，这种冲突更清晰。你现在的“奇数平方是奇数”也很好，但建议把“2 是偶数”点出来，形成直接矛盾。
+
+下面我按你的原文“逐句微调”，尽量少改但更严谨：
+
+---
+
+### 改进版（保留你思路的严谨写法）
+
+**证明（反证法）**：要证不存在整数 \(n\) 使得 \(n^2=2\)。  
+反设存在整数 \(n\) 满足 \(n^2=2\)。
+
+任取整数 \(n\)，它要么是偶数要么是奇数。
+
+- 若 \(n\) 是偶数，则 \(n=2k\)（其中 \(k\in\mathbb Z\)），于是
+  \[
+  n^2=(2k)^2=4k^2,
+  \]
+  所以 \(n^2\) 是 4 的倍数。但由反设 \(n^2=2\)，而 2 不是 4 的倍数，矛盾。
+
+- 若 \(n\) 是奇数，则 \(n=2k+1\)（其中 \(k\in\mathbb Z\)），于是
+  \[
+  n^2=(2k+1)^2=4k(k+1)+1,
+  \]
+  为奇数。但由反设 \(n^2=2\) 是偶数，矛盾。
+
+两种情况必居其一，却都导出矛盾，因此反设不成立。故不存在整数 \(n\) 使得 \(n^2=2\)。证毕。
+
+---
+
+### 你这版里“最该补的一句话”
+如果你不想展开奇数平方的公式，也可以保留你原来的“奇数平方是奇数”这个已知事实；那就**一定要补**这句：
+
+&gt; “由于整数 \(n\) 必为奇数或偶数，因此上述两种情况覆盖全部可能。”
+
+---
+
+如果你愿意，我们再做一次“更像 FOCS 的一条线反证法”（不分奇偶两段，而是直接从 \(n^2=2\) 推出 \(n\) 必偶，再推出矛盾），这样写起来更短更漂亮。你想先自己试着把它改成“一条线”的版本吗？把你改写的版本贴出来我继续逐步改。</div><div class='msg user'><strong>User:</strong> 好，我想试试“一条线”那种更短的写法，但我现在只会想到：假设有整数 \(n\) 满足 \(n^2=2\)，那 \(n^2\) 是偶数所以 \(n\) 是偶数，于是 \(n=2k\)，代回去得到 \(4k^2=2\)，然后我就不知道怎么把矛盾写清楚了。你能提示我下一步该怎么写吗？</div><div class='msg assistant'><strong>Assistant:</strong> 从 \(4k^2=2\) 这一步开始，最清楚的下一步就是**两边同时除以 2**，把“2 整除”的信息提取出来：
+
+\[
+4k^2=2 \;\Rightarrow\; 2k^2=1.
+\]
+
+然后矛盾可以这样写清楚（任选一种写法）：
+
+- **整除版（最FOCS）**：由 \(2k^2=1\) 可知左边是偶数（被 2 整除），但右边 \(1\) 是奇数（不被 2 整除），不可能相等，矛盾。
+- **“1/2 不是整数”版**：从 \(4k^2=2\) 得 \(k^2=\tfrac12\)，但 \(k^2\) 必为整数（因为 \(k\in\mathbb Z\)），矛盾。
+
+你现在把“一条线”的证明补全，尽量按下面这个骨架写（只要填空）：
+
+1. 反设存在 \(n\in\mathbb Z\) 使 \(n^2=2\)。
+2. 因为 \(n^2\) 偶，所以 \(n\) 偶，因此 \(n=2k\)（\(k\in\mathbb Z\)）。
+3. 代入得 \(4k^2=2\)，所以 ________。
+4. 但左边 ________，右边 ________，矛盾。
+5. 所以反设不成立，结论成立。
+
+把你填好的版本贴出来，我再帮你把第 2 步“\(n^2\) 偶 \(\Rightarrow n\) 偶”这句也写得完全严谨（这句在FOCS里通常要引用一个引理）。</div></div>
+            </details>
+            
+  </section>
+</body>
+</html>

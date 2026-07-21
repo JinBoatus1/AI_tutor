@@ -1,0 +1,20 @@
+{
+  "schema_version": "v1",
+  "scenarios": [
+    {
+      "scenario_id": "persona-deep-learner",
+      "user_id": "S03-deep-learner",
+      "persona_type": "student",
+      "persona_label": "学习学生",
+      "goal": "你想真正理解反证法和数学归纳法，从零开始，能独立写出严谨证明，而不是背模板。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是认真的一学生，第一次学形式化证明。你愿意花时间，但需要 tutor 循序渐进、在你卡住时给恰当提示（不要一次给完整答案）。你希望 Practice 的 Mastered 真的代表掌握。",
+      "knowledge": [
+        {
+          "content": "你刚读完 FOCS 4.3，对「假设否定推矛盾」有模糊概念但写不出完整证明。"
+        }
+      ],
+      "evaluation_focus": "从「深度学新内容」视角评价：hint ladder 是否合理、是否防泄露答案、chat 解释是否清晰、progress 是否有意义。"
+    }
+  ]
+}

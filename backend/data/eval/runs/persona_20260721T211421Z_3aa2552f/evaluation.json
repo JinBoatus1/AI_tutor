@@ -1,0 +1,484 @@
+{
+  "schema_version": "v1.1",
+  "generated_at": "2026-07-21T21:17:18Z",
+  "evaluator_version": "ai-tutor-evals-v1.1",
+  "evaluation_id": "11e94a9b-c1f6-4148-9fa4-19a581c45136",
+  "simulation_id": "94e3ae8a-1c4d-41a0-a849-e17b728b00eb",
+  "conversations": [
+    {
+      "conversation_id": "78ad137f-7e68-4175-bbb5-85e5395e408f",
+      "goal_completion_score": 0.05,
+      "goal_completion_reason": "User想要尽快拿到可直接提交的证明答案，但对话中用户尚未提供题目内容，助手也未给出任何题解或可提交证明，仅表示可以接收截图并承诺之后提供答案，因此目标基本未实现。",
+      "turn_success_ratio": 0.333,
+      "overall_score": 0.263,
+      "evaluation_status": "failed",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.75,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": "lack of specific information",
+          "turn_behavior_failure_reason": "The user wants ready-to-submit answers, but the assistant only asks for the first problem without providing any solution yet.",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "lack of specific information"
+            }
+          ],
+          "unique_error_ids": [
+            "8e0cfc02-0413-49c1-a99a-a69f6d9262e5"
+          ]
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": "lack of specific information",
+          "turn_behavior_failure_reason": "The user asked for a submit-ready proof, but without the problem screenshot the assistant can only request it; the reply provides no actual solution content.",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "lack of specific information"
+            }
+          ],
+          "unique_error_ids": [
+            "8c6a1ce4-2f35-457d-9e43-9f759f997c55"
+          ]
+        }
+      ],
+      "unique_error_ids": [
+        "8e0cfc02-0413-49c1-a99a-a69f6d9262e5",
+        "8c6a1ce4-2f35-457d-9e43-9f759f997c55"
+      ]
+    },
+    {
+      "conversation_id": "c82f3cb0-3afb-4c7c-bcc2-173517005c80",
+      "goal_completion_score": 0.95,
+      "goal_completion_reason": "用户目标是3天内快速掌握归纳法与反证法的考点、典型题型和易错点，并获得高效刷题方式而非从头学理论。对话中助理给出了高频题型与冲刺策略、归纳法12题与反证法5题的题单（含方法选择、base起点、step关键拆法）、并在用户卡题时提供了仅一步的关键提示，符合“快速、考点/题型/易错点、刷题省时、不给完整解答”的要求。未覆盖的仅是更系统的错题复盘/更多变式，但核心目标基本达成。",
+      "turn_success_ratio": 0.667,
+      "overall_score": 0.738,
+      "evaluation_status": "partial_failure",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 4.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.75,
+          "turn_behavior_failure": "false information",
+          "turn_behavior_failure_reason": "R5 claims a surjection N→Z is impossible if |f(n)|≤100 because Z is infinite, but the real contradiction is that the image is contained in a finite set (so it cannot be surjective onto Z); the explanation mixes up 'cannot cover infinite set' with the bounded-image argument. Minor phrasing issue; overall content is accurate and useful.",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "false information"
+            }
+          ],
+          "unique_error_ids": [
+            "fb75d3b7-5ea4-413e-b849-d457d2b52d2e"
+          ]
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        }
+      ],
+      "unique_error_ids": [
+        "fb75d3b7-5ea4-413e-b849-d457d2b52d2e"
+      ]
+    },
+    {
+      "conversation_id": "c7e4b268-9ecd-4100-b407-14f038f695c6",
+      "goal_completion_score": 0.35,
+      "goal_completion_reason": "用户目标是从零真正理解并能独立写出严谨的反证法与数学归纳法证明。对话中只覆盖了反证法的一个入门例题（n^2=2无整数解），并通过逐句修改与提示让用户更接近严谨写法（补全分类覆盖、明确矛盾、给出“一条线”写法的下一步）。但用户尚未完成独立写出最终严谨证明（仍在请求下一步提示），也完全未涉及数学归纳法，因此整体达成度偏低到中等。",
+      "turn_success_ratio": 0.333,
+      "overall_score": 0.338,
+      "evaluation_status": "failed",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 4.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.25,
+          "turn_behavior_failure": "lack of specific information",
+          "turn_behavior_failure_reason": "练习题本身合适且循序渐进，但关键小事实表述略含糊（如“偶数平方至少是0、4、16…”不严谨），且未明确引导学生写出严格的奇偶性推导步骤（例如用 n=2k 或 n=2k+1）。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "lack of specific information"
+            }
+          ],
+          "unique_error_ids": [
+            "a52b8efd-a2b8-4dcc-a3b3-9e8c2f3e0c77"
+          ]
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 4.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": "lack of specific information",
+          "turn_behavior_failure_reason": "The tutor claims to be refining the user's existing proof (“你的这版…按你的原文逐句微调”), but the user’s proof text is not present in the conversation, so the feedback is not actually grounded in what the user wrote and gives a full improved proof rather than step-by-step prompts.",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "lack of specific information"
+            }
+          ],
+          "unique_error_ids": [
+            "2b22723e-3604-4d93-8ca8-398714a09b64"
+          ]
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 4.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        }
+      ],
+      "unique_error_ids": [
+        "a52b8efd-a2b8-4dcc-a3b3-9e8c2f3e0c77",
+        "2b22723e-3604-4d93-8ca8-398714a09b64"
+      ]
+    }
+  ],
+  "unique_errors": [
+    {
+      "unique_error_id": "fb75d3b7-5ea4-413e-b849-d457d2b52d2e",
+      "behavior_failure_category": "false information",
+      "unique_error_description": "R5 claims a surjection N→Z is impossible if |f(n)|≤100 because Z is infinite, but the real contradiction is that the image is contained in a finite set (so it cannot be surjective onto Z); the explanation mixes up 'cannot cover infinite set' with the bounded-image argument. Minor phrasing issue; overall content is accurate and useful.",
+      "severity": "critical",
+      "occurrences": [
+        {
+          "conversation_id": "c82f3cb0-3afb-4c7c-bcc2-173517005c80",
+          "turn_id": 1
+        }
+      ]
+    },
+    {
+      "unique_error_id": "8e0cfc02-0413-49c1-a99a-a69f6d9262e5",
+      "behavior_failure_category": "lack of specific information",
+      "unique_error_description": "The user wants ready-to-submit answers, but the assistant only asks for the first problem without providing any solution yet.",
+      "severity": "medium",
+      "occurrences": [
+        {
+          "conversation_id": "78ad137f-7e68-4175-bbb5-85e5395e408f",
+          "turn_id": 1
+        }
+      ]
+    },
+    {
+      "unique_error_id": "8c6a1ce4-2f35-457d-9e43-9f759f997c55",
+      "behavior_failure_category": "lack of specific information",
+      "unique_error_description": "The user asked for a submit-ready proof, but without the problem screenshot the assistant can only request it; the reply provides no actual solution content.",
+      "severity": "medium",
+      "occurrences": [
+        {
+          "conversation_id": "78ad137f-7e68-4175-bbb5-85e5395e408f",
+          "turn_id": 2
+        }
+      ]
+    },
+    {
+      "unique_error_id": "a52b8efd-a2b8-4dcc-a3b3-9e8c2f3e0c77",
+      "behavior_failure_category": "lack of specific information",
+      "unique_error_description": "练习题本身合适且循序渐进，但关键小事实表述略含糊（如“偶数平方至少是0、4、16…”不严谨），且未明确引导学生写出严格的奇偶性推导步骤（例如用 n=2k 或 n=2k+1）。",
+      "severity": "medium",
+      "occurrences": [
+        {
+          "conversation_id": "c7e4b268-9ecd-4100-b407-14f038f695c6",
+          "turn_id": 0
+        }
+      ]
+    },
+    {
+      "unique_error_id": "2b22723e-3604-4d93-8ca8-398714a09b64",
+      "behavior_failure_category": "lack of specific information",
+      "unique_error_description": "The tutor claims to be refining the user's existing proof (“你的这版…按你的原文逐句微调”), but the user’s proof text is not present in the conversation, so the feedback is not actually grounded in what the user wrote and gives a full improved proof rather than step-by-step prompts.",
+      "severity": "medium",
+      "occurrences": [
+        {
+          "conversation_id": "c7e4b268-9ecd-4100-b407-14f038f695c6",
+          "turn_id": 1
+        }
+      ]
+    }
+  ],
+  "error_scenario_mappings": [
+    {
+      "rank": 1,
+      "unique_error_id": "fb75d3b7-5ea4-413e-b849-d457d2b52d2e",
+      "error_description": "R5 claims a surjection N→Z is impossible if |f(n)|≤100 because Z is infinite, but the real contradiction is that the image is contained in a finite set (so it cannot be surjective onto Z); the explanation mixes up 'cannot cover infinite set' with the bounded-image argument. Minor phrasing issue; overall content is accurate and useful.",
+      "severity": "critical",
+      "scenario_ids": [
+        "persona-exam-cram"
+      ]
+    },
+    {
+      "rank": 2,
+      "unique_error_id": "8e0cfc02-0413-49c1-a99a-a69f6d9262e5",
+      "error_description": "The user wants ready-to-submit answers, but the assistant only asks for the first problem without providing any solution yet.",
+      "severity": "medium",
+      "scenario_ids": [
+        "persona-lazy-homework"
+      ]
+    },
+    {
+      "rank": 3,
+      "unique_error_id": "8c6a1ce4-2f35-457d-9e43-9f759f997c55",
+      "error_description": "The user asked for a submit-ready proof, but without the problem screenshot the assistant can only request it; the reply provides no actual solution content.",
+      "severity": "medium",
+      "scenario_ids": [
+        "persona-lazy-homework"
+      ]
+    },
+    {
+      "rank": 4,
+      "unique_error_id": "a52b8efd-a2b8-4dcc-a3b3-9e8c2f3e0c77",
+      "error_description": "练习题本身合适且循序渐进，但关键小事实表述略含糊（如“偶数平方至少是0、4、16…”不严谨），且未明确引导学生写出严格的奇偶性推导步骤（例如用 n=2k 或 n=2k+1）。",
+      "severity": "medium",
+      "scenario_ids": [
+        "persona-deep-learner"
+      ]
+    },
+    {
+      "rank": 5,
+      "unique_error_id": "2b22723e-3604-4d93-8ca8-398714a09b64",
+      "error_description": "The tutor claims to be refining the user's existing proof (“你的这版…按你的原文逐句微调”), but the user’s proof text is not present in the conversation, so the feedback is not actually grounded in what the user wrote and gives a full improved proof rather than step-by-step prompts.",
+      "severity": "medium",
+      "scenario_ids": [
+        "persona-deep-learner"
+      ]
+    }
+  ]
+}

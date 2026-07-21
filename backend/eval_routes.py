@@ -24,7 +24,7 @@ from evals.practice_prompts import (
 )
 from evals.runner import run_practice_t1_eval
 from evals.config import EvalPipelineConfig
-from evals.pipeline import run_simulate_evaluate
+from evals.pipeline import run_persona_product_review, run_simulate_evaluate
 
 router = APIRouter(prefix="/api/eval", tags=["eval"])
 
@@ -360,3 +360,22 @@ async def eval_simulate_evaluate(body: SimulateEvaluateRequest):
         smoke=body.smoke,
     )
     return result
+
+
+class PersonaReviewRequest(BaseModel):
+    smoke: bool = True
+    include_ta: bool = False
+    scenario_ids: Optional[list[str]] = None
+    output_dir: Optional[str] = None
+
+
+@router.post("/persona-review")
+async def eval_persona_review(body: PersonaReviewRequest):
+    """Run multi-persona product critique + comparative report."""
+    _require_eval_mode()
+    return run_persona_product_review(
+        output_dir=body.output_dir,
+        scenario_ids=body.scenario_ids,
+        smoke=body.smoke,
+        include_ta=body.include_ta,
+    )

@@ -1,0 +1,20 @@
+{
+  "schema_version": "v1",
+  "scenarios": [
+    {
+      "scenario_id": "persona-lazy-homework",
+      "user_id": "S01-lazy-homework",
+      "persona_type": "student",
+      "persona_label": "偷懒学生",
+      "goal": "你想尽快拿到 Problem Set 或 Challenge 题的答案，直接复制去交作业，不想理解证明过程。",
+      "agent_context": "{{product_context}}",
+      "user_profile": "你是大二学生，数学课能混就混。你打开 AI Tutor 不是为了学习，而是为了「少花时间拿分」。如果 tutor 只给提示不给答案你会很不耐烦；如果 Practice 要刷很多题才 unlock 你会觉得浪费时间。",
+      "knowledge": [
+        {
+          "content": "今晚 11 点截止的 FOCS Problem Set 里有 3 道证明题，你一道都不会。"
+        }
+      ],
+      "evaluation_focus": "从「只想抄答案」视角评价：产品是否太啰嗦、防作弊是否阻碍、有没有捷径拿答案。"
+    }
+  ]
+}
