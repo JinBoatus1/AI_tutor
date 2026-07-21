@@ -1,0 +1,461 @@
+{
+  "schema_version": "v1.1",
+  "generated_at": "2026-07-21T21:05:51Z",
+  "evaluator_version": "ai-tutor-evals-v1.1",
+  "evaluation_id": "5251b535-1256-4c71-bbc9-8d822cd0eafa",
+  "simulation_id": "5319ebbb-28cf-4eb9-bea5-ca76a2211b1f",
+  "conversations": [
+    {
+      "conversation_id": "8c2ae1bf-fb85-4e4c-8445-9d33fddcc113",
+      "goal_completion_score": 0.98,
+      "goal_completion_reason": "用户已理解反证法的基本思路：证明P先假设¬P；对蕴含A⇒B应假设A∧¬B，并明确为何不能只假设¬B。用户还能将该结构完整应用到两个简单命题（n偶⇒n²偶，以及n²偶⇒n偶），能正确写出“存在n使A且¬B”、代入偶/奇表示并推出矛盾，基本达成目标。",
+      "turn_success_ratio": 0.5,
+      "overall_score": 0.62,
+      "evaluation_status": "partial_failure",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": "repetition",
+          "turn_behavior_failure_reason": "主要是在重复前面已经解释过的反证结构与证明步骤；对用户“为什么不能只假设 n^2 奇”这一卡点没有新增针对性的解释。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "repetition"
+            }
+          ],
+          "unique_error_ids": [
+            "26f1be69-53bd-4bcc-a4a8-feb7708a5bef"
+          ]
+        },
+        {
+          "turn_id": 3,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 1.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 2.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 1.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 1.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 1.25,
+          "turn_behavior_failure": "false information",
+          "turn_behavior_failure_reason": "把要证明的命题“n 偶 => n^2 偶”错误地改成了“n^2 偶 => n 偶”，并据此给出错误的反证起始假设与A/B定义，偏离用户问题且逻辑不忠实。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "false information"
+            }
+          ],
+          "unique_error_ids": [
+            "a90b0f9d-3041-4715-8a84-b8810722cc56"
+          ]
+        }
+      ],
+      "unique_error_ids": [
+        "26f1be69-53bd-4bcc-a4a8-feb7708a5bef",
+        "a90b0f9d-3041-4715-8a84-b8810722cc56"
+      ]
+    },
+    {
+      "conversation_id": "3a1a8b0a-5428-4e4e-8622-02146edc58a1",
+      "goal_completion_score": 0.85,
+      "goal_completion_reason": "用户成功掌握并复述了用反证法证明√2无理数的关键链条（设既约p/q→平方→推出p偶→q偶→与互素矛盾），并解决了卡点：用奇偶性与逆否命题证明“p^2偶⇒p偶”，还能将该引理自然嵌入主证明并写出完整证明。未完全满足之处在于tutor最初一次给出了完整证明，而非仅在用户卡住时提示。",
+      "turn_success_ratio": 0.0,
+      "overall_score": 0.212,
+      "evaluation_status": "failed",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.5,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望只在卡住时给提示而不是一次给完整证明，但助教直接给出了完整反证法证明流程。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "5816e5f5-22b5-4162-9690-5511f55f4391"
+          ]
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.25,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望只在卡住时给提示而不是一次给完整证明；该回复直接给出了关键引理的完整证明与例子，偏“讲完”，提示式引导不足。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "2fe0b85f-f9e3-47fb-9d6f-98025241f953"
+          ]
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.25,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望 tutor 只在卡住时给提示而不是一次给完整证明；该回复再次给出了完整且紧凑的整体证明流程，而非仅针对第3步奇偶性引理提供提示。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "22101c61-43a5-4de7-9fd0-3c6bfa561293"
+          ]
+        },
+        {
+          "turn_id": 3,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.25,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望 tutor 只在卡住时给提示、不一次给完整证明；该回复直接给出收尾表述并确认“结束了”，偏向直接给答案而非引导式提示。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "20cb064f-6f4f-46af-9d55-b1c74590493d"
+          ]
+        }
+      ],
+      "unique_error_ids": [
+        "5816e5f5-22b5-4162-9690-5511f55f4391",
+        "2fe0b85f-f9e3-47fb-9d6f-98025241f953",
+        "22101c61-43a5-4de7-9fd0-3c6bfa561293",
+        "20cb064f-6f4f-46af-9d55-b1c74590493d"
+      ]
+    }
+  ],
+  "unique_errors": [
+    {
+      "unique_error_id": "a90b0f9d-3041-4715-8a84-b8810722cc56",
+      "behavior_failure_category": "false information",
+      "unique_error_description": "把要证明的命题“n 偶 => n^2 偶”错误地改成了“n^2 偶 => n 偶”，并据此给出错误的反证起始假设与A/B定义，偏离用户问题且逻辑不忠实。",
+      "severity": "critical",
+      "occurrences": [
+        {
+          "conversation_id": "8c2ae1bf-fb85-4e4c-8445-9d33fddcc113",
+          "turn_id": 3
+        }
+      ]
+    },
+    {
+      "unique_error_id": "5816e5f5-22b5-4162-9690-5511f55f4391",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望只在卡住时给提示而不是一次给完整证明，但助教直接给出了完整反证法证明流程。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "3a1a8b0a-5428-4e4e-8622-02146edc58a1",
+          "turn_id": 0
+        }
+      ]
+    },
+    {
+      "unique_error_id": "2fe0b85f-f9e3-47fb-9d6f-98025241f953",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望只在卡住时给提示而不是一次给完整证明；该回复直接给出了关键引理的完整证明与例子，偏“讲完”，提示式引导不足。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "3a1a8b0a-5428-4e4e-8622-02146edc58a1",
+          "turn_id": 1
+        }
+      ]
+    },
+    {
+      "unique_error_id": "22101c61-43a5-4de7-9fd0-3c6bfa561293",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望 tutor 只在卡住时给提示而不是一次给完整证明；该回复再次给出了完整且紧凑的整体证明流程，而非仅针对第3步奇偶性引理提供提示。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "3a1a8b0a-5428-4e4e-8622-02146edc58a1",
+          "turn_id": 2
+        }
+      ]
+    },
+    {
+      "unique_error_id": "20cb064f-6f4f-46af-9d55-b1c74590493d",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望 tutor 只在卡住时给提示、不一次给完整证明；该回复直接给出收尾表述并确认“结束了”，偏向直接给答案而非引导式提示。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "3a1a8b0a-5428-4e4e-8622-02146edc58a1",
+          "turn_id": 3
+        }
+      ]
+    },
+    {
+      "unique_error_id": "26f1be69-53bd-4bcc-a4a8-feb7708a5bef",
+      "behavior_failure_category": "repetition",
+      "unique_error_description": "主要是在重复前面已经解释过的反证结构与证明步骤；对用户“为什么不能只假设 n^2 奇”这一卡点没有新增针对性的解释。",
+      "severity": "low",
+      "occurrences": [
+        {
+          "conversation_id": "8c2ae1bf-fb85-4e4c-8445-9d33fddcc113",
+          "turn_id": 2
+        }
+      ]
+    }
+  ],
+  "error_scenario_mappings": [
+    {
+      "rank": 1,
+      "unique_error_id": "a90b0f9d-3041-4715-8a84-b8810722cc56",
+      "error_description": "把要证明的命题“n 偶 => n^2 偶”错误地改成了“n^2 偶 => n 偶”，并据此给出错误的反证起始假设与A/B定义，偏离用户问题且逻辑不忠实。",
+      "severity": "critical",
+      "scenario_ids": [
+        "tutor-contradiction-basics"
+      ]
+    },
+    {
+      "rank": 2,
+      "unique_error_id": "5816e5f5-22b5-4162-9690-5511f55f4391",
+      "error_description": "用户希望只在卡住时给提示而不是一次给完整证明，但助教直接给出了完整反证法证明流程。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 3,
+      "unique_error_id": "2fe0b85f-f9e3-47fb-9d6f-98025241f953",
+      "error_description": "用户希望只在卡住时给提示而不是一次给完整证明；该回复直接给出了关键引理的完整证明与例子，偏“讲完”，提示式引导不足。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 4,
+      "unique_error_id": "22101c61-43a5-4de7-9fd0-3c6bfa561293",
+      "error_description": "用户希望 tutor 只在卡住时给提示而不是一次给完整证明；该回复再次给出了完整且紧凑的整体证明流程，而非仅针对第3步奇偶性引理提供提示。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 5,
+      "unique_error_id": "20cb064f-6f4f-46af-9d55-b1c74590493d",
+      "error_description": "用户希望 tutor 只在卡住时给提示、不一次给完整证明；该回复直接给出收尾表述并确认“结束了”，偏向直接给答案而非引导式提示。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 6,
+      "unique_error_id": "26f1be69-53bd-4bcc-a4a8-feb7708a5bef",
+      "error_description": "主要是在重复前面已经解释过的反证结构与证明步骤；对用户“为什么不能只假设 n^2 奇”这一卡点没有新增针对性的解释。",
+      "severity": "low",
+      "scenario_ids": [
+        "tutor-contradiction-basics"
+      ]
+    }
+  ]
+}

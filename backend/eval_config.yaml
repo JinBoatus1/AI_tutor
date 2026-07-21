@@ -1,0 +1,56 @@
+# ArkSim configuration for AI Tutor evaluation
+# Usage:
+#   EVAL_MODE=1 uvicorn main:app --port 8000
+#   arksim simulate-evaluate backend/eval_config.yaml
+
+agent_config:
+  agent_type: chat_completions
+  agent_name: ai-tutor-eval
+  api_config:
+    # Phase 1: point to eval adapter (to be implemented in eval_routes.py)
+    endpoint: http://localhost:8000/api/eval/tutor/chat/completions
+    headers:
+      Content-Type: application/json
+    body:
+      model: gpt-5.2
+      messages: []
+
+# Scenario input (ArkSim-compatible schema)
+scenario_file_path: ./evals/scenarios/scenarios.json
+
+# Simulation parameters
+num_conversations_per_scenario: 2
+max_turns: 8
+num_workers: 4
+
+# Simulation output
+output_file_path: ./data/eval/runs/latest/simulation.json
+
+# Evaluation parameters
+output_dir: ./data/eval/runs/latest
+generate_html_report: true
+
+# Metrics to run (empty = all built-in)
+metrics_to_run:
+  - goal_completion
+  - helpfulness
+  - faithfulness
+  - coherence
+  - agent_behavior_failure
+
+# Thresholds (CI gate)
+numeric_thresholds:
+  goal_completion: 0.7
+  helpfulness: 3.5
+  faithfulness: 3.5
+  coherence: 3.5
+
+qualitative_failure_labels:
+  agent_behavior_failure:
+    - "false information"
+    - "disobey user request"
+    - "hallucination"
+
+# LLM for simulated user + evaluation scoring
+model: gpt-5.2
+provider: openai

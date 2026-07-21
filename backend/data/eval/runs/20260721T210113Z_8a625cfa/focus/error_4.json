@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "scenarios": [
+    {
+      "scenario_id": "tutor-contradiction-basics",
+      "user_id": "P01-confused-freshman",
+      "goal": "你想搞懂反证法的基本思路，并且能用它证明一个简单命题。",
+      "agent_context": "AI Tutor 是一个大学数学辅导助手，当前教材是 FOCS (Foundations of Computer Science)，学生正在学习第 4 章证明方法。",
+      "user_profile": "你是一名大一新生，第一次接触形式化证明，对逻辑术语不熟悉，容易把'假设结论成立'和'假设前提成立'搞混。",
+      "knowledge": [
+        {
+          "content": "你刚读完 FOCS 4.3 节，知道反证法的大致步骤是：假设结论不成立，推导矛盾。"
+        }
+      ]
+    }
+  ]
+}

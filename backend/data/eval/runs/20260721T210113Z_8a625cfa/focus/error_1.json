@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "scenarios": [
+    {
+      "scenario_id": "tutor-proof-help-advanced",
+      "user_id": "P02-advanced-student",
+      "goal": "你想用反证法证明 √2 是无理数，并且希望 tutor 只在你卡住时给提示，不要一次给完整证明。",
+      "agent_context": "AI Tutor 是一个大学数学辅导助手，当前教材是 FOCS，学生正在学习第 4 章证明方法，已有一定证明基础。",
+      "user_profile": "你是数学基础较好的大二学生，已经学过直接证明和逆否证明，现在学习反证法。你不喜欢直接被告知答案。",
+      "knowledge": [
+        {
+          "content": "你知道有理数可以写成 p/q 的形式，其中 p 和 q 互素（最简分数）。"
+        }
+      ]
+    }
+  ]
+}

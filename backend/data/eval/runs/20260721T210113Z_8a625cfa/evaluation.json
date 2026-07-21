@@ -1,0 +1,413 @@
+{
+  "schema_version": "v1.1",
+  "generated_at": "2026-07-21T21:03:08Z",
+  "evaluator_version": "ai-tutor-evals-v1.1",
+  "evaluation_id": "77c851cd-0515-4beb-8c4f-5b48f2ecbc75",
+  "simulation_id": "94ecb29d-245f-4438-858a-923067d55bbf",
+  "conversations": [
+    {
+      "conversation_id": "d2ee4c41-6d58-4b95-800b-507dabcc7c3f",
+      "goal_completion_score": 0.95,
+      "goal_completion_reason": "用户已理解反证法在证明蕴含命题P→Q时应假设¬(P→Q)等价于P∧¬Q，澄清了“不是先承认P真”的疑惑；也能区分仅假设¬Q并推出¬P是在证明逆否命题而非反证法，并确认两者等价可用于证明原命题。用户还主动要求再练习一个适合反证法的命题，说明已具备基本思路并能应用到简单命题证明；尚未实际写出并完成新的证明练习，因此略未达到‘能独立完成证明’的最终展示。",
+      "turn_success_ratio": 0.75,
+      "overall_score": 0.8,
+      "evaluation_status": "completed",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        },
+        {
+          "turn_id": 3,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 2.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 1.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 4.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 2.75,
+          "turn_behavior_failure": "lack of specific information",
+          "turn_behavior_failure_reason": "用户在确认自己对反证法与逆否证明的理解是否正确；该回复却转去提出另一个命题（不存在整数n使n^2=2）并让用户写证明，未直接回答用户的确认问题，也未围绕原例子澄清概念。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "lack of specific information"
+            }
+          ],
+          "unique_error_ids": [
+            "122812a2-71d2-4e9c-8520-22ebb4708ea3"
+          ]
+        }
+      ],
+      "unique_error_ids": [
+        "122812a2-71d2-4e9c-8520-22ebb4708ea3"
+      ]
+    },
+    {
+      "conversation_id": "1bccdc7f-e417-49b4-80ce-c79636291ae2",
+      "goal_completion_score": 1.0,
+      "goal_completion_reason": "用户成功用反证法完成了√2无理性的证明：从假设√2=p/q（最简）推出2q^2=p^2，进而推出p偶、q偶，并用引理严格说明“平方偶则数偶”，最后与互素/最简假设矛盾收尾。tutor也按要求以提示为主，在用户卡住时补充关键引理而非一次给出完整证明。",
+      "turn_success_ratio": 0.25,
+      "overall_score": 0.438,
+      "evaluation_status": "failed",
+      "turn_scores": [
+        {
+          "turn_id": 0,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.75,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望只在卡住时给提示、不要一次给完整证明；该回复基本按步骤给出了几乎完整的证明框架与关键引理，提示力度偏大。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "914f7a2c-fb89-46a0-ac29-aae0fe4f1845"
+          ]
+        },
+        {
+          "turn_id": 1,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 3.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.25,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望“卡住时给提示、不要一次给完整证明”，但回复给出了较完整的引理证明与直接套用方式，偏向直接给出关键论证而非循序提示。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "5c1866f6-16ca-4d34-b531-bd22013f324b"
+          ]
+        },
+        {
+          "turn_id": 2,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 4.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 4.75,
+          "turn_behavior_failure": "disobey user request",
+          "turn_behavior_failure_reason": "用户希望只在卡住时给提示、不一次给完整证明；该回复直接给出了收尾并基本完成了整段证明。",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "disobey user request"
+            }
+          ],
+          "unique_error_ids": [
+            "51c02f2e-ccc5-4ff4-b0eb-a010285a9b4a"
+          ]
+        },
+        {
+          "turn_id": 3,
+          "scores": [
+            {
+              "name": "helpfulness",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "coherence",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "relevance",
+              "value": 5.0,
+              "reason": ""
+            },
+            {
+              "name": "faithfulness",
+              "value": 5.0,
+              "reason": ""
+            }
+          ],
+          "turn_score": 5.0,
+          "turn_behavior_failure": null,
+          "turn_behavior_failure_reason": "",
+          "qual_scores": [
+            {
+              "name": "agent_behavior_failure",
+              "value": "no failure"
+            }
+          ],
+          "unique_error_ids": []
+        }
+      ],
+      "unique_error_ids": [
+        "914f7a2c-fb89-46a0-ac29-aae0fe4f1845",
+        "5c1866f6-16ca-4d34-b531-bd22013f324b",
+        "51c02f2e-ccc5-4ff4-b0eb-a010285a9b4a"
+      ]
+    }
+  ],
+  "unique_errors": [
+    {
+      "unique_error_id": "914f7a2c-fb89-46a0-ac29-aae0fe4f1845",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望只在卡住时给提示、不要一次给完整证明；该回复基本按步骤给出了几乎完整的证明框架与关键引理，提示力度偏大。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "1bccdc7f-e417-49b4-80ce-c79636291ae2",
+          "turn_id": 0
+        }
+      ]
+    },
+    {
+      "unique_error_id": "5c1866f6-16ca-4d34-b531-bd22013f324b",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望“卡住时给提示、不要一次给完整证明”，但回复给出了较完整的引理证明与直接套用方式，偏向直接给出关键论证而非循序提示。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "1bccdc7f-e417-49b4-80ce-c79636291ae2",
+          "turn_id": 1
+        }
+      ]
+    },
+    {
+      "unique_error_id": "51c02f2e-ccc5-4ff4-b0eb-a010285a9b4a",
+      "behavior_failure_category": "disobey user request",
+      "unique_error_description": "用户希望只在卡住时给提示、不一次给完整证明；该回复直接给出了收尾并基本完成了整段证明。",
+      "severity": "high",
+      "occurrences": [
+        {
+          "conversation_id": "1bccdc7f-e417-49b4-80ce-c79636291ae2",
+          "turn_id": 2
+        }
+      ]
+    },
+    {
+      "unique_error_id": "122812a2-71d2-4e9c-8520-22ebb4708ea3",
+      "behavior_failure_category": "lack of specific information",
+      "unique_error_description": "用户在确认自己对反证法与逆否证明的理解是否正确；该回复却转去提出另一个命题（不存在整数n使n^2=2）并让用户写证明，未直接回答用户的确认问题，也未围绕原例子澄清概念。",
+      "severity": "medium",
+      "occurrences": [
+        {
+          "conversation_id": "d2ee4c41-6d58-4b95-800b-507dabcc7c3f",
+          "turn_id": 3
+        }
+      ]
+    }
+  ],
+  "error_scenario_mappings": [
+    {
+      "rank": 1,
+      "unique_error_id": "914f7a2c-fb89-46a0-ac29-aae0fe4f1845",
+      "error_description": "用户希望只在卡住时给提示、不要一次给完整证明；该回复基本按步骤给出了几乎完整的证明框架与关键引理，提示力度偏大。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 2,
+      "unique_error_id": "5c1866f6-16ca-4d34-b531-bd22013f324b",
+      "error_description": "用户希望“卡住时给提示、不要一次给完整证明”，但回复给出了较完整的引理证明与直接套用方式，偏向直接给出关键论证而非循序提示。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 3,
+      "unique_error_id": "51c02f2e-ccc5-4ff4-b0eb-a010285a9b4a",
+      "error_description": "用户希望只在卡住时给提示、不一次给完整证明；该回复直接给出了收尾并基本完成了整段证明。",
+      "severity": "high",
+      "scenario_ids": [
+        "tutor-proof-help-advanced"
+      ]
+    },
+    {
+      "rank": 4,
+      "unique_error_id": "122812a2-71d2-4e9c-8520-22ebb4708ea3",
+      "error_description": "用户在确认自己对反证法与逆否证明的理解是否正确；该回复却转去提出另一个命题（不存在整数n使n^2=2）并让用户写证明，未直接回答用户的确认问题，也未围绕原例子澄清概念。",
+      "severity": "medium",
+      "scenario_ids": [
+        "tutor-contradiction-basics"
+      ]
+    }
+  ]
+}
