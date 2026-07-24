@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 import os
 import statistics
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
-
-import fitz
 
 from deps import create_chat_completion
 from .models import (
@@ -24,6 +21,8 @@ from .models import (
     QuestionAttempt,
     QuestionBatchTask,
 )
+from .prompt_loader import get_prompt, render_prompt
+from .vision import pdf_first_page_data_url
 
 
 _VALID_MODES = {"absolute", "percentage", "manual_review"}
@@ -39,15 +38,6 @@ def _strip_json_fence(raw_text: str) -> str:
     if cleaned.endswith("```"):
         cleaned = cleaned[:-3].strip()
     return cleaned
-
-
-def _pdf_first_page_to_b64(pdf_bytes: bytes, dpi: int = 150) -> str:
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        pix = doc[0].get_pixmap(dpi=dpi)
-        return base64.b64encode(pix.tobytes("png")).decode("utf-8")
-    finally:
-        doc.close()
 
 
 def _as_optional_float(value: Any) -> float | None:
@@ -89,11 +79,15 @@ class LLMQuestionEvaluator(QuestionEvaluatorBase):
         *,
         model: str | None = None,
         completion: Callable[..., Any] = create_chat_completion,
+        image_policy: str = "full",
     ) -> None:
+        if image_policy not in {"full", "text_only", "answer_verification"}:
+            raise ValueError(f"Unsupported evaluator image policy: {image_policy!r}")
         self.evaluator_name = evaluator_name
         self._role_instruction = role_instruction
         self._model = model or os.getenv("AUTOGRADER_MODEL", "gpt-5.2")
         self._completion = completion
+        self._image_policy = image_policy
 
     @staticmethod
     def _parse_evaluation(raw_text: str, attempt: QuestionAttempt, evaluator_name: str) -> AgentQuestionEvaluation:
@@ -103,94 +97,140 @@ class LLMQuestionEvaluator(QuestionEvaluatorBase):
         if not isinstance(parsed, dict):
             raise ValueError("Evaluator output must be a JSON object")
 
-        returned_attempt_id = str(parsed.get("question_attempt_id") or "")
+        returned_attempt_id = str(parsed.get("id") or parsed.get("question_attempt_id") or "")
         if returned_attempt_id != attempt.question_attempt_id:
             raise ValueError(
                 f"Evaluator returned attempt id {returned_attempt_id!r}; expected {attempt.question_attempt_id!r}"
             )
 
-        mode = str(parsed.get("mode") or "manual_review").lower()
+        mode = str(parsed.get("m") or parsed.get("mode") or "manual_review").lower()
         if mode not in _VALID_MODES:
             mode = "manual_review"
 
-        feedback_raw = parsed.get("feedback")
+        feedback_raw = parsed.get("fb")
+        if not isinstance(feedback_raw, dict):
+            feedback_raw = parsed.get("feedback")
         feedback_data = dict(feedback_raw) if isinstance(feedback_raw, dict) else {}
         feedback_data["summary"] = str(feedback_data.get("summary") or "")
-        for field_name in ("awarded_points", "deductions", "evidence"):
-            field_value = feedback_data.get(field_name)
+        compact_feedback_keys = {
+            "awarded_points": "plus",
+            "deductions": "minus",
+            "evidence": "evidence",
+        }
+        for field_name, compact_name in compact_feedback_keys.items():
+            field_value = feedback_data.get(field_name, feedback_data.get(compact_name))
             feedback_data[field_name] = [str(item) for item in field_value] if isinstance(field_value, list) else []
+        if feedback_data.get("suggestion") is None and feedback_data.get("next") is not None:
+            feedback_data["suggestion"] = feedback_data["next"]
         if feedback_data.get("suggestion") is not None:
             feedback_data["suggestion"] = str(feedback_data["suggestion"])
         feedback = AttemptFeedback.model_validate(feedback_data)
         evidence = parsed.get("evidence")
         if not isinstance(evidence, list):
-            evidence = []
+            evidence = feedback.evidence
 
         return AgentQuestionEvaluation(
             question_attempt_id=attempt.question_attempt_id,
             evaluator_name=evaluator_name,
-            score=_as_optional_float(parsed.get("score")),
+            score=_as_optional_float(parsed.get("s", parsed.get("score"))),
             mode=mode,
-            max_score=_as_optional_float(parsed.get("max_score")),
-            manual_review=bool(parsed.get("manual_review", False)) or mode == "manual_review",
-            reason=str(parsed.get("reason")) if parsed.get("reason") is not None else None,
+            max_score=_as_optional_float(parsed.get("x", parsed.get("max_score"))),
+            manual_review=bool(parsed.get("review", parsed.get("manual_review", False)))
+            or mode == "manual_review",
+            reason=(
+                str(parsed.get("why", parsed.get("reason")))
+                if parsed.get("why", parsed.get("reason")) is not None
+                else None
+            ),
             evidence=[str(item) for item in evidence],
             feedback=feedback,
         )
 
     def _build_messages(self, attempt: QuestionAttempt) -> list[dict[str, Any]]:
-        system_message = (
-            "You are one independent evaluator in a multi-agent exam grading system. "
-            "Evaluate only the supplied question_attempt_id and never compare this student with other students. "
-            f"Your assigned perspective is: {self._role_instruction} "
-            "Use recognized text as the primary evidence and images to verify transcription or layout. "
-            "Apply the supplied grading criteria when present. Use mode=absolute with score and max_score when full marks are known, "
-            "otherwise use mode=percentage with score from 0 to 100. If the evidence is not reliable enough, use mode=manual_review, "
-            "score=null, and manual_review=true. Return only valid JSON with this shape: "
-            '{"question_attempt_id":"...","score":12,"max_score":16,"mode":"absolute",'
-            '"manual_review":false,"reason":"...","evidence":["..."],'
-            '"feedback":{"summary":"...","awarded_points":["..."],"deductions":["..."],'
-            '"evidence":["..."],"suggestion":"..."}}.'
-        )
-
-        user_content: list[dict[str, Any]] = [
-            {"type": "text", "text": f"QUESTION ATTEMPT ID: {attempt.question_attempt_id}"},
-            {"type": "text", "text": f"DISPLAYED QUESTION LABEL: {attempt.displayed_label}"},
-        ]
+        user_content: list[dict[str, Any]] = []
         if attempt.grading_criteria:
-            user_content.append({"type": "text", "text": f"GRADING CRITERIA:\n{attempt.grading_criteria}"})
+            user_content.append(
+                {
+                    "type": "text",
+                    "text": render_prompt(
+                        "multi_agent.grading_criteria",
+                        grading_criteria=attempt.grading_criteria,
+                    ),
+                }
+            )
         if attempt.question_text:
-            user_content.append({"type": "text", "text": f"RECOGNIZED QUESTION:\n{attempt.question_text}"})
+            user_content.append(
+                {
+                    "type": "text",
+                    "text": render_prompt(
+                        "multi_agent.recognized_question",
+                        question_text=attempt.question_text,
+                    ),
+                }
+            )
+        if self._image_policy == "full" or not attempt.question_text:
+            user_content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": pdf_first_page_data_url(
+                            attempt.question_pdf,
+                            dpi_env="AUTOGRADER_EVALUATOR_IMAGE_DPI",
+                            default_dpi=110,
+                        )
+                    },
+                }
+            )
         user_content.append(
             {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{_pdf_first_page_to_b64(attempt.question_pdf)}"},
+                "type": "text",
+                "text": render_prompt(
+                    "multi_agent.attempt_header",
+                    question_attempt_id=attempt.question_attempt_id,
+                    displayed_label=attempt.displayed_label,
+                ),
             }
         )
 
         if attempt.question_only:
-            user_content.append(
-                {
-                    "type": "text",
-                    "text": (
-                        "No separate answer was supplied. Derive and return a reference answer in feedback.summary. "
-                        "Preserve the current compatibility behavior by assigning full credit to a reliably solved reference answer."
-                    ),
-                }
-            )
+            user_content.append({"type": "text", "text": get_prompt("multi_agent.question_only")})
         else:
             if attempt.answer_text:
-                user_content.append({"type": "text", "text": f"RECOGNIZED STUDENT ANSWER:\n{attempt.answer_text}"})
-            if attempt.answer_pdf:
+                user_content.append(
+                    {
+                        "type": "text",
+                        "text": render_prompt(
+                            "multi_agent.recognized_answer",
+                            answer_text=attempt.answer_text,
+                        ),
+                    }
+                )
+            should_send_answer_image = self._image_policy in {"full", "answer_verification"} or not attempt.answer_text
+            if attempt.answer_pdf and should_send_answer_image:
                 user_content.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{_pdf_first_page_to_b64(attempt.answer_pdf)}"},
+                        "image_url": {
+                            "url": pdf_first_page_data_url(
+                                attempt.answer_pdf,
+                                dpi_env="AUTOGRADER_EVALUATOR_IMAGE_DPI",
+                                default_dpi=110,
+                            )
+                        },
                     }
                 )
+        user_content.append(
+            {
+                "type": "text",
+                "text": render_prompt(
+                    "multi_agent.role_focus",
+                    role_instruction=self._role_instruction,
+                ),
+            }
+        )
 
         return [
-            {"role": "system", "content": system_message},
+            {"role": "system", "content": get_prompt("multi_agent.evaluator_system")},
             {"role": "user", "content": user_content},
         ]
 
@@ -225,31 +265,37 @@ class LLMQuestionArbitrator(QuestionArbitratorBase):
     ) -> AgentQuestionEvaluation:
         candidates = [
             {
-                "evaluator_name": item.evaluator_name,
-                "score": item.score,
-                "max_score": item.max_score,
-                "mode": item.mode,
-                "manual_review": item.manual_review,
-                "reason": item.reason,
-                "evidence": item.evidence,
-                "feedback": item.feedback.model_dump(),
+                "name": item.evaluator_name,
+                "s": item.score,
+                "x": item.max_score,
+                "m": item.mode,
+                "review": item.manual_review,
+                "why": item.reason,
+                "summary": item.feedback.summary,
+                "minus": item.feedback.deductions,
+                "evidence": item.feedback.evidence or item.evidence,
             }
             for item in evaluations
         ]
         evaluator = LLMQuestionEvaluator(
             "arbitrator",
-            (
-                "Resolve the disagreement among the candidate evaluations shown below. "
-                "Check the original evidence yourself, select or correct the defensible score, and use manual review if the conflict cannot be resolved."
-            ),
+            get_prompt("multi_agent.arbitrator_instruction"),
             model=self._model,
             completion=self._completion,
+            image_policy="answer_verification",
         )
         attempt_for_arbitration = attempt.model_copy(
             update={
                 "grading_criteria": (
-                    f"{attempt.grading_criteria or ''}\n\nCANDIDATE EVALUATIONS:\n"
-                    f"{json.dumps(candidates, ensure_ascii=False)}"
+                    f"{attempt.grading_criteria or ''}\n\n"
+                    + render_prompt(
+                        "multi_agent.arbitration_context",
+                        candidates_json=json.dumps(
+                            candidates,
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                    )
                 ).strip()
             }
         )
@@ -442,19 +488,14 @@ class MultiAgentQuestionScorer:
 
     @classmethod
     def default(cls) -> "MultiAgentQuestionScorer":
+        evaluator_names = ("solution_verifier", "rubric_grader", "critical_reviewer")
         evaluators = [
             LLMQuestionEvaluator(
-                "solution_verifier",
-                "Solve the question independently, compare the student's method and conclusion with the correct solution, and identify factual or computational errors.",
-            ),
-            LLMQuestionEvaluator(
-                "rubric_grader",
-                "Apply a point-by-point rubric consistently, award defensible partial credit, and make every deduction traceable to the student's work.",
-            ),
-            LLMQuestionEvaluator(
-                "critical_reviewer",
-                "Look specifically for hidden assumptions, missing justification, sign or unit errors, and cases where plausible-looking work is not actually correct.",
-            ),
+                evaluator_name,
+                get_prompt(f"multi_agent.roles.{evaluator_name}.instruction"),
+                image_policy=get_prompt(f"multi_agent.roles.{evaluator_name}.image_policy"),
+            )
+            for evaluator_name in evaluator_names
         ]
         threshold = float(os.getenv("AUTOGRADER_DISAGREEMENT_THRESHOLD", "0.15"))
         arbitration_enabled = os.getenv("AUTOGRADER_ENABLE_ARBITRATION", "1").lower() not in {"0", "false", "no"}
@@ -535,6 +576,19 @@ class MultiAgentQuestionScorer:
     async def score_batch(self, task: QuestionBatchTask) -> list[ConsensusQuestionScore]:
         """Grade a worker batch while enforcing its one-canonical-question boundary."""
         prepared_attempts: list[QuestionAttempt] = []
+        available_question_texts = [
+            attempt.question_text.strip()
+            for attempt in task.attempts
+            if attempt.question_text and attempt.question_text.strip()
+        ]
+        canonical_question_text = (
+            max(
+                available_question_texts,
+                key=lambda text: (len("".join(text.split())), text),
+            )
+            if available_question_texts
+            else None
+        )
         for attempt in task.attempts:
             if (
                 attempt.exam_template_id != task.exam_template_id
@@ -546,17 +600,27 @@ class MultiAgentQuestionScorer:
                     f"Question batch {task.task_id!r} contains attempt {attempt.question_attempt_id!r} "
                     "from a different template, canonical question, rubric, or grading criteria"
                 )
+            update: dict[str, Any] = {}
+            if canonical_question_text:
+                update["question_text"] = canonical_question_text
             if task.rubric is None:
-                prepared_attempts.append(attempt)
+                prepared_attempts.append(attempt.model_copy(update=update) if update else attempt)
                 continue
-            frozen_rubric = json.dumps(task.rubric.model_dump(), ensure_ascii=False)
+            frozen_rubric = json.dumps(
+                task.rubric.model_dump(),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            update["grading_criteria"] = (
+                f"{attempt.grading_criteria or ''}\n\n"
+                + render_prompt(
+                    "multi_agent.rubric_wrapper",
+                    rubric_json=frozen_rubric,
+                )
+            ).strip()
             prepared_attempts.append(
                 attempt.model_copy(
-                    update={
-                        "grading_criteria": (
-                            f"{attempt.grading_criteria or ''}\n\nFROZEN STRUCTURED RUBRIC:\n{frozen_rubric}"
-                        ).strip()
-                    }
+                    update=update
                 )
             )
         return await self.score_many(prepared_attempts)

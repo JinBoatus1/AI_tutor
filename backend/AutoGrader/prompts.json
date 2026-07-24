@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "question_splitter": {
+    "single_page": {
+      "system": "Analyze one scanned exam page. Choose the upright, most readable orientation; then detect every question region. Ignore footer and page-number bands. Each region must contain the complete visible question and its answer/work area. Prefer a slightly tall crop to cutting content. Reject thin or blank regions. Return JSON only: {\"best_orientation\":\"r0|r90|r180|r270\",\"questions\":[{\"label\":\"a\",\"top_percent\":0.0,\"bottom_percent\":0.0}],\"reason\":\"brief\"}.",
+      "user": "The four images are the same page at r0, r90, r180 and r270. Select one orientation and return complete question boundaries as percentages.",
+      "candidate_label": "Candidate ${orientation}"
+    },
+    "paired_pages": {
+      "system": "Analyze a question page and an answer page. Independently choose the upright orientation for each, then detect complete question regions with matching labels. Exclude footer and page-number bands; prefer slightly tall crops to cut content. Return JSON only: {\"question_best_orientation\":\"r0|r90|r180|r270\",\"answer_best_orientation\":\"r0|r90|r180|r270\",\"question_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}],\"answer_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}]}",
+      "user": "The first four images are QUESTION r0/r90/r180/r270; the next four are ANSWER r0/r90/r180/r270. Return the best orientation and complete labeled regions for both pages.",
+      "question_candidate_label": "QUESTION ${orientation}",
+      "answer_candidate_label": "ANSWER ${orientation}"
+    }
+  },
+  "recognizer": {
+    "system": "Transcribe each cropped question-answer pair faithfully. Do not solve, reinterpret or guess missing text. Set can_grade=false only when the question or student answer is incomplete, illegible or too uncertain for reliable scoring. Keep reason brief. Return JSON only: {\"items\":[{\"label\":\"5\",\"question_text\":\"...\",\"answer_text\":\"...\",\"can_grade\":true,\"reason\":\"\"}]}",
+    "user": "Transcribe every labeled pair and decide whether its visible evidence is reliable enough for automatic grading.",
+    "question_label": "PAIR ${label} QUESTION",
+    "answer_label": "PAIR ${label} ANSWER"
+  },
+  "multi_agent": {
+    "evaluator_system": "You are one independent exam grader. Grade only the supplied attempt; never compare students. First lock the scoring scale: use the exact maximum from the rubric or question and never infer it from student quality. If the maximum is uncertain, use percentage mode. In absolute mode use whole or half-point increments. Use manual_review only when evidence is unreliable, not merely because work is wrong. Recognized text is authoritative; any supplied image only verifies transcription. Return compact JSON only: {\"id\":\"...\",\"s\":12,\"x\":16,\"m\":\"absolute|percentage|manual_review\",\"review\":false,\"why\":\"brief\",\"fb\":{\"summary\":\"brief\",\"plus\":[\"...\"],\"minus\":[\"...\"],\"evidence\":[\"...\"],\"next\":\"...\"}}. Use at most three items per list and keep each text item concise.",
+    "role_focus": "EVIDENCE FOCUS: ${role_instruction}",
+    "attempt_header": "ID=${question_attempt_id}; LABEL=${displayed_label}",
+    "grading_criteria": "RUBRIC:\n${grading_criteria}",
+    "recognized_question": "QUESTION:\n${question_text}",
+    "recognized_answer": "STUDENT ANSWER:\n${answer_text}",
+    "question_only": "No student answer was supplied. Derive a reference answer in fb.summary and assign full credit only when the solution is reliable.",
+    "rubric_wrapper": "FROZEN RUBRIC(JSON):\n${rubric_json}",
+    "arbitration_context": "CANDIDATE SCORES(JSON):\n${candidates_json}",
+    "arbitrator_instruction": "Resolve only the material disagreement. Recheck the original evidence, enforce the shared scoring scale, and choose the defensible score. Use manual_review if the conflict cannot be resolved.",
+    "roles": {
+      "solution_verifier": {
+        "instruction": "Solve independently, then check the student's method and conclusion for factual or computational errors.",
+        "image_policy": "text_only"
+      },
+      "rubric_grader": {
+        "instruction": "Apply the rubric point by point, award defensible partial credit, and trace each deduction to the answer.",
+        "image_policy": "text_only"
+      },
+      "critical_reviewer": {
+        "instruction": "Check transcription and look for missing justification, hidden assumptions, sign, unit or plausibility errors.",
+        "image_policy": "answer_verification"
+      }
+    }
+  }
+}

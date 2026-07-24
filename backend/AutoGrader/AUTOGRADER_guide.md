@@ -76,6 +76,32 @@ Optional environment settings:
 - `AUTOGRADER_QUESTION_BATCH_SIZE` (default `16`)
 - `AUTOGRADER_QUESTION_LEASE_SECONDS` (default `300`)
 - `AUTOGRADER_QUESTION_BATCH_RETRIES` (default `1`)
+- `AUTOGRADER_PROMPTS_PATH` (default `backend/AutoGrader/prompts.json`)
+- `AUTOGRADER_LAYOUT_MAX_DIMENSION` (default `1280`)
+- `AUTOGRADER_LAYOUT_JPEG_QUALITY` (default `78`)
+- `AUTOGRADER_RECOGNIZER_IMAGE_DPI` (default `120`)
+- `AUTOGRADER_EVALUATOR_IMAGE_DPI` (default `110`)
+- `AUTOGRADER_VISION_JPEG_QUALITY` (default `80`)
+
+## Prompt Configuration
+
+All built-in model instructions for layout detection, recognition, grading roles,
+and arbitration are stored in `backend/AutoGrader/prompts.json`. Application code
+loads them through `prompt_loader.py`; prompts are not duplicated in the Python
+modules.
+
+Set `AUTOGRADER_PROMPTS_PATH` to an absolute path before starting the backend to use
+another version 1 JSON catalog. The selected file is validated when first used. Changes made to that
+file while the backend is running are reloaded automatically; changing the path
+itself requires a backend restart. Keep every required key and `${placeholder}`
+name intact when editing.
+
+The default multi-agent configuration uses recognized text for two graders and sends
+the student answer image only to the critical reviewer. Missing recognized text
+automatically enables the corresponding image as a fallback. This preserves a visual
+check while avoiding three copies of the same question and answer images. Same-question
+batches also use one shared recognized question text so every student is graded against
+the same wording.
 
 ## API Contract
 

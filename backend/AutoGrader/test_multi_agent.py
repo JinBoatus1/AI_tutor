@@ -60,6 +60,7 @@ class _FakeEvaluator(QuestionEvaluatorBase):
         fail: bool = False,
         wrong_attempt_id: bool = False,
         tracker: dict[str, int] | None = None,
+        observed_question_texts: list[str | None] | None = None,
     ) -> None:
         self.evaluator_name = evaluator_name
         self.score = score
@@ -69,8 +70,11 @@ class _FakeEvaluator(QuestionEvaluatorBase):
         self.fail = fail
         self.wrong_attempt_id = wrong_attempt_id
         self.tracker = tracker
+        self.observed_question_texts = observed_question_texts
 
     async def evaluate(self, attempt: QuestionAttempt) -> AgentQuestionEvaluation:
+        if self.observed_question_texts is not None:
+            self.observed_question_texts.append(attempt.question_text)
         if self.tracker is not None:
             self.tracker["active"] += 1
             self.tracker["peak"] = max(self.tracker["peak"], self.tracker["active"])
@@ -224,6 +228,65 @@ class MultiAgentScorerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.score, 8)
         self.assertEqual(result.feedback.awarded_points, [])
         self.assertEqual(result.feedback.deductions, ["Minor omission"])
+
+    async def test_llm_evaluator_parses_compact_json(self) -> None:
+        attempt = _attempt()
+
+        def fake_completion(**_kwargs):
+            content = (
+                '{"id":"paper-a:1:5","s":8.5,"x":10,"m":"absolute",'
+                '"review":false,"why":"One minor error","fb":{"summary":"Good method",'
+                '"plus":["Correct setup"],"minus":["Arithmetic slip"],'
+                '"evidence":["Visible calculation"],"next":"Check arithmetic"}}'
+            )
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+            )
+
+        evaluator = LLMQuestionEvaluator(
+            "compact-parser-test",
+            "Test compact parsing",
+            completion=fake_completion,
+            image_policy="text_only",
+        )
+        result = await evaluator.evaluate(attempt)
+
+        self.assertEqual(result.score, 8.5)
+        self.assertEqual(result.max_score, 10)
+        self.assertEqual(result.reason, "One minor error")
+        self.assertEqual(result.evidence, ["Visible calculation"])
+        self.assertEqual(result.feedback.awarded_points, ["Correct setup"])
+        self.assertEqual(result.feedback.deductions, ["Arithmetic slip"])
+        self.assertEqual(result.feedback.suggestion, "Check arithmetic")
+
+    def test_evaluator_image_policies_avoid_duplicate_images(self) -> None:
+        attempt = _attempt().model_copy(
+            update={
+                "question_pdf": _pdf_bytes("What is 2 + 2?"),
+                "answer_pdf": _pdf_bytes("4"),
+            }
+        )
+        text_only = LLMQuestionEvaluator(
+            "text",
+            "Use text",
+            image_policy="text_only",
+        )._build_messages(attempt)
+        answer_check = LLMQuestionEvaluator(
+            "vision",
+            "Verify the answer image",
+            image_policy="answer_verification",
+        )._build_messages(attempt)
+
+        text_parts = text_only[1]["content"]
+        answer_parts = answer_check[1]["content"]
+        self.assertEqual(
+            len([part for part in text_parts if part["type"] == "image_url"]),
+            0,
+        )
+        answer_images = [part for part in answer_parts if part["type"] == "image_url"]
+        self.assertEqual(len(answer_images), 1)
+        self.assertTrue(answer_images[0]["image_url"]["url"].startswith("data:image/jpeg;base64,"))
+        self.assertEqual(text_only[0]["content"], answer_check[0]["content"])
 
     async def test_evaluators_run_concurrently_and_reach_consensus(self) -> None:
         tracker = {"active": 0, "peak": 0}
@@ -464,6 +527,36 @@ class MultiAgentScorerTests(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(ValueError, "different template"):
             await scorer.score_batch(task)
+
+    async def test_batch_uses_one_canonical_question_text_for_all_students(self) -> None:
+        observed: list[str | None] = []
+        scorer = MultiAgentQuestionScorer(
+            [
+                _FakeEvaluator("one", 8.0, observed_question_texts=observed),
+                _FakeEvaluator("two", 8.0, observed_question_texts=observed),
+            ],
+            arbitrator=None,
+        )
+        short_text = "Find x."
+        detailed_text = "Find x when 2x + 4 = 10."
+        task = QuestionBatchTask(
+            task_id="task-shared-text",
+            exam_template_id="exam-1",
+            canonical_question_id="exam-1:5",
+            attempts=[
+                _attempt("paper-a:1:5", paper_id="paper-a").model_copy(
+                    update={"question_text": short_text}
+                ),
+                _attempt("paper-b:1:5", paper_id="paper-b").model_copy(
+                    update={"question_text": detailed_text}
+                ),
+            ],
+        )
+
+        results = await scorer.score_batch(task)
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(observed, [detailed_text] * 4)
 
 
 class PaperAggregatorTests(unittest.TestCase):

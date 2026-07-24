@@ -8,6 +8,7 @@ following patterns learned from learning_resources.py.
 import base64
 import io
 import json
+import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -16,15 +17,31 @@ from PIL import Image
 
 from deps import create_chat_completion
 from .models import QuestionAnswerPdfPair
+from .prompt_loader import get_prompt, render_prompt
 
 
 class QuestionDetector:
     """Detect question boundaries in a PDF page using heuristics and/or LLM."""
 
     @staticmethod
-    def _image_to_b64(img: Image.Image, quality: int = 85) -> str:
+    def _image_to_b64(img: Image.Image, quality: int | None = None) -> str:
+        try:
+            max_dimension = max(640, int(os.getenv("AUTOGRADER_LAYOUT_MAX_DIMENSION", "1280")))
+        except ValueError:
+            max_dimension = 1280
+        try:
+            jpeg_quality = int(os.getenv("AUTOGRADER_LAYOUT_JPEG_QUALITY", "78"))
+        except ValueError:
+            jpeg_quality = 78
+        if quality is not None:
+            jpeg_quality = quality
+
+        working = img.convert("RGB")
+        if max(working.size) > max_dimension:
+            working = working.copy()
+            working.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=quality)
+        working.save(buf, format="JPEG", quality=max(40, min(95, jpeg_quality)), optimize=True)
         return base64.b64encode(buf.getvalue()).decode("utf-8")
 
     @staticmethod
@@ -81,24 +98,22 @@ class QuestionDetector:
         image_candidates: Dict[str, Image.Image],
     ) -> Optional[Dict[str, Any]]:
         """One LLM call: pick best orientation and return question boundaries on that orientation."""
-        system_msg = (
-            "You are analyzing a scanned exam page. Choose the best orientation where text is upright and readable, "
-            "then detect all question regions on that chosen orientation. Ignore page footer/page number bands. "
-            "Each region must include the full visible question text and any answer/work area for that question; never return a very thin or blank region. "
-            "Return ONLY valid JSON with this shape: "
-            "{\"best_orientation\": \"r0|r90|r180|r270\", \"questions\": [{\"label\": \"a\", \"top_percent\": 0.0, \"bottom_percent\": 0.0}], \"reason\": \"...\"}."
-        )
-        user_msg = (
-            "You will see four orientations of the same page labeled r0, r90, r180, r270. "
-            "Pick the best orientation, then identify each question with top and bottom percentages on that orientation. "
-            "Make the crops complete even if they overlap slightly. Prefer a slightly tall crop over a crop that cuts off text or answer work. Return ONLY JSON."
-        )
+        system_msg = get_prompt("question_splitter.single_page.system")
+        user_msg = get_prompt("question_splitter.single_page.user")
 
         content: list[dict[str, Any]] = [{"type": "text", "text": user_msg}]
         for label in ["r0", "r90", "r180", "r270"]:
             if label not in image_candidates:
                 continue
-            content.append({"type": "text", "text": f"Candidate {label}"})
+            content.append(
+                {
+                    "type": "text",
+                    "text": render_prompt(
+                        "question_splitter.single_page.candidate_label",
+                        orientation=label,
+                    ),
+                }
+            )
             content.append(
                 {
                     "type": "image_url",
@@ -108,7 +123,7 @@ class QuestionDetector:
 
         try:
             resp = create_chat_completion(
-                model="gpt-5.2",
+                model=os.getenv("AUTOGRADER_MODEL", "gpt-5.2"),
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": content},
@@ -131,29 +146,21 @@ class QuestionDetector:
         answer_candidates: Dict[str, Image.Image],
     ) -> Optional[Dict[str, Any]]:
         """One LLM call: detect best orientations and question regions for both question and answer pages."""
-        system_msg = (
-            "You are analyzing two scanned pages: one question page and one answer page. "
-            "For each page, choose best orientation and detect question boundaries. "
-            "Each region must include the full visible question text and the full answer/work area for that question; never return a very thin or blank region. "
-            "Return ONLY valid JSON in this exact shape: "
-            "{"
-            "\"question_best_orientation\":\"r0|r90|r180|r270\","
-            "\"answer_best_orientation\":\"r0|r90|r180|r270\","
-            "\"question_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}],"
-            "\"answer_regions\":[{\"label\":\"5\",\"top_percent\":0.0,\"bottom_percent\":0.0}]"
-            "}."
-        )
-        user_msg = (
-            "You will receive 8 images in total. First 4 are QUESTION page candidates (r0,r90,r180,r270). "
-            "Next 4 are ANSWER page candidates (r0,r90,r180,r270). "
-            "Choose best orientation for each page and output per-question regions with labels. "
-            "Do not include footer page number in bottom_percent. Prefer slightly overlapping/taller regions over regions that cut off text or answer work. Return ONLY JSON."
-        )
+        system_msg = get_prompt("question_splitter.paired_pages.system")
+        user_msg = get_prompt("question_splitter.paired_pages.user")
 
         content: list[dict[str, Any]] = [{"type": "text", "text": user_msg}]
         for label in ["r0", "r90", "r180", "r270"]:
             if label in question_candidates:
-                content.append({"type": "text", "text": f"QUESTION Candidate {label}"})
+                content.append(
+                    {
+                        "type": "text",
+                        "text": render_prompt(
+                            "question_splitter.paired_pages.question_candidate_label",
+                            orientation=label,
+                        ),
+                    }
+                )
                 content.append(
                     {
                         "type": "image_url",
@@ -162,7 +169,15 @@ class QuestionDetector:
                 )
         for label in ["r0", "r90", "r180", "r270"]:
             if label in answer_candidates:
-                content.append({"type": "text", "text": f"ANSWER Candidate {label}"})
+                content.append(
+                    {
+                        "type": "text",
+                        "text": render_prompt(
+                            "question_splitter.paired_pages.answer_candidate_label",
+                            orientation=label,
+                        ),
+                    }
+                )
                 content.append(
                     {
                         "type": "image_url",
@@ -172,7 +187,7 @@ class QuestionDetector:
 
         try:
             resp = create_chat_completion(
-                model="gpt-5.2",
+                model=os.getenv("AUTOGRADER_MODEL", "gpt-5.2"),
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": content},

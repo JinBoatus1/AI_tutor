@@ -2,29 +2,19 @@
 
 from __future__ import annotations
 
-import base64
 import json
+import os
 from typing import Any
-
-import fitz
 
 from deps import create_chat_completion
 from .models import QuestionAnswerPdfPair
+from .prompt_loader import get_prompt, render_prompt
 from .question_splitter import QuestionDetector
+from .vision import pdf_first_page_data_url
 
 
 class QuestionAnswerRecognizer:
     """Use one vision call to transcribe paired crops and decide whether they are gradeable."""
-
-    @staticmethod
-    def _pdf_first_page_to_b64(pdf_bytes: bytes, dpi: int = 150) -> str:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        try:
-            page = doc[0]
-            pix = page.get_pixmap(dpi=dpi)
-            return base64.b64encode(pix.tobytes("png")).decode("utf-8")
-        finally:
-            doc.close()
 
     @staticmethod
     def _parse_inspection_map(raw_text: str) -> dict[str, dict[str, Any]]:
@@ -62,33 +52,55 @@ class QuestionAnswerRecognizer:
         if not pairs:
             return {}
 
-        system_msg = (
-            "You are transcribing cropped exam question-answer pairs. For each pair, extract the question text and answer text as faithfully as possible. "
-            "Prefer verbatim transcription over interpretation. Then decide whether the pair is clear enough to grade automatically. "
-            "Mark can_grade=false when handwriting is illegible, the OCR is too noisy, the question is incomplete, the answer cannot be reliably interpreted, or the text is too uncertain for scoring. "
-            "Return ONLY valid JSON. Use this shape: "
-            '{"items":[{"label":"5","question_text":"...","answer_text":"...","can_grade":true,"reason":"..."}]}. '
-            "Keep reason short and specific."
-        )
+        system_msg = get_prompt("recognizer.system")
         user_parts: list[dict[str, Any]] = [
             {
                 "type": "text",
-                "text": (
-                    "For each question-answer pair, transcribe the visible text and judge whether the result is clear enough for automatic grading. "
-                    "If the pair is not clear enough, set can_grade=false and explain briefly why. Do not guess missing text."
-                ),
+                "text": get_prompt("recognizer.user"),
             }
         ]
 
         for pair in pairs:
             label = QuestionDetector.normalize_question_label(pair.question_label)
-            user_parts.append({"type": "text", "text": f"PAIR {label} QUESTION"})
-            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.question_pdf)}"}})
-            user_parts.append({"type": "text", "text": f"PAIR {label} ANSWER"})
-            user_parts.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{self._pdf_first_page_to_b64(pair.answer_pdf)}"}})
+            user_parts.append(
+                {
+                    "type": "text",
+                    "text": render_prompt("recognizer.question_label", label=label),
+                }
+            )
+            user_parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": pdf_first_page_data_url(
+                            pair.question_pdf,
+                            dpi_env="AUTOGRADER_RECOGNIZER_IMAGE_DPI",
+                            default_dpi=120,
+                        )
+                    },
+                }
+            )
+            user_parts.append(
+                {
+                    "type": "text",
+                    "text": render_prompt("recognizer.answer_label", label=label),
+                }
+            )
+            user_parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": pdf_first_page_data_url(
+                            pair.answer_pdf,
+                            dpi_env="AUTOGRADER_RECOGNIZER_IMAGE_DPI",
+                            default_dpi=120,
+                        )
+                    },
+                }
+            )
 
         resp = create_chat_completion(
-            model="gpt-5.2",
+            model=os.getenv("AUTOGRADER_MODEL", "gpt-5.2"),
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_parts},
