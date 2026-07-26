@@ -1226,6 +1226,18 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: auto;
+  cursor: grab;
+  touch-action: pan-x pan-y;
+}
+
+.reference-page-sidebar--grabbing {
+  cursor: grabbing;
+  user-select: none;
+  touch-action: none;
+}
+
+.reference-page-sidebar--grabbing .reference-page-img {
+  pointer-events: none;
 }
 
 .reference-page-label {

@@ -21,6 +21,7 @@ import {
   type SectionNoteActions,
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
+import { useDragScroll } from "./hooks/useDragScroll";
 import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { PracticePanel } from "./practice/PracticePanel";
 import { isProblemsSection, chapterOfProblems } from "./practice/isProblemsSection";
@@ -196,6 +197,7 @@ export default function LearningModel() {
   /** Closes the section Note split; wired after useSectionNoteToggle mounts. */
   const closeSectionNoteRef = useRef<() => void>(() => {});
   const textbookImgRef = useRef<HTMLDivElement>(null);
+  const textbookPan = useDragScroll();
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [pdfAttachment, setPdfAttachment] = useState<{ name: string; dataUrl: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1100,6 +1102,14 @@ export default function LearningModel() {
     maxPct: NOTE_SPLIT_MAX,
   });
 
+  const openEnlargedIfNotDrag = useCallback(
+    (src: string) => {
+      if (textbookPan.shouldIgnoreClick()) return;
+      setEnlargedImageSrc(src);
+    },
+    [textbookPan]
+  );
+
   const textbookZoomStyle = useMemo(
     () => ({ ["--textbook-zoom-pct" as string]: `${textbookZoomPct}%` }),
     [textbookZoomPct]
@@ -1152,8 +1162,13 @@ export default function LearningModel() {
       ) : null}
 
       {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
-        <div className="reference-page-box reference-page-sidebar">
-          <div className="section-pages-nav">
+        <div
+          ref={textbookPan.ref}
+          className={`reference-page-box reference-page-sidebar${textbookPan.grabbing ? " reference-page-sidebar--grabbing" : ""}`}
+          title={t("learning.dragToPan")}
+          {...textbookPan.handlers}
+        >
+          <div className="section-pages-nav" data-no-drag>
             {textbookZoomNav}
             {referenceSectionPages?.length ? (
               <div className="section-pages-paging">
@@ -1205,11 +1220,12 @@ export default function LearningModel() {
                   src={referenceSectionPages[sectionPageIndex]}
                   alt={`Section page ${sectionPageIndex + 1}`}
                   className="reference-page-img reference-page-img--zoomable reference-img-clickable"
-                  onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
+                  draggable={false}
+                  onClick={() => openEnlargedIfNotDrag(referenceSectionPages[sectionPageIndex])}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) =>
-                    e.key === "Enter" && setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])
+                    e.key === "Enter" && openEnlargedIfNotDrag(referenceSectionPages[sectionPageIndex])
                   }
                 />
               </div>
@@ -1222,10 +1238,11 @@ export default function LearningModel() {
                   src={src}
                   alt={`Reference snippet ${i + 1}`}
                   className="reference-page-img reference-page-img--zoomable reference-snippet reference-img-clickable"
-                  onClick={() => setEnlargedImageSrc(src)}
+                  draggable={false}
+                  onClick={() => openEnlargedIfNotDrag(src)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
+                  onKeyDown={(e) => e.key === "Enter" && openEnlargedIfNotDrag(src)}
                 />
               ))}
             </div>
@@ -1235,10 +1252,11 @@ export default function LearningModel() {
                 src={referencePageImage}
                 alt="Reference page"
                 className="reference-page-img reference-page-img--zoomable reference-img-clickable"
-                onClick={() => setEnlargedImageSrc(referencePageImage)}
+                draggable={false}
+                onClick={() => openEnlargedIfNotDrag(referencePageImage)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
+                onKeyDown={(e) => e.key === "Enter" && openEnlargedIfNotDrag(referencePageImage)}
               />
             </div>
           ) : null}
