@@ -190,7 +190,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   display: flex;
   flex-direction: column;
 }
@@ -1267,7 +1267,7 @@
 .section-pages-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -1279,6 +1279,75 @@
   padding: 6px 0 10px;
   border-bottom: 1px solid #dce4ee;
   box-shadow: 0 6px 12px -4px rgba(15, 23, 42, 0.08);
+}
+
+.section-pages-paging {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.section-pages-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.section-pages-zoom-btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.section-pages-zoom-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #0d9488;
+  color: #0f766e;
+}
+
+.section-pages-zoom-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.section-pages-zoom-label {
+  min-width: 3.25rem;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.section-pages-zoom-label:hover {
+  background: rgba(13, 148, 136, 0.08);
+  color: #0f766e;
+}
+
+.reference-page-img-wrap--zoom {
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
+}
+
+.reference-page-sidebar .reference-page-img--zoomable {
+  width: var(--textbook-zoom-pct, 100%);
+  max-width: none;
 }
 
 .section-pages-nav button {

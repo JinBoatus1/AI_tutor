@@ -54,6 +54,11 @@ const DEFAULT_TEXTBOOK_SPLIT_PCT = 67;
 const CHAT_COLLAPSE_THRESHOLD_PCT = 88;
 
 const CHAT_PANEL_WIDTH_KEY = "ai_tutor_learning_textbook_split_pct";
+const TEXTBOOK_ZOOM_STORAGE_KEY = "ai_tutor_textbook_zoom_pct";
+const TEXTBOOK_ZOOM_MIN = 50;
+const TEXTBOOK_ZOOM_MAX = 200;
+const TEXTBOOK_ZOOM_STEP = 25;
+const TEXTBOOK_ZOOM_DEFAULT = 100;
 const CHAT_COLLAPSED_KEY = "ai_tutor_learning_chat_collapsed";
 
 function resolveTextbookSplitRestore(width: number): number {
@@ -65,6 +70,17 @@ function resolveTextbookSplitRestore(width: number): number {
     return width;
   }
   return DEFAULT_TEXTBOOK_SPLIT_PCT;
+}
+
+function readStoredTextbookZoomPct(): number {
+  try {
+    const raw = localStorage.getItem(TEXTBOOK_ZOOM_STORAGE_KEY);
+    const v = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(v)) return TEXTBOOK_ZOOM_DEFAULT;
+    return Math.min(TEXTBOOK_ZOOM_MAX, Math.max(TEXTBOOK_ZOOM_MIN, v));
+  } catch {
+    return TEXTBOOK_ZOOM_DEFAULT;
+  }
 }
 
 function readStoredTextbookSplitPct(): number {
@@ -173,6 +189,7 @@ export default function LearningModel() {
   const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
   const [outlinePreviewError, setOutlinePreviewError] = useState<string | null>(null);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
+  const [textbookZoomPct, setTextbookZoomPct] = useState(readStoredTextbookZoomPct);
   const [bookHighlight, setBookHighlight] = useState<string | null>(null);
   const pendingBookPageRef = useRef<number | null>(null);
   const bookHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -206,6 +223,30 @@ export default function LearningModel() {
     persistChatCollapsed(false);
     setRightPanelWidth(restored);
   }, [persistChatCollapsed]);
+
+  const adjustTextbookZoom = useCallback((delta: number) => {
+    setTextbookZoomPct((prev) => {
+      const next = Math.min(
+        TEXTBOOK_ZOOM_MAX,
+        Math.max(TEXTBOOK_ZOOM_MIN, prev + delta)
+      );
+      try {
+        localStorage.setItem(TEXTBOOK_ZOOM_STORAGE_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  const resetTextbookZoom = useCallback(() => {
+    setTextbookZoomPct(TEXTBOOK_ZOOM_DEFAULT);
+    try {
+      localStorage.setItem(TEXTBOOK_ZOOM_STORAGE_KEY, String(TEXTBOOK_ZOOM_DEFAULT));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const applyTextbookSplitPct = useCallback((width: number) => {
     const clamped = Math.min(
@@ -1059,6 +1100,43 @@ export default function LearningModel() {
     maxPct: NOTE_SPLIT_MAX,
   });
 
+  const textbookZoomStyle = useMemo(
+    () => ({ ["--textbook-zoom-pct" as string]: `${textbookZoomPct}%` }),
+    [textbookZoomPct]
+  );
+
+  const textbookZoomNav = (
+    <div className="section-pages-zoom" role="group" aria-label={t("learning.textbookZoom")}>
+      <button
+        type="button"
+        className="section-pages-zoom-btn"
+        disabled={textbookZoomPct <= TEXTBOOK_ZOOM_MIN}
+        onClick={() => adjustTextbookZoom(-TEXTBOOK_ZOOM_STEP)}
+        aria-label={t("learning.zoomOut")}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        className="section-pages-zoom-label"
+        onClick={resetTextbookZoom}
+        title={t("learning.zoomReset")}
+        aria-label={t("learning.zoomReset")}
+      >
+        {textbookZoomPct}%
+      </button>
+      <button
+        type="button"
+        className="section-pages-zoom-btn"
+        disabled={textbookZoomPct >= TEXTBOOK_ZOOM_MAX}
+        onClick={() => adjustTextbookZoom(TEXTBOOK_ZOOM_STEP)}
+        aria-label={t("learning.zoomIn")}
+      >
+        +
+      </button>
+    </div>
+  );
+
   const textbookBody = (
     <>
       {outlinePreviewLoading ? (
@@ -1075,9 +1153,10 @@ export default function LearningModel() {
 
       {(referenceSectionPages?.length || referencePageSnippets?.length || referencePageImage) && (
         <div className="reference-page-box reference-page-sidebar">
-          {referenceSectionPages?.length ? (
-            <>
-              <div className="section-pages-nav">
+          <div className="section-pages-nav">
+            {textbookZoomNav}
+            {referenceSectionPages?.length ? (
+              <div className="section-pages-paging">
                 <button
                   type="button"
                   disabled={sectionPageIndex <= 0}
@@ -1105,9 +1184,14 @@ export default function LearningModel() {
                   {t("learning.next")}
                 </button>
               </div>
+            ) : null}
+          </div>
+          {referenceSectionPages?.length ? (
+            <>
               <div
                 ref={textbookImgRef}
-                className={`reference-page-img-wrap${bookHighlight ? " reference-page-img-wrap--highlight" : ""}`}
+                className={`reference-page-img-wrap reference-page-img-wrap--zoom${bookHighlight ? " reference-page-img-wrap--highlight" : ""}`}
+                style={textbookZoomStyle}
               >
                 {bookHighlight ? (
                   <div className="book-page-highlight-callout" aria-live="polite">
@@ -1120,7 +1204,7 @@ export default function LearningModel() {
                 <img
                   src={referenceSectionPages[sectionPageIndex]}
                   alt={`Section page ${sectionPageIndex + 1}`}
-                  className="reference-page-img reference-img-clickable"
+                  className="reference-page-img reference-page-img--zoomable reference-img-clickable"
                   onClick={() => setEnlargedImageSrc(referenceSectionPages[sectionPageIndex])}
                   role="button"
                   tabIndex={0}
@@ -1131,28 +1215,32 @@ export default function LearningModel() {
               </div>
             </>
           ) : referencePageSnippets?.length ? (
-            referencePageSnippets.map((src, i) => (
+            <div className="reference-page-img-wrap reference-page-img-wrap--zoom" style={textbookZoomStyle}>
+              {referencePageSnippets.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Reference snippet ${i + 1}`}
+                  className="reference-page-img reference-page-img--zoomable reference-snippet reference-img-clickable"
+                  onClick={() => setEnlargedImageSrc(src)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
+                />
+              ))}
+            </div>
+          ) : referencePageImage ? (
+            <div className="reference-page-img-wrap reference-page-img-wrap--zoom" style={textbookZoomStyle}>
               <img
-                key={i}
-                src={src}
-                alt={`Reference snippet ${i + 1}`}
-                className="reference-page-img reference-snippet reference-img-clickable"
-                onClick={() => setEnlargedImageSrc(src)}
+                src={referencePageImage}
+                alt="Reference page"
+                className="reference-page-img reference-page-img--zoomable reference-img-clickable"
+                onClick={() => setEnlargedImageSrc(referencePageImage)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(src)}
+                onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
               />
-            ))
-          ) : referencePageImage ? (
-            <img
-              src={referencePageImage}
-              alt="Reference page"
-              className="reference-page-img reference-img-clickable"
-              onClick={() => setEnlargedImageSrc(referencePageImage)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && setEnlargedImageSrc(referencePageImage)}
-            />
+            </div>
           ) : null}
         </div>
       )}
