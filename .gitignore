@@ -162,3 +162,6 @@ frontend/build/
 *.h5
 *.pkl
 *.pth
+*.gguf
+*.safetensors
+models/

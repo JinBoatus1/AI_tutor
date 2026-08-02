@@ -13,7 +13,7 @@ import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
-from deps import clamp_int_0_100, create_chat_completion
+from deps import clamp_int_0_100, create_chat_completion, get_llm_health
 import learning_resources as lr
 import student_bar_store as sbs
 import user_textbook_store as uts
@@ -523,6 +523,12 @@ async def api_version():
         "service_name": (os.getenv("RENDER_SERVICE_NAME") or "").strip() or None,
         "utc_epoch": int(time.time()),
     }
+
+
+@router.get("/api/llm/health")
+def llm_health(check_remote: bool = Query(False)):
+    """Inspect LLM routing config; optionally call the provider's /v1/models endpoint."""
+    return get_llm_health(check_remote=check_remote)
 
 
 @router.post("/api/chat")
