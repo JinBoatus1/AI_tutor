@@ -52,10 +52,30 @@ llama.cpp is the recommended native Windows test server because it is
 command-line driven and exposes `/v1/chat/completions` and `/v1/models`, like
 vLLM. Download a Windows `llama-server.exe` build and a GGUF model, then run:
 
+For the current RTX 4070 12 GB development machine, a practical first model is
+`Qwen/Qwen3-VL-8B-Instruct-GGUF`. Download only the Q4 language model and Q8
+vision projector:
+
+```powershell
+& "C:\Users\lin\.conda\envs\py312-api\python.exe" -m pip install -U huggingface_hub
+
+& "C:\Users\lin\.conda\envs\py312-api\Scripts\hf.exe" download `
+  Qwen/Qwen3-VL-8B-Instruct-GGUF `
+  Qwen3VL-8B-Instruct-Q4_K_M.gguf `
+  mmproj-Qwen3VL-8B-Instruct-Q8_0.gguf `
+  --local-dir "C:\AIModels\Qwen3-VL-8B-GGUF"
+```
+
+Use a recent Windows x64 CUDA build from the official llama.cpp releases. Keep
+the extracted CUDA DLLs beside `llama-server.exe`.
+
 ```powershell
 $env:LLAMA_SERVER_EXE = "C:\llama.cpp\llama-server.exe"
-$env:LLM_MODEL_PATH = "C:\models\aitutor-main-q4_k_m.gguf"
-$env:LLM_MODEL = "aitutor-main"
+$env:LLM_MODEL_PATH = "C:\AIModels\Qwen3-VL-8B-GGUF\Qwen3VL-8B-Instruct-Q4_K_M.gguf"
+$env:LLM_MM_PROJ_PATH = "C:\AIModels\Qwen3-VL-8B-GGUF\mmproj-Qwen3VL-8B-Instruct-Q8_0.gguf"
+$env:LLM_MODEL = "aitutor-vision"
+$env:LLM_CONTEXT_SIZE = "8192"
+$env:LLM_GPU_LAYERS = "999"
 .\scripts\start_local_llm.ps1
 ```
 
@@ -66,8 +86,9 @@ LLM_PROVIDER=openai_compatible
 LLM_BACKEND=llama_cpp
 LLM_BASE_URL=http://127.0.0.1:8080/v1
 LLM_API_KEY=local
-LLM_MODEL=aitutor-main
-LLM_TOOL_MODEL=aitutor-main
+LLM_MODEL=aitutor-vision
+LLM_VISION_MODEL=aitutor-vision
+LLM_TOOL_MODEL=aitutor-vision
 LLM_TIMEOUT_SECONDS=180
 ```
 
@@ -94,12 +115,26 @@ LLM_MODEL=<model identifier returned by GET /v1/models>
 
 ## Linux server: vLLM
 
-On the deployment server, provide the Hugging Face model path or repository id:
+On the deployment server, download the complete original Safetensors repository.
+Do not use the GGUF directory with vLLM:
 
 ```bash
-export LLM_MODEL_PATH=/models/aitutor-main
-export LLM_MODEL=aitutor-main
+python -m pip install -U huggingface_hub
+hf download Qwen/Qwen3-VL-8B-Instruct \
+  --local-dir /srv/models/Qwen3-VL-8B-Instruct
+```
+
+Then provide the local model path to the startup script:
+
+```bash
+export LLM_MODEL_PATH=/srv/models/Qwen3-VL-8B-Instruct
+export LLM_MODEL=aitutor-vision
 export LLM_API_KEY=replace-with-a-private-token
+export LLM_PORT=8100
+export LLM_CONTEXT_SIZE=16384
+export VLLM_MM_LIMIT='{"image": 12, "video": 0}'
+# Enable only after verifying tool calls with the selected vLLM version.
+export VLLM_TOOL_CALL_PARSER=qwen3_xml
 bash ./scripts/start_vllm.sh
 ```
 
@@ -108,10 +143,11 @@ AI Tutor backend environment:
 ```env
 LLM_PROVIDER=openai_compatible
 LLM_BACKEND=vllm
-LLM_BASE_URL=http://127.0.0.1:8000/v1
+LLM_BASE_URL=http://127.0.0.1:8100/v1
 LLM_API_KEY=replace-with-a-private-token
-LLM_MODEL=aitutor-main
-LLM_TOOL_MODEL=aitutor-main
+LLM_MODEL=aitutor-vision
+LLM_VISION_MODEL=aitutor-vision
+LLM_TOOL_MODEL=aitutor-vision
 LLM_TIMEOUT_SECONDS=180
 ```
 

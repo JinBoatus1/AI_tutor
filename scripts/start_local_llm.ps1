@@ -4,7 +4,8 @@ param(
     [string]$ModelAlias = $(if ($env:LLM_MODEL) { $env:LLM_MODEL } else { "aitutor-main" }),
     [string]$MmprojPath = $env:LLM_MM_PROJ_PATH,
     [int]$Port = $(if ($env:LLM_PORT) { [int]$env:LLM_PORT } else { 8080 }),
-    [int]$ContextSize = $(if ($env:LLM_CONTEXT_SIZE) { [int]$env:LLM_CONTEXT_SIZE } else { 16384 })
+    [int]$ContextSize = $(if ($env:LLM_CONTEXT_SIZE) { [int]$env:LLM_CONTEXT_SIZE } else { 16384 }),
+    [int]$GpuLayers = $(if ($env:LLM_GPU_LAYERS) { [int]$env:LLM_GPU_LAYERS } else { 999 })
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +32,7 @@ $serverArgs = @(
     "--host", "127.0.0.1",
     "--port", $Port,
     "--ctx-size", $ContextSize,
+    "--n-gpu-layers", $GpuLayers,
     "--jinja"
 )
 if ($MmprojPath) {
