@@ -13,7 +13,7 @@ import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
-from deps import clamp_int_0_100, create_chat_completion
+from deps import clamp_int_0_100, create_chat_completion, get_llm_status
 import learning_resources as lr
 import student_bar_store as sbs
 import user_textbook_store as uts
@@ -46,6 +46,12 @@ FOCS_BOOK_ID = "focs"  # legacy constant; chat uses lr.effective_memory_book_id(
 
 
 router = APIRouter()
+
+
+@router.get("/api/llm/status")
+def llm_status():
+    """Expose non-secret provider configuration without contacting the model."""
+    return get_llm_status()
 
 # 与本 subtopic 相关的 memory：summary 进 prompt；完整 events 通过 tool 按需拉取
 MAX_SUMMARY_IN_PROMPT_CHARS = 12000
