@@ -47,12 +47,6 @@ FOCS_BOOK_ID = "focs"  # legacy constant; chat uses lr.effective_memory_book_id(
 
 router = APIRouter()
 
-
-@router.get("/api/llm/status")
-def llm_status():
-    """Expose non-secret provider configuration without contacting the model."""
-    return get_llm_status()
-
 # 与本 subtopic 相关的 memory：summary 进 prompt；完整 events 通过 tool 按需拉取
 MAX_SUMMARY_IN_PROMPT_CHARS = 12000
 MAX_EVENTS_TOOL_CHARS = 120000
@@ -532,6 +526,7 @@ async def api_version():
 
 
 @router.get("/api/llm/health")
+@router.get("/api/llm/status", include_in_schema=False)
 def llm_health(check_remote: bool = Query(False)):
     """Inspect LLM routing config; optionally call the provider's /v1/models endpoint."""
     return get_llm_health(check_remote=check_remote)

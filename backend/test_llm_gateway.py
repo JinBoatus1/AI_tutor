@@ -6,9 +6,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import deps
 from llm.capabilities import ModelRegistry, ModelSpec, required_capabilities
 from llm.config import LLMSettings
-from llm.gateway import LLMGateway, LLMGatewayError
+from llm.gateway import LLMGateway, LLMGatewayError, get_llm_gateway
 
 
 class FakeProvider:
@@ -66,6 +67,22 @@ class LLMGatewayTests(unittest.TestCase):
 
         self.assertEqual(provider.request["model"], "aitutor-main")
         self.assertEqual(provider.request["timeout"], 90.0)
+
+    def test_cloud_default_preserves_requested_model(self):
+        provider = FakeProvider()
+        settings = _settings(
+            self.temp_path,
+            provider="openai",
+            backend="openai",
+            default_model=None,
+            vision_model=None,
+            tool_model=None,
+        )
+        gateway = LLMGateway(settings, provider=provider, registry=_registry())
+
+        gateway.create_chat_completion(model="gpt-5.2", messages=[{"role": "user", "content": "hi"}])
+
+        self.assertEqual(provider.request["model"], "gpt-5.2")
 
     def test_vision_request_uses_vision_model(self):
         provider = FakeProvider()
@@ -144,6 +161,28 @@ class LLMGatewayTests(unittest.TestCase):
 
         self.assertEqual(response.model, "aitutor-main")
         self.assertEqual(response.choices[0].message.content, "mock")
+
+    def test_deps_entrypoint_uses_gateway_without_cloud_or_local_server(self):
+        env = {
+            "LLM_PROVIDER": "mock",
+            "LLM_MODEL": "aitutor-main",
+            "LLM_MOCK_RESPONSE": "gateway-ok",
+        }
+        try:
+            with patch.dict("os.environ", env, clear=True):
+                get_llm_gateway.cache_clear()
+                response = deps.create_chat_completion(
+                    model="gpt-5.2",
+                    messages=[{"role": "user", "content": "ping"}],
+                )
+                health = deps.get_llm_health()
+        finally:
+            get_llm_gateway.cache_clear()
+
+        self.assertEqual(response.model, "aitutor-main")
+        self.assertEqual(response.choices[0].message.content, "gateway-ok")
+        self.assertEqual(health["status"], "configured")
+        self.assertNotIn("api_key", health["config"])
 
 
 if __name__ == "__main__":

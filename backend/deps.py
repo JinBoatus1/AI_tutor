@@ -2,7 +2,6 @@
 
 import os
 import re
-from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import HTTPException
@@ -37,42 +36,6 @@ def require_openai_client() -> OpenAI:
     if api_client is None:
         raise HTTPException(status_code=503, detail="The configured LLM provider has no OpenAI SDK client.")
     return api_client
-
-
-def _messages_contain_image(messages: Any) -> bool:
-    if not isinstance(messages, list):
-        return False
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        content = message.get("content")
-        if not isinstance(content, list):
-            continue
-        if any(isinstance(item, dict) and item.get("type") == "image_url" for item in content):
-            return True
-    return False
-
-
-def resolve_llm_model(requested_model: str | None, messages: Any) -> str | None:
-    """Apply configured model aliases while preserving existing defaults."""
-    if _messages_contain_image(messages) and LLM_VISION_MODEL:
-        return LLM_VISION_MODEL
-    if LLM_TEXT_MODEL:
-        return LLM_TEXT_MODEL
-    return requested_model
-
-
-def get_llm_status() -> dict[str, Any]:
-    """Return non-secret configuration data for diagnostics."""
-    return {
-        "provider": LLM_PROVIDER,
-        "base_url": LLM_BASE_URL or "https://api.openai.com/v1",
-        "text_model_override": LLM_TEXT_MODEL,
-        "vision_model_override": LLM_VISION_MODEL,
-        "api_key_configured": bool(API_KEY),
-        "api_key_source": API_KEY_SOURCE,
-        "timeout_seconds": LLM_TIMEOUT_SECONDS,
-    }
 
 
 def create_chat_completion(**kwargs):
