@@ -1,0 +1,17 @@
+{
+  "models": {
+    "aitutor-main": {
+      "description": "Default text model alias for tutoring, grading, JSON, and tool workflows.",
+      "capabilities": ["text", "json", "tools"],
+      "windows_format": "GGUF model file with an embedded tool-capable chat template",
+      "server_format": "Hugging Face Transformers/Safetensors model directory"
+    },
+    "aitutor-vision": {
+      "description": "Vision-language model alias for PDF page OCR and image-based AutoGrader workflows.",
+      "capabilities": ["text", "vision", "json", "tools"],
+      "windows_format": "GGUF model plus mmproj GGUF file when required",
+      "server_format": "Hugging Face multimodal Transformers/Safetensors model directory"
+    }
+  },
+  "aliases": {}
+}

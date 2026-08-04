@@ -29,7 +29,9 @@ npm install
 
 ### Configuration
 
-Copy `backend/.env.example` to `backend/.env` and add your API key.
+Copy `backend/.env.example` to `backend/.env` and add your API key. The backend
+can also use an OpenAI-compatible local model through Windows llama.cpp, LM
+Studio, or server-side vLLM; see [Local LLM deployment](docs/LOCAL_LLM.md).
 
 ```bash
 cd backend
