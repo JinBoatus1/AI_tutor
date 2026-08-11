@@ -24,6 +24,32 @@ def _env_bool(name: str, default: bool) -> bool:
     return raw.lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int, *, minimum: int = 0) -> int:
+    raw = _clean(os.getenv(name))
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer.") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}.")
+    return value
+
+
+def _env_float(name: str, default: float, *, minimum: float = 0.0) -> float:
+    raw = _clean(os.getenv(name))
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number.") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}.")
+    return value
+
+
 def _normalize_base_url(value: str | None) -> str | None:
     base_url = _clean(value)
     if not base_url:
@@ -47,6 +73,9 @@ class LLMSettings:
     validate_capabilities: bool
     registry_path: Path
     mock_response: str
+    max_concurrency: int = 4
+    queue_timeout_seconds: float = 30.0
+    max_retries: int = 2
 
     @classmethod
     def from_env(cls) -> "LLMSettings":
@@ -66,11 +95,8 @@ class LLMSettings:
         else:
             api_key = _clean(os.getenv("LLM_API_KEY")) or "local"
 
-        timeout_raw = _clean(os.getenv("LLM_TIMEOUT_SECONDS")) or "90"
-        try:
-            timeout_seconds = max(1.0, float(timeout_raw))
-        except ValueError as exc:
-            raise ValueError("LLM_TIMEOUT_SECONDS must be a number.") from exc
+        timeout_seconds = _env_float("LLM_TIMEOUT_SECONDS", 90.0, minimum=1.0)
+        default_concurrency = 2 if provider == "openai_compatible" else 8
 
         default_registry = Path(__file__).with_name("model_registry.json")
         registry_path = Path(_clean(os.getenv("LLM_REGISTRY_PATH")) or default_registry).expanduser()
@@ -87,6 +113,9 @@ class LLMSettings:
             validate_capabilities=_env_bool("LLM_VALIDATE_CAPABILITIES", True),
             registry_path=registry_path,
             mock_response=_clean(os.getenv("LLM_MOCK_RESPONSE")) or "Local LLM mock response.",
+            max_concurrency=_env_int("LLM_MAX_CONCURRENCY", default_concurrency, minimum=1),
+            queue_timeout_seconds=_env_float("LLM_QUEUE_TIMEOUT_SECONDS", 30.0, minimum=0.1),
+            max_retries=_env_int("LLM_MAX_RETRIES", 2, minimum=0),
         )
 
     def public_dict(self) -> dict[str, object]:
@@ -99,6 +128,8 @@ class LLMSettings:
             "tool_model": self.tool_model,
             "timeout_seconds": self.timeout_seconds,
             "validate_capabilities": self.validate_capabilities,
-            "registry_path": str(self.registry_path),
             "api_key_configured": bool(self.api_key),
+            "max_concurrency": self.max_concurrency,
+            "queue_timeout_seconds": self.queue_timeout_seconds,
+            "max_retries": self.max_retries,
         }

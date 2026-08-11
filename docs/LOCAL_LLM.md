@@ -90,6 +90,10 @@ LLM_MODEL=aitutor-vision
 LLM_VISION_MODEL=aitutor-vision
 LLM_TOOL_MODEL=aitutor-vision
 LLM_TIMEOUT_SECONDS=180
+LLM_MAX_CONCURRENCY=2
+LLM_QUEUE_TIMEOUT_SECONDS=30
+LLM_MAX_RETRIES=2
+LLM_HEALTH_TOKEN=replace-with-a-random-admin-token
 ```
 
 For a multimodal GGUF model, also set the projector if that model requires one:
@@ -149,6 +153,10 @@ LLM_MODEL=aitutor-vision
 LLM_VISION_MODEL=aitutor-vision
 LLM_TOOL_MODEL=aitutor-vision
 LLM_TIMEOUT_SECONDS=180
+LLM_MAX_CONCURRENCY=2
+LLM_QUEUE_TIMEOUT_SECONDS=30
+LLM_MAX_RETRIES=2
+LLM_HEALTH_TOKEN=replace-with-a-random-admin-token
 ```
 
 Model-specific vLLM flags such as `--enable-auto-tool-choice`,
@@ -223,16 +231,39 @@ compatibility experiments.
 
 ## Health checks
 
-Configuration only, with no inference-server request:
+Public status contains no endpoint, model, path, or key information:
 
 ```text
 GET /api/llm/health
 ```
 
-Check the provider's `/v1/models` endpoint:
+Detailed configuration and remote checks require the `X-LLM-Health-Token`
+header matching `LLM_HEALTH_TOKEN`:
 
-```text
-GET /api/llm/health?check_remote=true
+```powershell
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/api/llm/health?details=true" `
+  -Headers @{ "X-LLM-Health-Token" = $env:LLM_HEALTH_TOKEN }
+
+Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/api/llm/health?check_remote=true" `
+  -Headers @{ "X-LLM-Health-Token" = $env:LLM_HEALTH_TOKEN }
 ```
 
-The response never includes the API key.
+The response never includes the API key or registry filesystem path. Do not
+expose `LLM_HEALTH_TOKEN` to the frontend.
+
+## Capacity and failure behavior
+
+All application calls share one gateway concurrency limit. Local deployments
+default to 2 simultaneous requests; cloud OpenAI defaults to 8. Override with
+`LLM_MAX_CONCURRENCY`. A request that cannot enter the queue within
+`LLM_QUEUE_TIMEOUT_SECONDS` returns HTTP 503. Provider capacity errors return
+429, inference timeouts return 504, connection failures return 503, and
+incompatible requests return 422.
+
+Structured-output call sites declare `required_capabilities={"json"}` internally.
+This metadata is consumed by the gateway for model validation and is never sent
+to the OpenAI-compatible provider. FastAPI and asynchronous AutoGrader paths run
+the synchronous SDK client in worker threads so model generation does not block
+the application event loop.

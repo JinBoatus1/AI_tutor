@@ -4,6 +4,7 @@ import base64
 import json
 import os
 import re
+import secrets
 import shutil
 import tempfile
 import time
@@ -12,8 +13,14 @@ from typing import Any, Dict, List, Optional
 import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
-from deps import clamp_int_0_100, create_chat_completion, get_llm_health
+from deps import (
+    clamp_int_0_100,
+    create_chat_completion,
+    create_chat_completion_async,
+    get_llm_health,
+)
 import learning_resources as lr
 import student_bar_store as sbs
 import user_textbook_store as uts
@@ -527,9 +534,20 @@ async def api_version():
 
 @router.get("/api/llm/health")
 @router.get("/api/llm/status", include_in_schema=False)
-def llm_health(check_remote: bool = Query(False)):
-    """Inspect LLM routing config; optionally call the provider's /v1/models endpoint."""
-    return get_llm_health(check_remote=check_remote)
+def llm_health(
+    check_remote: bool = Query(False),
+    details: bool = Query(False),
+    x_llm_health_token: Optional[str] = Header(None),
+):
+    """Return public status; detailed or remote diagnostics require an admin token."""
+    if check_remote or details:
+        expected = (os.getenv("LLM_HEALTH_TOKEN") or "").strip()
+        if not expected or not x_llm_health_token or not secrets.compare_digest(x_llm_health_token, expected):
+            raise HTTPException(status_code=403, detail="Detailed LLM health diagnostics are not authorized.")
+    result = get_llm_health(check_remote=check_remote)
+    if check_remote or details:
+        return result
+    return {"status": result.get("status", "misconfigured")}
 
 
 @router.post("/api/chat")
@@ -549,7 +567,13 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if not user_email and tid.startswith("user_"):
             tid = "focs"
         with lr.request_book(tid, user_email):
-            return _chat_direct_in_section(chat_message, user_email, client_section_hint, tid)
+            return await run_in_threadpool(
+                _chat_direct_in_section,
+                chat_message,
+                user_email,
+                client_section_hint,
+                tid,
+            )
 
     # TOP PRIORITY: simple definition questions must be answered in ONE sentence
     # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
@@ -571,7 +595,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
                 "Return ONE sentence only."
             )
-            resp = create_chat_completion(
+            resp = await create_chat_completion_async(
                 model="gpt-5.2",
                 messages=[
                     {"role": "system", "content": system_content},
@@ -613,7 +637,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         page_context = ""
         matched_topic: Optional[dict[str, Any]] = None
         try:
-            matched_topic = lr.match_topic_with_llm(chat_message.message)
+            matched_topic = await run_in_threadpool(lr.match_topic_with_llm, chat_message.message)
             if matched_topic:
                 pdf_bytes = lr.get_effective_pdf_bytes()
                 if pdf_bytes:
@@ -751,7 +775,8 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 parts.append({"type": "image_url", "image_url": {"url": url}})
             messages.append({"role": "user", "content": parts})
 
-        answer = run_tutor_with_optional_memory_tool(
+        answer = await run_in_threadpool(
+            run_tutor_with_optional_memory_tool,
             messages,
             memory_addr=memory_addr,
             mem=mem,
@@ -784,7 +809,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 },
             ]
 
-            eval_resp = create_chat_completion(
+            eval_resp = await create_chat_completion_async(
                 model="gpt-5.2",
                 messages=eval_messages,
                 temperature=0.0,
@@ -934,6 +959,7 @@ def _ocr_looks_like_textbook(ocr_text: str) -> bool:
         model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
+        required_capabilities={"json"},
     )
     raw = (resp.choices[0].message.content or "").strip()
     cleaned = re.sub(r"```(?:json)?\s*|\s*```", "", raw, flags=re.I).strip()
@@ -1144,7 +1170,7 @@ async def create_user_textbook_from_pdf(
 
     ocr_text = ""
     for b64_img in pages_b64:
-        ocr_resp = create_chat_completion(
+        ocr_resp = await create_chat_completion_async(
             model="gpt-5.2",
             messages=[
                 {
@@ -1167,14 +1193,15 @@ async def create_user_textbook_from_pdf(
     if len(ocr_text.strip()) < 20:
         raise HTTPException(status_code=400, detail="OCR failed. Try another file.")
 
-    if not _ocr_looks_like_textbook(ocr_text):
+    if not await run_in_threadpool(_ocr_looks_like_textbook, ocr_text):
         raise HTTPException(status_code=400, detail=NOT_TEXTBOOK_UPLOAD_DETAIL)
 
     tree_prompt = FOCS_STYLE_OUTLINE_PROMPT_HEAD + ocr_text[:12000]
-    tree_resp = create_chat_completion(
+    tree_resp = await create_chat_completion_async(
         model="gpt-5.2",
         messages=[{"role": "user", "content": tree_prompt}],
         temperature=0.0,
+        required_capabilities={"json"},
     )
     raw = tree_resp.choices[0].message.content or ""
     cleaned = re.sub(r"```(json)?|```", "", raw).strip()
@@ -1342,10 +1369,11 @@ async def parse_syllabus(
     except Exception as e:
         print(f"[Syllabus] text extract failed (using images only): {e}", flush=True)
 
-    resp = create_chat_completion(
+    resp = await create_chat_completion_async(
         model="gpt-5.2",
         messages=g_syllabus.build_parse_messages(pages, syllabus_text),
         temperature=0.0,
+        required_capabilities={"json"},
     )
     raw = resp.choices[0].message.content or ""
     try:
@@ -1438,7 +1466,7 @@ async def grade(prompt: str = Form(...), text: str = Form(""), files: List[Uploa
                 }
             )
 
-    resp = create_chat_completion(
+    resp = await create_chat_completion_async(
         model="gpt-5.2",
         messages=[
             {"role": "system", "content": prompt},
@@ -1698,7 +1726,7 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     ocr_text = ""
     for b64_img in pages_b64:
-        ocr_resp = create_chat_completion(
+        ocr_resp = await create_chat_completion_async(
             model="gpt-5.2",
             messages=[
                 {
@@ -1748,10 +1776,11 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     """
 
-    tree_resp = create_chat_completion(
+    tree_resp = await create_chat_completion_async(
         model="gpt-5.2",
         messages=[{"role": "user", "content": tree_prompt}],
         temperature=0.0,
+        required_capabilities={"json"},
     )
 
     raw = tree_resp.choices[0].message.content

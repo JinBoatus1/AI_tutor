@@ -6,6 +6,7 @@ import re
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from openai import OpenAI
+from starlette.concurrency import run_in_threadpool
 
 from llm.gateway import LLMGatewayError, get_llm_gateway
 
@@ -44,6 +45,11 @@ def create_chat_completion(**kwargs):
     except (LLMGatewayError, ValueError) as exc:
         status_code = getattr(exc, "status_code", 503)
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+async def create_chat_completion_async(**kwargs):
+    """Run the synchronous SDK/gateway call without blocking the event loop."""
+    return await run_in_threadpool(create_chat_completion, **kwargs)
 
 
 def get_llm_health(*, check_remote: bool = False) -> dict:

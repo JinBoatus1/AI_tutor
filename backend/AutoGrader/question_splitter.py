@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import fitz  # PyMuPDF
 from PIL import Image
 
-from deps import create_chat_completion
+from deps import create_chat_completion_async
 from .models import QuestionAnswerPdfPair
 from .prompt_loader import get_prompt, render_prompt
 
@@ -122,13 +122,14 @@ class QuestionDetector:
             )
 
         try:
-            resp = create_chat_completion(
+            resp = await create_chat_completion_async(
                 model=os.getenv("AUTOGRADER_MODEL", "gpt-5.2"),
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": content},
                 ],
                 temperature=0.0,
+                required_capabilities={"json"},
             )
             raw = (resp.choices[0].message.content or "").strip()
             if raw.startswith("```"):
@@ -186,13 +187,14 @@ class QuestionDetector:
                 )
 
         try:
-            resp = create_chat_completion(
+            resp = await create_chat_completion_async(
                 model=os.getenv("AUTOGRADER_MODEL", "gpt-5.2"),
                 messages=[
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": content},
                 ],
                 temperature=0.0,
+                required_capabilities={"json"},
             )
             raw = (resp.choices[0].message.content or "").strip()
             if raw.startswith("```"):

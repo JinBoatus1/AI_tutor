@@ -587,6 +587,7 @@ def get_three_relevant_snippet_images(
                 {"role": "user", "content": prompt},
             ],
             temperature=0.0,
+            required_capabilities={"json"},
         )
         raw_out = (resp.choices[0].message.content or "").strip()
         raw_out = raw_out.replace("`", "").strip()

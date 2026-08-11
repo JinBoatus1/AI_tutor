@@ -241,6 +241,7 @@ class LLMQuestionEvaluator(QuestionEvaluatorBase):
             model=self._model,
             messages=messages,
             temperature=0.0,
+            required_capabilities={"json"},
         )
         raw_text = response.choices[0].message.content or ""
         return self._parse_evaluation(raw_text, attempt, self.evaluator_name)

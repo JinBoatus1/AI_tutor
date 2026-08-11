@@ -14,8 +14,13 @@ class OpenAICompatibleProvider:
         api_key: str,
         base_url: str | None = None,
         timeout_seconds: float = 90.0,
+        max_retries: int = 2,
     ):
-        client_kwargs: dict[str, Any] = {"api_key": api_key, "timeout": timeout_seconds}
+        client_kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "timeout": timeout_seconds,
+            "max_retries": max_retries,
+        }
         if base_url:
             client_kwargs["base_url"] = base_url
         self.client = OpenAI(**client_kwargs)
