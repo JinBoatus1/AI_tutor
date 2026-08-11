@@ -75,6 +75,8 @@ limits, HTTP 5xx responses, or a missing served model. Authentication errors and
 bad requests do not fall back, preventing configuration mistakes or malformed
 requests from silently sending data to another provider. If both providers
 fail, the cloud error is returned using the normal sanitized status mapping.
+Runtime failovers emit a warning containing only model names and the exception
+class; prompts, images, responses, and API keys are never logged by the gateway.
 
 Detailed health output includes a `routing` object for text, JSON, tools,
 vision, and combined vision/tool/JSON requests. `degraded` means the complete

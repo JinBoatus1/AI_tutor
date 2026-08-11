@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from threading import BoundedSemaphore
 from typing import Any
@@ -21,6 +22,9 @@ from .capabilities import KNOWN_CAPABILITIES, ModelRegistry, required_capabiliti
 from .config import LLMSettings
 from .providers import MockProvider, OpenAICompatibleProvider
 from .providers.base import LLMProvider
+
+
+logger = logging.getLogger(__name__)
 
 
 class LLMGatewayError(RuntimeError):
@@ -229,6 +233,13 @@ class LLMGateway:
                 ):
                     fallback_model = self._select_fallback_model(required)
                     fallback_request = dict(request, model=fallback_model)
+                    logger.warning(
+                        "Local LLM request failed; using cloud fallback "
+                        "(local_model=%s, cloud_model=%s, error=%s)",
+                        model,
+                        fallback_model,
+                        primary_exc.__class__.__name__,
+                    )
                     try:
                         return self.get_fallback_provider().create_chat_completion(**fallback_request)
                     except OpenAIError as fallback_exc:

@@ -5,7 +5,6 @@ import re
 
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from openai import OpenAI
 from starlette.concurrency import run_in_threadpool
 
 from llm.gateway import LLMGatewayError, get_llm_gateway
@@ -22,21 +21,6 @@ def clamp_int_0_100(x: str) -> int:
         return 50
     value = int(m.group(0))
     return max(0, min(100, value))
-
-
-def require_openai_client() -> OpenAI:
-    """Compatibility helper for callers that still need the underlying SDK client."""
-    try:
-        provider = get_llm_gateway().get_provider()
-    except (LLMGatewayError, ValueError) as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"LLM is not configured: {exc}",
-        ) from exc
-    api_client = getattr(provider, "client", None)
-    if api_client is None:
-        raise HTTPException(status_code=503, detail="The configured LLM provider has no OpenAI SDK client.")
-    return api_client
 
 
 def create_chat_completion(**kwargs):

@@ -45,6 +45,8 @@ htmlcov/
 .tox/
 .coverage
 .pytest_cache/
+backend/test_output.txt
+backend/AutoGrader/test_local_score_output.txt
 
 # Jupyter Notebook
 .ipynb_checkpoints
