@@ -46,6 +46,41 @@ LLM_MODEL=aitutor-main
 The mock returns a fixed text response. It does not perform OCR, grading, JSON
 generation, or tool calls.
 
+## Partial local deployment with cloud fallback
+
+Cloud fallback is opt-in because it may send student prompts or images outside
+the local environment. Enable it only after approving that data path:
+
+```env
+LLM_PROVIDER=openai_compatible
+LLM_BASE_URL=http://127.0.0.1:8080/v1
+LLM_API_KEY=local
+
+LLM_CLOUD_FALLBACK_ENABLED=true
+LLM_CLOUD_API_KEY=sk-...
+LLM_CLOUD_MODEL=gpt-5.2
+LLM_CLOUD_VISION_MODEL=gpt-5.2
+LLM_CLOUD_TOOL_MODEL=gpt-5.2
+```
+
+For a local text-only deployment, configure `LLM_MODEL` and omit
+`LLM_VISION_MODEL`; image requests use `LLM_CLOUD_VISION_MODEL`. For a local
+vision-only deployment, configure `LLM_VISION_MODEL` and omit `LLM_MODEL`; text
+requests use `LLM_CLOUD_MODEL`. A missing local tool role uses the local default
+model only when its registry entry declares `tools`; otherwise it uses
+`LLM_CLOUD_TOOL_MODEL`.
+
+The gateway also fails over after local connection errors, timeouts, capacity
+limits, HTTP 5xx responses, or a missing served model. Authentication errors and
+bad requests do not fall back, preventing configuration mistakes or malformed
+requests from silently sending data to another provider. If both providers
+fail, the cloud error is returned using the normal sanitized status mapping.
+
+Detailed health output includes a `routing` object for text, JSON, tools,
+vision, and combined vision/tool/JSON requests. `degraded` means the complete
+service is available through cloud substitution; `partial` means some roles are
+unavailable; `unreachable` means no tested role can be served.
+
 ## Windows: llama.cpp
 
 llama.cpp is the recommended native Windows test server because it is

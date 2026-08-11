@@ -55,6 +55,30 @@ class LlmHealthRouteTests(unittest.TestCase):
         response = self.client.get("/api/llm/health?check_remote=true")
         self.assertEqual(response.status_code, 403)
 
+    def test_detailed_health_reports_partial_local_routing(self):
+        env = {
+            "LLM_PROVIDER": "openai_compatible",
+            "LLM_BASE_URL": "http://127.0.0.1:8080/v1",
+            "LLM_MODEL": "aitutor-main",
+            "LLM_CLOUD_FALLBACK_ENABLED": "true",
+            "LLM_CLOUD_API_KEY": "cloud-secret",
+            "LLM_CLOUD_MODEL": "cloud-text",
+            "LLM_CLOUD_VISION_MODEL": "cloud-vision",
+            "LLM_HEALTH_TOKEN": "health-secret",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            get_llm_gateway.cache_clear()
+            response = self.client.get(
+                "/api/llm/health?details=true",
+                headers={"X-LLM-Health-Token": "health-secret"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["routing"]["text"]["route"], "primary")
+        self.assertEqual(body["routing"]["vision"]["route"], "fallback")
+        self.assertNotIn("cloud-secret", response.text)
+
     def test_status_alias_uses_same_handler(self):
         health = self.client.get("/api/llm/health").json()
         status = self.client.get("/api/llm/status").json()

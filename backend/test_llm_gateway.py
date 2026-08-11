@@ -58,6 +58,11 @@ class BlockingProvider(FakeProvider):
         return SimpleNamespace(choices=[])
 
 
+class UnhealthyProvider(FakeProvider):
+    def health(self):
+        raise APIConnectionError(request=httpx.Request("GET", "http://local/v1/models"))
+
+
 def _settings(tmp_path: Path, **overrides) -> LLMSettings:
     values = {
         "provider": "mock",
@@ -74,6 +79,25 @@ def _settings(tmp_path: Path, **overrides) -> LLMSettings:
     }
     values.update(overrides)
     return LLMSettings(**values)
+
+
+def _hybrid_settings(tmp_path: Path, **overrides) -> LLMSettings:
+    values = {
+        "provider": "openai_compatible",
+        "backend": "llama_cpp",
+        "base_url": "http://127.0.0.1:8080/v1",
+        "api_key": "local",
+        "default_model": "aitutor-main",
+        "vision_model": "aitutor-vision",
+        "tool_model": "aitutor-main",
+        "cloud_fallback_enabled": True,
+        "cloud_api_key": "cloud-secret",
+        "cloud_default_model": "cloud-text",
+        "cloud_vision_model": "cloud-vision",
+        "cloud_tool_model": "cloud-tools",
+    }
+    values.update(overrides)
+    return _settings(tmp_path, **values)
 
 
 def _registry() -> ModelRegistry:
@@ -228,6 +252,175 @@ class LLMGatewayTests(unittest.TestCase):
             settings = LLMSettings.from_env()
         self.assertEqual(settings.max_concurrency, 2)
         self.assertEqual(settings.max_retries, 2)
+
+    def test_cloud_fallback_configuration_requires_key_and_model(self):
+        base = {
+            "LLM_PROVIDER": "openai_compatible",
+            "LLM_BASE_URL": "http://127.0.0.1:8080/v1",
+            "LLM_CLOUD_FALLBACK_ENABLED": "true",
+        }
+        with patch.dict("os.environ", base, clear=True):
+            with self.assertRaisesRegex(ValueError, "API_KEY"):
+                LLMSettings.from_env()
+        with patch.dict("os.environ", dict(base, OPENAI_API_KEY="cloud-key"), clear=True):
+            with self.assertRaisesRegex(ValueError, "LLM_CLOUD_MODEL"):
+                LLMSettings.from_env()
+
+    def test_cloud_fallback_configuration_is_explicit_and_sanitized(self):
+        env = {
+            "LLM_PROVIDER": "openai_compatible",
+            "LLM_BASE_URL": "http://127.0.0.1:8080/v1",
+            "LLM_MODEL": "aitutor-main",
+            "LLM_CLOUD_FALLBACK_ENABLED": "true",
+            "OPENAI_API_KEY": "cloud-key",
+            "LLM_CLOUD_MODEL": "cloud-text",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            settings = LLMSettings.from_env()
+        self.assertTrue(settings.cloud_fallback_enabled)
+        self.assertEqual(settings.cloud_api_key, "cloud-key")
+        self.assertNotIn("cloud-key", repr(settings.public_dict()))
+
+    def test_missing_local_text_model_routes_to_cloud(self):
+        local = FakeProvider()
+        cloud = FakeProvider()
+        settings = _hybrid_settings(self.temp_path, default_model=None, tool_model=None)
+        gateway = LLMGateway(
+            settings,
+            provider=local,
+            fallback_provider=cloud,
+            registry=_registry(),
+        )
+
+        gateway.create_chat_completion(model="gpt-5.2", messages=[{"role": "user", "content": "hi"}])
+
+        self.assertIsNone(local.request)
+        self.assertEqual(cloud.request["model"], "cloud-text")
+
+    def test_missing_local_role_without_fallback_is_reported_cleanly(self):
+        settings = _hybrid_settings(
+            self.temp_path,
+            default_model=None,
+            tool_model=None,
+            cloud_fallback_enabled=False,
+            cloud_api_key=None,
+            cloud_default_model=None,
+        )
+        gateway = LLMGateway(settings, provider=FakeProvider(), registry=_registry())
+
+        with self.assertRaises(LLMGatewayError) as raised:
+            gateway.create_chat_completion(model="gpt-5.2", messages=[])
+
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertIn("No local text model", str(raised.exception))
+        self.assertEqual(gateway.health()["status"], "partial")
+
+    def test_missing_local_vision_model_routes_image_to_cloud(self):
+        local = FakeProvider()
+        cloud = FakeProvider()
+        settings = _hybrid_settings(self.temp_path, vision_model=None)
+        gateway = LLMGateway(
+            settings,
+            provider=local,
+            fallback_provider=cloud,
+            registry=_registry(),
+        )
+        messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": "x"}}]}]
+
+        gateway.create_chat_completion(model="gpt-5.2", messages=messages)
+
+        self.assertIsNone(local.request)
+        self.assertEqual(cloud.request["model"], "cloud-vision")
+        self.assertEqual(gateway.health()["routing"]["vision"]["route"], "fallback")
+
+    def test_configured_local_text_model_does_not_use_cloud(self):
+        local = FakeProvider()
+        cloud = FakeProvider()
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path),
+            provider=local,
+            fallback_provider=cloud,
+            registry=_registry(),
+        )
+
+        gateway.create_chat_completion(model="gpt-5.2", messages=[{"role": "user", "content": "hi"}])
+
+        self.assertEqual(local.request["model"], "aitutor-main")
+        self.assertIsNone(cloud.request)
+
+    def test_local_connection_failure_falls_back_to_cloud(self):
+        request = httpx.Request("POST", "http://local/v1/chat/completions")
+        cloud = FakeProvider()
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path),
+            provider=RaisingProvider(APIConnectionError(request=request)),
+            fallback_provider=cloud,
+            registry=_registry(),
+        )
+
+        gateway.create_chat_completion(model="gpt-5.2", messages=[{"role": "user", "content": "hi"}])
+
+        self.assertEqual(cloud.request["model"], "cloud-text")
+
+    def test_local_bad_request_does_not_send_data_to_cloud(self):
+        request = httpx.Request("POST", "http://local/v1/chat/completions")
+        response = httpx.Response(400, request=request)
+        cloud = FakeProvider()
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path),
+            provider=RaisingProvider(BadRequestError("bad", response=response, body=None)),
+            fallback_provider=cloud,
+            registry=_registry(),
+        )
+
+        with self.assertRaises(LLMGatewayError) as raised:
+            gateway.create_chat_completion(model="gpt-5.2", messages=[])
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertIsNone(cloud.request)
+
+    def test_fallback_failure_reports_cloud_error(self):
+        request = httpx.Request("POST", "http://local/v1/chat/completions")
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path),
+            provider=RaisingProvider(APIConnectionError(request=request)),
+            fallback_provider=RaisingProvider(APITimeoutError(request=request)),
+            registry=_registry(),
+        )
+
+        with self.assertRaises(LLMGatewayError) as raised:
+            gateway.create_chat_completion(model="gpt-5.2", messages=[])
+
+        self.assertEqual(raised.exception.status_code, 504)
+
+    def test_health_is_degraded_when_only_cloud_is_reachable(self):
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path),
+            provider=UnhealthyProvider(),
+            fallback_provider=FakeProvider(),
+            registry=_registry(),
+        )
+
+        result = gateway.health(check_remote=True)
+
+        self.assertEqual(result["status"], "degraded")
+        self.assertFalse(result["remote"]["reachable"])
+        self.assertTrue(result["fallback_remote"]["reachable"])
+
+    def test_health_is_partial_when_missing_vision_depends_on_unreachable_cloud(self):
+        gateway = LLMGateway(
+            _hybrid_settings(self.temp_path, vision_model=None),
+            provider=FakeProvider(),
+            fallback_provider=UnhealthyProvider(),
+            registry=_registry(),
+        )
+
+        result = gateway.health(check_remote=True)
+
+        self.assertEqual(result["status"], "partial")
+        self.assertTrue(result["remote"]["reachable"])
+        self.assertFalse(result["fallback_remote"]["reachable"])
+        self.assertEqual(result["routing"]["vision"]["route"], "fallback")
 
     def test_invalid_concurrency_configuration_is_rejected(self):
         with patch.dict("os.environ", {"LLM_MAX_CONCURRENCY": "0", "OPENAI_API_KEY": "x"}, clear=True):

@@ -76,6 +76,12 @@ class LLMSettings:
     max_concurrency: int = 4
     queue_timeout_seconds: float = 30.0
     max_retries: int = 2
+    cloud_fallback_enabled: bool = False
+    cloud_api_key: str | None = None
+    cloud_base_url: str | None = None
+    cloud_default_model: str | None = None
+    cloud_vision_model: str | None = None
+    cloud_tool_model: str | None = None
 
     @classmethod
     def from_env(cls) -> "LLMSettings":
@@ -100,6 +106,21 @@ class LLMSettings:
 
         default_registry = Path(__file__).with_name("model_registry.json")
         registry_path = Path(_clean(os.getenv("LLM_REGISTRY_PATH")) or default_registry).expanduser()
+        cloud_fallback_enabled = _env_bool("LLM_CLOUD_FALLBACK_ENABLED", False)
+        if cloud_fallback_enabled and provider != "openai_compatible":
+            raise ValueError("LLM_CLOUD_FALLBACK_ENABLED requires LLM_PROVIDER=openai_compatible.")
+        cloud_api_key = _clean(
+            os.getenv("LLM_CLOUD_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("API_KEY")
+        )
+        if cloud_fallback_enabled and not cloud_api_key:
+            raise ValueError(
+                "Cloud fallback is enabled but no LLM_CLOUD_API_KEY/OPENAI_API_KEY is configured."
+            )
+        cloud_default_model = _clean(os.getenv("LLM_CLOUD_MODEL"))
+        if cloud_fallback_enabled and not cloud_default_model:
+            raise ValueError("Cloud fallback is enabled but LLM_CLOUD_MODEL is not configured.")
 
         return cls(
             provider=provider,
@@ -116,6 +137,12 @@ class LLMSettings:
             max_concurrency=_env_int("LLM_MAX_CONCURRENCY", default_concurrency, minimum=1),
             queue_timeout_seconds=_env_float("LLM_QUEUE_TIMEOUT_SECONDS", 30.0, minimum=0.1),
             max_retries=_env_int("LLM_MAX_RETRIES", 2, minimum=0),
+            cloud_fallback_enabled=cloud_fallback_enabled,
+            cloud_api_key=cloud_api_key,
+            cloud_base_url=_normalize_base_url(os.getenv("LLM_CLOUD_BASE_URL")),
+            cloud_default_model=cloud_default_model,
+            cloud_vision_model=_clean(os.getenv("LLM_CLOUD_VISION_MODEL")),
+            cloud_tool_model=_clean(os.getenv("LLM_CLOUD_TOOL_MODEL")),
         )
 
     def public_dict(self) -> dict[str, object]:
@@ -132,4 +159,10 @@ class LLMSettings:
             "max_concurrency": self.max_concurrency,
             "queue_timeout_seconds": self.queue_timeout_seconds,
             "max_retries": self.max_retries,
+            "cloud_fallback_enabled": self.cloud_fallback_enabled,
+            "cloud_api_key_configured": bool(self.cloud_api_key),
+            "cloud_base_url": self.cloud_base_url,
+            "cloud_default_model": self.cloud_default_model,
+            "cloud_vision_model": self.cloud_vision_model,
+            "cloud_tool_model": self.cloud_tool_model,
         }
