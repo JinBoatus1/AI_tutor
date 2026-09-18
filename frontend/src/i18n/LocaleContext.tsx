@@ -25,8 +25,7 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 function htmlLangFor(locale: AppLocale): string {
   if (locale === "zh") return "zh-Hans";
-  if (locale === "es") return "es";
-  return "en";
+  return locale;
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {

@@ -9,6 +9,10 @@ html, body, #root {
   background: var(--app-page-bg, #e6eaf2);
 }
 
+html[lang="te"] {
+  font-family: 'Noto Sans Telugu', 'DM Sans', system-ui, sans-serif;
+}
+
 .app-container {
   height: 100vh;
   overflow: hidden;

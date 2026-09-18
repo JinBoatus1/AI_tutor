@@ -1,11 +1,13 @@
-import type { AppLocale } from "./types";
+import { APP_LOCALES, type AppLocale } from "./types";
 
 const STORAGE_KEY = "ai_tutor_system_locale";
 
 export function readStoredLocale(): AppLocale {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === "en" || raw === "zh" || raw === "es") return raw;
+    if (raw && (APP_LOCALES as readonly string[]).includes(raw)) {
+      return raw as AppLocale;
+    }
   } catch {
     /* ignore */
   }

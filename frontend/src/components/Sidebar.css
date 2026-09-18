@@ -13,7 +13,7 @@
   background: linear-gradient(176deg, #0c1222 0%, #0f1729 100%);
   border-right: 1px solid rgba(94, 234, 212, 0.1);
   color: rgba(203, 213, 225, 0.72);
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: "DM Sans", "Noto Sans Telugu", system-ui, sans-serif;
   transition: width 0.24s cubic-bezier(0.2, 0, 0, 1), flex-basis 0.24s cubic-bezier(0.2, 0, 0, 1);
   overflow: hidden;
 }
