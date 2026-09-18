@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLocale } from "../i18n/LocaleContext";
@@ -75,6 +75,9 @@ const TABS: Tab[] = [
 
 const SIDEBAR_PROGRESS_OPEN_KEY = "sidebar-open-progress";
 const SIDEBAR_HISTORY_OPEN_KEY = "sidebar-open-history";
+const SIDEBAR_PROGRESS_H_KEY = "sidebar-progress-height";
+const PROGRESS_MIN_H = 160;
+const HISTORY_MIN_RESERVE = 56;
 
 function readSidebarSectionOpen(key: string): boolean {
   try {
@@ -87,6 +90,26 @@ function readSidebarSectionOpen(key: string): boolean {
 function writeSidebarSectionOpen(key: string, open: boolean): void {
   try {
     localStorage.setItem(key, open ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
+function readSidebarProgressHeight(): number | null {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_PROGRESS_H_KEY);
+    const v = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(v)) return null;
+    return Math.max(PROGRESS_MIN_H, v);
+  } catch {
+    return null;
+  }
+}
+
+function writeSidebarProgressHeight(height: number | null): void {
+  try {
+    if (height == null) localStorage.removeItem(SIDEBAR_PROGRESS_H_KEY);
+    else localStorage.setItem(SIDEBAR_PROGRESS_H_KEY, String(Math.round(height)));
   } catch {
     /* ignore */
   }
@@ -110,6 +133,80 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState<boolean>(() => localStorage.getItem("sidebar-collapsed") === "1");
   const [openProgress, setOpenProgress] = useState(() => readSidebarSectionOpen(SIDEBAR_PROGRESS_OPEN_KEY));
   const [openHistory, setOpenHistory] = useState(() => readSidebarSectionOpen(SIDEBAR_HISTORY_OPEN_KEY));
+  const [progressHeight, setProgressHeight] = useState<number | null>(() => readSidebarProgressHeight());
+  const shellRef = useRef<HTMLDivElement>(null);
+  const progressEmbedRef = useRef<HTMLDivElement>(null);
+  const historyHeadRef = useRef<HTMLButtonElement>(null);
+  const openHistoryRef = useRef(openHistory);
+  openHistoryRef.current = openHistory;
+  const dragRef = useRef<{ pointerId: number; startY: number; startH: number } | null>(null);
+
+  const clampProgressHeight = useCallback((desired: number) => {
+    const shell = shellRef.current;
+    const embed = progressEmbedRef.current;
+    if (!shell || !embed) return Math.max(PROGRESS_MIN_H, desired);
+    const shellBottom = shell.getBoundingClientRect().bottom;
+    const embedTop = embed.getBoundingClientRect().top;
+    const histHead = historyHeadRef.current?.getBoundingClientRect().height ?? 0;
+    const histReserve = openHistoryRef.current ? histHead + HISTORY_MIN_RESERVE : 8;
+    const max = Math.max(PROGRESS_MIN_H, shellBottom - embedTop - histReserve);
+    return Math.round(Math.min(max, Math.max(PROGRESS_MIN_H, desired)));
+  }, []);
+
+  const onProgressResizePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const embed = progressEmbedRef.current;
+    if (!embed) return;
+    e.preventDefault();
+    const startH = embed.getBoundingClientRect().height;
+    dragRef.current = { pointerId: e.pointerId, startY: e.clientY, startH };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onProgressResizePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const next = clampProgressHeight(drag.startH + (e.clientY - drag.startY));
+    setProgressHeight(next);
+  };
+
+  const endProgressResize = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    dragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    setProgressHeight((h) => {
+      if (h == null) return h;
+      const clamped = clampProgressHeight(h);
+      writeSidebarProgressHeight(clamped);
+      return clamped;
+    });
+  };
+
+  const resetProgressHeight = () => {
+    dragRef.current = null;
+    setProgressHeight(null);
+    writeSidebarProgressHeight(null);
+  };
+
+  useEffect(() => {
+    if (collapsed || !openProgress) return;
+    const reclamp = () => {
+      setProgressHeight((h) => {
+        if (h == null) return h;
+        const next = clampProgressHeight(h);
+        if (next !== h) writeSidebarProgressHeight(next);
+        return next;
+      });
+    };
+    reclamp();
+    window.addEventListener("resize", reclamp);
+    return () => window.removeEventListener("resize", reclamp);
+  }, [clampProgressHeight, openHistory, collapsed, openProgress]);
 
   const toggleProgress = () => {
     setOpenProgress((o) => {
@@ -206,7 +303,7 @@ export default function Sidebar() {
         </button>
       </div>
 
-      <div className="sb-shell">
+      <div className="sb-shell" ref={shellRef}>
         <div className="sb-group-label">{t("sidebar.workspace")}</div>
         <nav className="sb-nav">
           {TABS.map((tab) => (
@@ -225,15 +322,43 @@ export default function Sidebar() {
         <div className="sb-group-label sb-group-label--gap">{t("sidebar.study")}</div>
 
         {/* Learning Progress (was Aquarius's "syllabus") — the real panel, bridged to Learning Mode */}
-        <div className={`sb-section sb-section--progress${openProgress ? " is-open" : ""}`}>
+        <div
+          className={`sb-section sb-section--progress${openProgress ? " is-open" : ""}${
+            openProgress && progressHeight != null ? " is-sized" : ""
+          }`}
+          style={openProgress && progressHeight != null ? { ["--sb-progress-h" as string]: `${progressHeight}px` } : undefined}
+        >
           <button className="sb-section-head" onClick={toggleProgress} aria-expanded={openProgress}>
             <span className="sb-link-ic">{I.progress}</span>
             <span className="sb-link-label">{t("sidebar.learningProgress")}</span>
             <span className="sb-caret">{I.chevron}</span>
           </button>
           <div className="sb-section-body">
-            <div className="sb-progress-embed" data-onboarding="learning-progress">
+            <div className="sb-progress-embed" data-onboarding="learning-progress" ref={progressEmbedRef}>
               <LearningBarPanel variant="embed" studentId={studentId} onOutlineSectionPreview={previewSection} />
+              <div
+                className="sb-progress-resize"
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label={t("sidebar.resizeProgress")}
+                title={t("sidebar.resizeProgress")}
+                tabIndex={0}
+                onPointerDown={onProgressResizePointerDown}
+                onPointerMove={onProgressResizePointerMove}
+                onPointerUp={endProgressResize}
+                onPointerCancel={endProgressResize}
+                onDoubleClick={resetProgressHeight}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                  e.preventDefault();
+                  const embed = progressEmbedRef.current;
+                  const base = progressHeight ?? embed?.getBoundingClientRect().height ?? PROGRESS_MIN_H;
+                  const delta = e.key === "ArrowDown" ? 32 : -32;
+                  const next = clampProgressHeight(base + delta);
+                  setProgressHeight(next);
+                  writeSidebarProgressHeight(next);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -243,7 +368,7 @@ export default function Sidebar() {
           className={`sb-section sb-section--hist${openHistory ? " is-open" : ""}`}
           data-onboarding="history"
         >
-          <button className="sb-section-head" onClick={toggleHistory} aria-expanded={openHistory}>
+          <button ref={historyHeadRef} className="sb-section-head" onClick={toggleHistory} aria-expanded={openHistory}>
             <span className="sb-link-ic">{I.history}</span>
             <span className="sb-link-label">{t("sidebar.history")}</span>
             <span className="sb-caret">{I.chevron}</span>

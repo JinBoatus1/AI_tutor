@@ -133,6 +133,14 @@
   display: flex;
   flex-direction: column;
 }
+.sb-section--progress.is-open.is-sized {
+  flex: 0 1 auto;
+}
+.sb-section--progress.is-open.is-sized .sb-section-body {
+  flex: 0 0 auto;
+  height: var(--sb-progress-h);
+  max-height: none;
+}
 
 .sb-section--hist {
   flex: 0 0 auto;
@@ -147,6 +155,13 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding-left: 0;
+}
+.sb-shell:has(.sb-section--progress.is-sized) .sb-section--hist.is-open {
+  flex: 1 1 0;
+}
+.sb-shell:has(.sb-section--progress.is-sized) .sb-section--hist.is-open .sb-section-body {
+  flex: 1 1 0;
+  max-height: none;
 }
 
 .sb-unit { padding: 6px 0 6px 10px; margin-left: 12px; border-left: 1px dashed rgba(148, 163, 184, 0.22); }
@@ -180,7 +195,40 @@
 .sb-progress-embed .learning-bar-embed {
   flex: 1 1 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+}
+.sb-progress-resize {
+  flex: 0 0 10px;
+  height: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid rgba(94, 234, 212, 0.16);
+  background: rgba(94, 234, 212, 0.06);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  position: relative;
+}
+.sb-progress-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(94, 234, 212, 0.45);
+  transform: translate(-50%, -50%);
+}
+.sb-progress-resize:hover,
+.sb-progress-resize:focus-visible {
+  background: rgba(94, 234, 212, 0.14);
+  outline: none;
+}
+.sb-progress-resize:hover::after,
+.sb-progress-resize:focus-visible::after {
+  background: var(--tealb);
 }
 .sb-progress-embed .learning-bar-embed-scroll {
   scrollbar-width: thin;
@@ -272,7 +320,8 @@
    `.is-open` bodies use a more specific selector than the generic `.sb-section-body`
    hide above, so re-hide them here at higher specificity — and stop the progress
    section from stretching the rail — else the tree squishes into 72px (distorted). */
-.sb--collapsed .sb-section--progress { flex: 0 0 auto; }
+.sb--collapsed .sb-section--progress,
+.sb--collapsed .sb-section--progress.is-open.is-sized { flex: 0 0 auto; }
 .sb--collapsed .sb-section--progress.is-open .sb-section-body,
 .sb--collapsed .sb-section--hist.is-open .sb-section-body { display: none; }
 

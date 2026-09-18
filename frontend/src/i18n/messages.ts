@@ -79,6 +79,7 @@ const EN = {
   "sidebar.thisMonth": "This Month",
   "sidebar.earlier": "Earlier",
   "sidebar.justNow": "just now",
+  "sidebar.resizeProgress": "Drag to show more of the checklist. Double-click to reset.",
 
   "progress.title": "Learning progress for",
   "progress.chooseTextbook": "Choose textbook",
@@ -447,6 +448,7 @@ const ZH: Record<MessageKey, string> = {
   "sidebar.thisMonth": "本月",
   "sidebar.earlier": "更早",
   "sidebar.justNow": "刚刚",
+  "sidebar.resizeProgress": "拖动以显示更多进度清单。双击可重置高度。",
 
   "progress.title": "学习进度 ·",
   "progress.chooseTextbook": "选择教材",
@@ -809,6 +811,7 @@ const ES: Record<MessageKey, string> = {
   "sidebar.thisMonth": "Este mes",
   "sidebar.earlier": "Anterior",
   "sidebar.justNow": "ahora",
+  "sidebar.resizeProgress": "Arrastra para ver más de la lista. Doble clic para restablecer.",
 
   "progress.title": "Progreso de aprendizaje ·",
   "progress.chooseTextbook": "Elegir libro",
