@@ -22,15 +22,14 @@ import {
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { useDragScroll } from "./hooks/useDragScroll";
-import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { PracticePanel } from "./practice/PracticePanel";
 import { isProblemsSection, chapterOfProblems } from "./practice/isProblemsSection";
 import { getPracticeSet } from "./data/focsPracticeSets";
 import { GuidePanel } from "./guide/GuidePanel";
 import { isInductionGuideSection } from "./guide/chapterOfSection";
-import { INDUCTION_GUIDE } from "./guide/inductionGuide";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
-import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
+import { sectionTokensPreorder } from "./utils/focsSectionOrder";
+import { getBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
 import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import {
@@ -40,11 +39,6 @@ import {
   emitOnboardingExpandPaths,
   ONBOARDING_FINISHED_EVENT,
 } from "./onboarding/onboardingStorage";
-import {
-  ONBOARDING_NOTE_SECTION,
-  ONBOARDING_PROBLEMS_SECTION,
-  ONBOARDING_INDUCTION_EXPAND_PATHS,
-} from "./onboarding/onboardingDemoSection";
 import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -446,7 +440,8 @@ export default function LearningModel() {
     ? chapterOfProblems(activeSectionTitle)
     : null;
   const practiceActive = Boolean(practiceChapter && getPracticeSet(textbookId, practiceChapter));
-  const guideActive = textbookId === "focs" && isInductionGuideSection(activeSectionTitle);
+  const guide = getBook(textbookId).guides?.[0];
+  const guideActive = Boolean(guide) && isInductionGuideSection(activeSectionTitle);
 
   const hasLeftPanelContent = Boolean(
     practiceActive ||
@@ -1024,10 +1019,12 @@ export default function LearningModel() {
   sessionApiRef.current = { load: loadSession, newChat: handleNewChat, preview: handleOutlineSectionPreview };
 
   const activeSectionNote = useMemo(() => {
-    if (textbookId !== "focs" || !dataMatchedTopic) return null;
+    if (!dataMatchedTopic) return null;
+    const book = getBook(textbookId);
+    if (Object.keys(book.sectionNotes).length === 0) return null;
     return getSectionNoteWithNewVocab(
-      FOCS_SECTION_NOTES,
-      FOCS_SECTION_TOKENS_PREORDER,
+      book.sectionNotes,
+      sectionTokensPreorder(textbookId),
       dataMatchedTopic.sectionHint,
       dataMatchedTopic.name
     );
@@ -1048,9 +1045,11 @@ export default function LearningModel() {
   useEffect(() => {
     const onTourStep = (e: Event) => {
       const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
+      const onboarding = getBook(textbookId).onboarding;
+      if (!onboarding) return;
       if (stepId === "note") {
         void (async () => {
-          await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
+          await handleOutlineSectionPreview(onboarding.noteSection);
           window.setTimeout(() => {
             sectionNoteToggle.setOpen(true);
             emitOnboardingNoteReady();
@@ -1059,9 +1058,9 @@ export default function LearningModel() {
       } else if (stepId === "problems") {
         sectionNoteToggle.setOpen(false);
         setPracticeViewNote(false);
-        emitOnboardingExpandPaths(ONBOARDING_INDUCTION_EXPAND_PATHS);
+        emitOnboardingExpandPaths(onboarding.expandPaths);
         void (async () => {
-          await handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION);
+          await handleOutlineSectionPreview(onboarding.problemsSection);
           emitOnboardingProblemsReady();
         })();
       }
@@ -1412,14 +1411,17 @@ export default function LearningModel() {
                     actions={sectionNoteActions}
                   />
                 </div>
-              ) : (
+              ) : guide ? (
                 <GuidePanel
-                  script={INDUCTION_GUIDE}
+                  script={guide}
                   textbookId={textbookId}
                   onViewNote={activeSectionNote ? () => setGuideViewNote(true) : undefined}
-                  onOpenProblems={() => void handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION)}
+                  onOpenProblems={() => {
+                    const ob = getBook(textbookId).onboarding;
+                    if (ob) void handleOutlineSectionPreview(ob.problemsSection);
+                  }}
                 />
-              )}
+              ) : null}
             </div>
             <div
               className="textbook-note-split-handle"

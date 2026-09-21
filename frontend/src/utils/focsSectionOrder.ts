@@ -1,4 +1,4 @@
-import focsTree from "../data/focsTree.json";
+import { getBook } from "../books/registry";
 import { sectionTokenFromTitle } from "./sectionNotes";
 
 type FocsNode = Record<string, unknown>;
@@ -32,7 +32,14 @@ function collectSectionTokensPreorder(node: FocsNode): string[] {
   return out;
 }
 
-/** FCOS outline section tokens in reading order (0, 1.1, 1.2, …, 2.1, …). */
-export const FOCS_SECTION_TOKENS_PREORDER: string[] = collectSectionTokensPreorder(
-  focsTree as FocsNode
-);
+const cache = new Map<string, string[]>();
+
+/** Outline section tokens in reading order (0, 1.1, 1.2, …), memoized per book. */
+export function sectionTokensPreorder(bookId: string): string[] {
+  const book = getBook(bookId);
+  const hit = cache.get(book.id);
+  if (hit) return hit;
+  const tokens = collectSectionTokensPreorder(book.tree as FocsNode);
+  cache.set(book.id, tokens);
+  return tokens;
+}
