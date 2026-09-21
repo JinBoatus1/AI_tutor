@@ -74,19 +74,34 @@ def test_lettered_chapter_sections_now_nest_under_their_chapter(tmp_path, monkey
 
 
 def test_back_matter_titles_are_not_treated_as_chapters(tmp_path, monkeypatch):
-    """'Answers to Selected Problems' must stay a flat address, not a chapter."""
+    """Back-matter first words must not parse as chapter tokens.
+
+    Two entries share the first word "Supplementary" deliberately. Under the rejected
+    loose pattern [A-Za-z0-9]+, "Supplementary" parses as a chapter token, the chapter
+    lookup returns the FIRST top-level key starting with it, and "Supplementary Notes"
+    collapses onto "Supplementary Reading"'s address — two sections silently sharing one
+    memory directory, one overwriting the other. A single-entry fixture cannot show this:
+    the lookup resolves back to the same title, so tight and loose agree and the test
+    proves nothing.
+    """
     root = tmp_path / "books"
     (root / "tb").mkdir(parents=True)
     (root / "tb" / "meta.json").write_text(json.dumps({
         "id": "tb", "display_name": "Test Book", "short_label": "TB",
         "pdf_page_offset": 0, "practice_anchor": {"kind": "chapter"}}), encoding="utf-8")
     (root / "tb" / "outline.json").write_text(json.dumps({
+        "Supplementary Reading": {"_range": {"start": 843, "end": 843}},
+        "Supplementary Notes": {"_range": {"start": 844, "end": 845}},
         "Answers to Selected Problems": {"_range": {"start": 837, "end": 842}},
     }), encoding="utf-8")
     monkeypatch.setattr(bb, "BOOKS_DIR", str(root))
     bb.invalidate_cache()
 
     with lr.request_book("tb", None):
+        # The load-bearing assertion: under the loose pattern this returns
+        # "Supplementary_Reading" — the wrong section's memory directory.
+        assert lr.topic_name_to_memory_address("Supplementary Notes") == "Supplementary_Notes"
+        assert lr.topic_name_to_memory_address("Supplementary Reading") == "Supplementary_Reading"
         assert lr.topic_name_to_memory_address("Answers to Selected Problems") == "Answers_to_Selected_Problems"
 
 
