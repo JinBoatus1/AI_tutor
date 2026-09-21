@@ -239,7 +239,10 @@ Changes:
   every top-level chapter token (Lathi).
 - Replace the `Number(a) - Number(b)` sort with a comparator placing non-numeric tokens before
   numeric ones (`B` before `1`), numeric ascending otherwise.
-- `focsSectionNotes.ts` moves to `data/notes/focs.ts`; Lathi's equivalent is generated (§4).
+- `focsSectionNotes.ts` is reached through `BOOKS[id].sectionNotes` rather than imported directly.
+  The file stays at its current path in PR1 — the registry indirection is what makes notes
+  per-book, so renaming a 29 KB file buys nothing yet. Introduce `data/notes/` in PR4, when
+  Lathi's generated notes (§4 S8) land beside it.
 - `inductionGuide.ts` and `onboardingDemoSection.ts` become optional `BOOKS[id].guides`. Lathi
   ships none, so the guide entry point simply does not render for SP.
 
