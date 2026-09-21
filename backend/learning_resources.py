@@ -24,7 +24,6 @@ except ImportError:
 from deps import create_chat_completion, clamp_int_0_100
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-FOCS_JSON_PATH = os.path.join(DATA_DIR, "books", "focs", "outline.json")
 
 # Kept as module attributes because other modules still read them; they now
 # describe the default builtin book rather than a special-cased FOCS.
@@ -148,7 +147,7 @@ def active_display_name() -> str:
 
 def load_outline_dict(book_id: Optional[str], user_email: Optional[str]) -> Dict[str, Any]:
     """不修改 TLS；用于 student_bar 等在请求外解析目录。"""
-    return resolve_textbook_for_request(book_id or "focs", user_email).raw
+    return resolve_textbook_for_request(book_id or DEFAULT_BOOK_ID, user_email).raw
 
 
 # 全局缓存：当前教材的段落

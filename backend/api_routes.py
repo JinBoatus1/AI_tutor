@@ -14,6 +14,7 @@ from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadF
 from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
+import builtin_books as bb
 import learning_resources as lr
 import student_bar_store as sbs
 import user_textbook_store as uts
@@ -42,7 +43,7 @@ except ImportError:
     _MEMORY_AVAILABLE = False
 
 MEMORY_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "memory")
-FOCS_BOOK_ID = "focs"  # legacy constant; chat uses lr.effective_memory_book_id()
+FOCS_BOOK_ID = bb.DEFAULT_BOOK_ID  # legacy constant; chat uses lr.effective_memory_book_id()
 
 
 router = APIRouter()
@@ -416,11 +417,7 @@ def _chat_direct_in_section(
     textbook_id: str,
 ) -> dict[str, Any]:
     """Answer in the context of the section the student has open — no history, memory, bar, or intake."""
-    _book_label = (
-        "FOCS (Mathematics for Computer Science)"
-        if textbook_id == "focs"
-        else "the textbook the student selected"
-    )
+    _book_label = lr.active_display_name()
     system_content = (
         f"You are an AI math tutor for {_book_label}. "
         "The student is viewing a specific textbook section (reference below). "
@@ -538,9 +535,9 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
 
     # Section-open direct Q&A: bypass bar, memory, history, and any intake/section-menu behavior.
     if client_section_hint and not has_attachments:
-        tid = (chat_message.textbook_id or "focs").strip() or "focs"
+        tid = (chat_message.textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
         if not user_email and tid.startswith("user_"):
-            tid = "focs"
+            tid = bb.DEFAULT_BOOK_ID
         with lr.request_book(tid, user_email):
             return _chat_direct_in_section(chat_message, user_email, client_section_hint, tid)
 
@@ -548,15 +545,11 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
     # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
     # Skip when the user attached images/PDF — those need the vision path below.
     if _is_simple_definition_question(chat_message.message) and not has_attachments:
-        tid = (chat_message.textbook_id or "focs").strip() or "focs"
+        tid = (chat_message.textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
         if not user_email and tid.startswith("user_"):
-            tid = "focs"
+            tid = bb.DEFAULT_BOOK_ID
         with lr.request_book(tid, user_email):
-            _book_label = (
-                "FOCS (Mathematics for Computer Science)"
-                if tid == "focs"
-                else "the textbook the student selected"
-            )
+            _book_label = lr.active_display_name()
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
                 "The student asked a SIMPLE definition/meaning question. "
@@ -597,9 +590,9 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if not pdf_pages:
             raise HTTPException(status_code=400, detail="PDF has no pages to render.")
         combined_images.extend(pdf_pages)
-    tid = (chat_message.textbook_id or "focs").strip() or "focs"
+    tid = (chat_message.textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
     if not user_email and tid.startswith("user_"):
-        tid = "focs"
+        tid = bb.DEFAULT_BOOK_ID
     with lr.request_book(tid, user_email):
 
         # 0) LLM 匹配 topic → 从 data 书本提取对应页
@@ -618,11 +611,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         except Exception as e:
             print(f"[Learning] topic match/page extract failed: {e}")
 
-        _book_label = (
-            "FOCS (Mathematics for Computer Science)"
-            if tid == "focs"
-            else "the textbook the student selected (outline + PDF pages)"
-        )
+        _book_label = lr.active_display_name()
         is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
         if is_simple_def:
             system_content = (
@@ -865,13 +854,16 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         return result
 
 
+@router.get("/api/textbook_tree")
+async def textbook_tree(id: str = Query(bb.DEFAULT_BOOK_ID)):
+    """Outline tree for a builtin book."""
+    return bb.load_outline((id or bb.DEFAULT_BOOK_ID).strip()) or {}
+
+
 @router.get("/api/focs_tree")
 async def focs_tree():
-    """FOCS 教材目录树（与 learning_resources.FOCS.json 一致）。"""
-    if not os.path.exists(lr.FOCS_JSON_PATH):
-        return {}
-    with open(lr.FOCS_JSON_PATH, encoding="utf-8") as f:
-        return json.load(f)
+    """Deprecated alias for /api/textbook_tree?id=focs."""
+    return bb.load_outline(bb.DEFAULT_BOOK_ID) or {}
 
 
 FOCS_STYLE_OUTLINE_PROMPT_HEAD = """You must return ONLY a valid JSON object. No markdown, no code fences.
@@ -963,7 +955,9 @@ async def list_my_textbooks(authorization: Optional[str] = Header(None)):
     if not email:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return {
-        "textbooks": [{"id": "focs", "label": "FCOS (built-in)"}]
+        "textbooks": [
+            {"id": r["id"], "label": f"{r['label']} (built-in)"} for r in bb.list_builtin()
+        ]
         + uts.list_user_textbooks(email),
     }
 
@@ -973,11 +967,8 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
     email = verify_token(authorization)
     if not email:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    if book_id == "focs":
-        if not os.path.exists(lr.FOCS_JSON_PATH):
-            return {}
-        with open(lr.FOCS_JSON_PATH, encoding="utf-8") as f:
-            return json.load(f)
+    if bb.is_builtin(book_id):
+        return bb.load_outline(book_id) or {}
     if not uts.is_valid_user_book_id(book_id) or not uts.user_owns_book(email, book_id):
         raise HTTPException(status_code=404, detail="Textbook not found")
     outline = uts.load_outline(email, book_id)
@@ -986,7 +977,7 @@ async def get_user_textbook_tree(book_id: str, authorization: Optional[str] = He
 
 @router.get("/api/textbook_pages")
 async def render_textbook_pages(
-    textbook_id: str = Query("focs"),
+    textbook_id: str = Query(bb.DEFAULT_BOOK_ID),
     start_book: int = Query(..., ge=1, le=10000),
     end_book: int = Query(..., ge=1, le=10000),
     section_title: str = Query(""),
@@ -997,14 +988,14 @@ async def render_textbook_pages(
     Same offset rules as chat; used when the student clicks a section in the learning progress tree.
     """
     user_email = verify_token(authorization)
-    tid = (textbook_id or "focs").strip() or "focs"
+    tid = (textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
     if tid.startswith("user_"):
         if not user_email:
             raise HTTPException(status_code=401, detail="Not authenticated")
         if not uts.is_valid_user_book_id(tid) or not uts.user_owns_book(user_email, tid):
             raise HTTPException(status_code=404, detail="Textbook not found")
-    else:
-        tid = "focs"
+    elif not bb.is_builtin(tid):
+        tid = bb.DEFAULT_BOOK_ID
 
     sb = min(start_book, end_book)
     eb = max(start_book, end_book)
@@ -1070,7 +1061,7 @@ async def render_textbook_pages(
 
 def _delete_user_textbook_core(email: str, book_id: str) -> Dict[str, Any]:
     """Delete uploaded book + learning bars. Raises HTTPException."""
-    if book_id == "focs" or not uts.is_valid_user_book_id(book_id):
+    if bb.is_builtin(book_id) or not uts.is_valid_user_book_id(book_id):
         raise HTTPException(status_code=400, detail="Cannot delete this textbook.")
     if not uts.user_owns_book(email, book_id):
         raise HTTPException(status_code=404, detail="Textbook not found")
@@ -1091,7 +1082,7 @@ def _delete_user_textbook_core(email: str, book_id: str) -> Dict[str, Any]:
 
 @router.delete("/api/user_textbooks/{book_id}")
 async def delete_my_user_textbook(book_id: str, authorization: Optional[str] = Header(None)):
-    """Permanently delete an uploaded textbook (not FCOS). Also drops learning-bar data for that book."""
+    """Permanently delete an uploaded textbook (not FOCS). Also drops learning-bar data for that book."""
     email = verify_token(authorization)
     if not email:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -1207,28 +1198,28 @@ async def create_user_textbook_from_pdf(
 class StudentBarUpdate(BaseModel):
     student_id: Optional[str] = None
     learned_sections: List[str]
-    textbook_id: Optional[str] = "focs"
+    textbook_id: Optional[str] = bb.DEFAULT_BOOK_ID
 
 
 @router.get("/api/student_bar")
 async def get_student_bar(
     student_id: Optional[str] = Query(None),
-    textbook_id: Optional[str] = Query("focs"),
+    textbook_id: Optional[str] = Query(bb.DEFAULT_BOOK_ID),
     authorization: Optional[str] = Header(None),
 ):
-    tid = (textbook_id or "focs").strip() or "focs"
+    tid = (textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
     email = verify_token(authorization)
     if email:
         return sbs.load_bar_mongo(email, tid)
     if tid.startswith("user_"):
-        tid = "focs"
+        tid = bb.DEFAULT_BOOK_ID
     sid = student_id or "default_student"
     return sbs.load_bar(sid, tid)
 
 
 @router.put("/api/student_bar")
 async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] = Header(None)):
-    tid = (body.textbook_id or "focs").strip() or "focs"
+    tid = (body.textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
     email = verify_token(authorization)
     if email:
         bar = sbs.load_bar_mongo(email, tid)
@@ -1237,7 +1228,7 @@ async def put_student_bar(body: StudentBarUpdate, authorization: Optional[str] =
         sbs.save_bar_mongo(email, bar, tid)
         return bar
     if tid.startswith("user_"):
-        tid = "focs"
+        tid = bb.DEFAULT_BOOK_ID
     sid = body.student_id or "default_student"
     bar = sbs.load_bar(sid, tid)
     bar["learned_sections"] = sbs.sort_learned_section_list(list(set(body.learned_sections)))

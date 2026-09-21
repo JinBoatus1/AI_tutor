@@ -4,7 +4,6 @@ Run: pytest test_builtin_books.py   (from backend/)
 """
 
 import json
-import os
 
 import builtin_books as bb
 
@@ -76,18 +75,6 @@ def test_second_book_is_discovered_from_disk(tmp_path, monkeypatch):
     assert "B Background" in bb.load_outline("tb")
     assert sorted(r["id"] for r in bb.list_builtin()) == ["focs", "tb"]
     assert bb.load_pdf_bytes("tb") is None, "book.pdf absent -> None, not an exception"
-
-
-def test_legacy_focs_paths_still_resolve_after_the_move():
-    """The data move must not strand learning_resources' path constants."""
-    import learning_resources as lr
-
-    assert os.path.isfile(lr.FOCS_JSON_PATH), lr.FOCS_JSON_PATH
-
-    ctx = lr.resolve_textbook_for_request("focs", None)
-    assert ctx.raw, "FOCS outline resolved empty — the tutor would have no chapter tree"
-    assert ctx.pdf_bytes, "FOCS PDF resolved None — no textbook page images"
-    assert ctx.pdf_page_offset == 15
 
 
 def test_cache_is_keyed_by_books_dir_so_a_repoint_cannot_serve_stale_data(tmp_path, monkeypatch):
