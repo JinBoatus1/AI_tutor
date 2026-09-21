@@ -5,7 +5,7 @@ import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import {
   fetchTextbookTreeForId,
-  focsOutlineToCurriculum,
+  outlineToCurriculum,
   readSelectedTextbookId,
   reconcileSelectedTextbookWithCatalog,
 } from "./learningTextbooks";
@@ -271,7 +271,7 @@ export default function LearningModel() {
     void (async () => {
       const tree = await fetchTextbookTreeForId(token, textbookId);
       if (cancelled) return;
-      setCurriculumTree(focsOutlineToCurriculum(tree));
+      setCurriculumTree(outlineToCurriculum(tree));
     })();
     return () => {
       cancelled = true;
