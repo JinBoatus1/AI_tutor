@@ -23,9 +23,12 @@ DEFAULT_BOOK_ID = "focs"
 _BOOK_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
 _lock = threading.Lock()
-_meta_cache: Dict[str, Optional[Dict[str, Any]]] = {}
-_outline_cache: Dict[str, Optional[Dict[str, Any]]] = {}
-_pdf_cache: Dict[str, Optional[bytes]] = {}
+# Keyed by (BOOKS_DIR, book_id) — not book_id alone — because the thing being
+# cached depends on BOOKS_DIR too. Tests that monkeypatch BOOKS_DIR and later
+# revert it must not serve stale entries under the reverted root's book ids.
+_meta_cache: Dict[Any, Optional[Dict[str, Any]]] = {}
+_outline_cache: Dict[Any, Optional[Dict[str, Any]]] = {}
+_pdf_cache: Dict[Any, Optional[bytes]] = {}
 
 
 def books_root() -> str:
@@ -64,31 +67,34 @@ def _read_json(path: str) -> Optional[Dict[str, Any]]:
 
 
 def load_meta(book_id: str) -> Optional[Dict[str, Any]]:
+    key = (BOOKS_DIR, book_id)
     with _lock:
-        if book_id in _meta_cache:
-            return _meta_cache[book_id]
+        if key in _meta_cache:
+            return _meta_cache[key]
     d = _book_dir(book_id or "")
     meta = _read_json(os.path.join(d, "meta.json")) if d else None
     with _lock:
-        _meta_cache[book_id] = meta
+        _meta_cache[key] = meta
     return meta
 
 
 def load_outline(book_id: str) -> Optional[Dict[str, Any]]:
+    key = (BOOKS_DIR, book_id)
     with _lock:
-        if book_id in _outline_cache:
-            return _outline_cache[book_id]
+        if key in _outline_cache:
+            return _outline_cache[key]
     d = _book_dir(book_id or "")
     outline = _read_json(os.path.join(d, "outline.json")) if d else None
     with _lock:
-        _outline_cache[book_id] = outline
+        _outline_cache[key] = outline
     return outline
 
 
 def load_pdf_bytes(book_id: str) -> Optional[bytes]:
+    key = (BOOKS_DIR, book_id)
     with _lock:
-        if book_id in _pdf_cache:
-            return _pdf_cache[book_id]
+        if key in _pdf_cache:
+            return _pdf_cache[key]
     d = _book_dir(book_id or "")
     data: Optional[bytes] = None
     if d:
@@ -100,7 +106,7 @@ def load_pdf_bytes(book_id: str) -> Optional[bytes]:
             except Exception:
                 data = None
     with _lock:
-        _pdf_cache[book_id] = data
+        _pdf_cache[key] = data
     return data
 
 

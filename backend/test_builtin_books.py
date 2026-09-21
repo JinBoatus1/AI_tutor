@@ -88,3 +88,26 @@ def test_legacy_focs_paths_still_resolve_after_the_move():
     assert ctx.raw, "FOCS outline resolved empty — the tutor would have no chapter tree"
     assert ctx.pdf_bytes, "FOCS PDF resolved None — no textbook page images"
     assert ctx.pdf_page_offset == 15
+
+
+def test_cache_is_keyed_by_books_dir_so_a_repoint_cannot_serve_stale_data(tmp_path, monkeypatch):
+    """No invalidate_cache() here on purpose: correctness must not depend on callers remembering it."""
+    real = bb.load_outline("focs")
+    assert len(real) > 5, "real FOCS outline should be substantial"
+
+    root = tmp_path / "books"
+    (root / "focs").mkdir(parents=True)
+    (root / "focs" / "meta.json").write_text(
+        json.dumps({"id": "focs", "display_name": "Fixture", "short_label": "FX",
+                    "pdf_page_offset": 1, "practice_anchor": {"kind": "chapter"}}),
+        encoding="utf-8",
+    )
+    (root / "focs" / "outline.json").write_text('{"1 Only": {"_range": {"start": 1, "end": 2}}}', encoding="utf-8")
+
+    monkeypatch.setattr(bb, "BOOKS_DIR", str(root))
+    assert bb.load_outline("focs") == {"1 Only": {"_range": {"start": 1, "end": 2}}}
+    assert bb.load_meta("focs")["display_name"] == "Fixture"
+
+    monkeypatch.undo()
+    assert bb.load_outline("focs") == real, "reverting BOOKS_DIR must restore the real outline"
+    assert bb.load_meta("focs")["display_name"] == "FOCS (Mathematics for Computer Science)"
