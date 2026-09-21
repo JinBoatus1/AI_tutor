@@ -83,7 +83,6 @@ def test_legacy_focs_paths_still_resolve_after_the_move():
     import learning_resources as lr
 
     assert os.path.isfile(lr.FOCS_JSON_PATH), lr.FOCS_JSON_PATH
-    assert os.path.isfile(lr.FOCS_PDF_PATH), lr.FOCS_PDF_PATH
 
     ctx = lr.resolve_textbook_for_request("focs", None)
     assert ctx.raw, "FOCS outline resolved empty — the tutor would have no chapter tree"

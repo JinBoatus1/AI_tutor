@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional
 
+import builtin_books as bb
 import user_textbook_store as uts
 
 import fitz  # PyMuPDF
@@ -22,16 +23,14 @@ except ImportError:
 
 from deps import create_chat_completion, clamp_int_0_100
 
-# PDF 前 15 页无内容，教材第 "1" 页对应 PDF 第 16 页
-PDF_PAGE_OFFSET = 15
-
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 FOCS_JSON_PATH = os.path.join(DATA_DIR, "books", "focs", "outline.json")
-FOCS_PDF_PATH = os.path.join(DATA_DIR, "books", "focs", "book.pdf")
+
+# Kept as module attributes because other modules still read them; they now
+# describe the default builtin book rather than a special-cased FOCS.
+DEFAULT_BOOK_ID = bb.DEFAULT_BOOK_ID
 
 _topic_list: List[Dict[str, Any]] = []  # [{name, start, end}, ...]
-_focs_pdf_bytes: Optional[bytes] = None
-_focs_json_disk_cache: Optional[Dict[str, Any]] = None
 
 _tls = threading.local()
 
@@ -44,30 +43,19 @@ class ActiveTextbook:
     pdf_page_offset: int
 
 
-def _load_focs_json_from_disk() -> Dict[str, Any]:
-    global _focs_json_disk_cache
-    if _focs_json_disk_cache is not None:
-        return _focs_json_disk_cache
-    if os.path.exists(FOCS_JSON_PATH):
-        with open(FOCS_JSON_PATH, encoding="utf-8") as f:
-            _focs_json_disk_cache = json.load(f)
-    else:
-        _focs_json_disk_cache = {}
-    return _focs_json_disk_cache
-
-
 def get_effective_raw() -> Dict[str, Any]:
     ctx = getattr(_tls, "book", None)
     if ctx is not None:
         return ctx.raw
-    return _load_focs_json_from_disk()
+    return bb.load_outline(DEFAULT_BOOK_ID) or {}
 
 
 def effective_pdf_page_offset() -> int:
     ctx = getattr(_tls, "book", None)
     if ctx is not None:
         return int(ctx.pdf_page_offset)
-    return PDF_PAGE_OFFSET
+    meta = bb.load_meta(DEFAULT_BOOK_ID) or {}
+    return int(meta.get("pdf_page_offset", 0))
 
 
 def get_effective_pdf_bytes() -> Optional[bytes]:
@@ -81,7 +69,7 @@ def effective_memory_book_id() -> str:
     ctx = getattr(_tls, "book", None)
     if ctx is not None:
         return ctx.book_id
-    return "focs"
+    return DEFAULT_BOOK_ID
 
 
 def set_request_book(ctx: ActiveTextbook) -> None:
@@ -107,34 +95,55 @@ def request_book(book_id: Optional[str], user_email: Optional[str]) -> Iterator[
         clear_request_book()
 
 
+def _builtin_ctx(book_id: str) -> Optional["ActiveTextbook"]:
+    meta = bb.load_meta(book_id)
+    if meta is None:
+        return None
+    return ActiveTextbook(
+        book_id=book_id,
+        raw=bb.load_outline(book_id) or {},
+        pdf_bytes=bb.load_pdf_bytes(book_id),
+        pdf_page_offset=int(meta.get("pdf_page_offset", 0)),
+    )
+
+
 def resolve_textbook_for_request(book_id: Optional[str], user_email: Optional[str]) -> ActiveTextbook:
-    bid = (book_id or "focs").strip() or "focs"
-    if bid == "focs":
-        raw = _load_focs_json_from_disk()
-        return ActiveTextbook(
-            book_id="focs",
-            raw=raw,
-            pdf_bytes=load_focs_pdf(),
-            pdf_page_offset=PDF_PAGE_OFFSET,
-        )
+    bid = (book_id or DEFAULT_BOOK_ID).strip() or DEFAULT_BOOK_ID
+
+    ctx = _builtin_ctx(bid)
+    if ctx is not None:
+        return ctx
+
     if (
         bid.startswith("user_")
         and user_email
         and uts.is_valid_user_book_id(bid)
         and uts.user_owns_book(user_email, bid)
     ):
-        raw = uts.load_outline(user_email, bid) or {}
         meta = uts.load_meta(user_email, bid) or {}
-        off = int(meta.get("pdf_page_offset", 0))
-        pdf = uts.load_pdf_bytes(user_email, bid)
-        return ActiveTextbook(book_id=bid, raw=raw, pdf_bytes=pdf, pdf_page_offset=off)
-    raw = _load_focs_json_from_disk()
-    return ActiveTextbook(
-        book_id="focs",
-        raw=raw,
-        pdf_bytes=load_focs_pdf(),
-        pdf_page_offset=PDF_PAGE_OFFSET,
-    )
+        return ActiveTextbook(
+            book_id=bid,
+            raw=uts.load_outline(user_email, bid) or {},
+            pdf_bytes=uts.load_pdf_bytes(user_email, bid),
+            pdf_page_offset=int(meta.get("pdf_page_offset", 0)),
+        )
+
+    fallback = _builtin_ctx(DEFAULT_BOOK_ID)
+    if fallback is not None:
+        return fallback
+    return ActiveTextbook(book_id=DEFAULT_BOOK_ID, raw={}, pdf_bytes=None, pdf_page_offset=0)
+
+
+def active_display_name() -> str:
+    """Human name of the active book, for tutor prompts."""
+    ctx = getattr(_tls, "book", None)
+    bid = ctx.book_id if ctx is not None else DEFAULT_BOOK_ID
+    meta = bb.load_meta(bid)
+    if meta and meta.get("display_name"):
+        return str(meta["display_name"])
+    if bid.startswith("user_"):
+        return "the textbook the student selected"
+    return bid
 
 
 def load_outline_dict(book_id: Optional[str], user_email: Optional[str]) -> Dict[str, Any]:
@@ -389,22 +398,8 @@ def load_focs_topic_list() -> List[Dict[str, Any]]:
 
 
 def load_focs_pdf() -> Optional[bytes]:
-    """加载 data 下的 PDF。优先 FOCS.pdf，否则取首个 .pdf。"""
-    global _focs_pdf_bytes
-    if _focs_pdf_bytes is not None:
-        return _focs_pdf_bytes
-    if os.path.exists(FOCS_PDF_PATH):
-        with open(FOCS_PDF_PATH, "rb") as f:
-            _focs_pdf_bytes = f.read()
-        return _focs_pdf_bytes
-    if os.path.isdir(DATA_DIR):
-        for fn in os.listdir(DATA_DIR):
-            if fn.lower().endswith(".pdf"):
-                path = os.path.join(DATA_DIR, fn)
-                with open(path, "rb") as f:
-                    _focs_pdf_bytes = f.read()
-                return _focs_pdf_bytes
-    return None
+    """Default builtin book's PDF. Name kept for existing callers."""
+    return bb.load_pdf_bytes(DEFAULT_BOOK_ID)
 
 
 def match_topic_with_llm(question: str) -> Optional[Dict[str, Any]]:
