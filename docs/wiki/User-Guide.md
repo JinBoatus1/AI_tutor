@@ -6,7 +6,7 @@
 
 ## What is AI Tutor?
 
-AI Tutor is a web app for **college-level math** study. It connects a **chat tutor** to a **textbook outline** (built-in **FOCS / FCOS** or a **PDF** you upload after sign-in), shows **book page images** next to the chat, and includes an **Auto Grader** that scores a **question file** plus your **answer file** (PDF or images).
+AI Tutor is a web app for **college-level math** study. It connects a **chat tutor** to a **textbook outline** (built-in **FOCS** or a **PDF** you upload after sign-in), shows **book page images** next to the chat, and includes an **Auto Grader** that scores a **question file** plus your **answer file** (PDF or images).
 
 You do **not** need an account for **Learning Mode** or **Auto Grader**. Signing in unlocks **saved chat** (when the deployment supports it), **synced learning progress**, and **My profile** (custom textbooks, appearance, account).
 
@@ -110,7 +110,7 @@ Use **Start a new session** at the top of the chat when you change chapters or w
 - Click **section title text** (with page numbers) to **load** those book pages in the **center**.
 - Rows titled **`X.Y Problems`** (e.g. **`5.3 Problems`**) open the chapter **practice / problem-set** view in the **center**—see the **Worked example: induction** above.
 - **Expand all** / **Collapse all**; drag the **divider**; **collapse** the whole left strip for more room, **reveal** to show it again.
-- The header shows which **book** (e.g. **FCOS**). Guests default to the built-in book; **signed-in** users select PDFs in **My profile**.
+- The header shows which **book** (e.g. **FOCS**). Guests default to the built-in book; **signed-in** users select PDFs in **My profile**.
 
 ### Center: Textbook (page preview)
 
@@ -156,10 +156,10 @@ Only when **signed in** (otherwise the app opens sign-in).
 
 **Textbooks**
 
-- **Current textbook** dropdown: **FCOS (built-in)** and **PDFs you uploaded**. This controls the outline and PDF used in **Learning Mode** and **`/learning-bar`**.
-- **Delete** an uploaded book (permanent: PDF, outline, and **progress data** for that book on the server)—not for built-in FCOS.
+- **Current textbook** dropdown: **FOCS (built-in)** and **PDFs you uploaded**. This controls the outline and PDF used in **Learning Mode** and **`/learning-bar`**.
+- **Delete** an uploaded book (permanent: PDF, outline, and **progress data** for that book on the server)—not for built-in FOCS.
 - **Sync textbook list with server** if labels look wrong.
-- **Clear uploaded books from this browser only** clears local cache for your uploads; **FCOS** remains—then **Sync** again to reload.
+- **Clear uploaded books from this browser only** clears local cache for your uploads; **FOCS** remains—then **Sync** again to reload.
 - **Upload new textbook (PDF):** the server checks that the file is a real **textbook**; if rejected, that flow is for course books only—**Auto Grader** is for arbitrary homework PDFs. While processing, you may see **“Building outline…”**
 
 **Appearance:** a **color preset** adjusts **page background** and the **chat panel** in Learning Mode. Stored in your app/browser profile per implementation.

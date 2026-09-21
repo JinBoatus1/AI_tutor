@@ -67,44 +67,49 @@ def _read_json(path: str) -> Optional[Dict[str, Any]]:
 
 
 def load_meta(book_id: str) -> Optional[Dict[str, Any]]:
+    d = _book_dir(book_id or "")
+    if d is None:
+        return None
     key = (BOOKS_DIR, book_id)
     with _lock:
         if key in _meta_cache:
             return _meta_cache[key]
-    d = _book_dir(book_id or "")
-    meta = _read_json(os.path.join(d, "meta.json")) if d else None
+    meta = _read_json(os.path.join(d, "meta.json"))
     with _lock:
         _meta_cache[key] = meta
     return meta
 
 
 def load_outline(book_id: str) -> Optional[Dict[str, Any]]:
+    d = _book_dir(book_id or "")
+    if d is None:
+        return None
     key = (BOOKS_DIR, book_id)
     with _lock:
         if key in _outline_cache:
             return _outline_cache[key]
-    d = _book_dir(book_id or "")
-    outline = _read_json(os.path.join(d, "outline.json")) if d else None
+    outline = _read_json(os.path.join(d, "outline.json"))
     with _lock:
         _outline_cache[key] = outline
     return outline
 
 
 def load_pdf_bytes(book_id: str) -> Optional[bytes]:
+    d = _book_dir(book_id or "")
+    if d is None:
+        return None
     key = (BOOKS_DIR, book_id)
     with _lock:
         if key in _pdf_cache:
             return _pdf_cache[key]
-    d = _book_dir(book_id or "")
     data: Optional[bytes] = None
-    if d:
-        p = os.path.join(d, "book.pdf")
-        if os.path.isfile(p):
-            try:
-                with open(p, "rb") as f:
-                    data = f.read()
-            except Exception:
-                data = None
+    p = os.path.join(d, "book.pdf")
+    if os.path.isfile(p):
+        try:
+            with open(p, "rb") as f:
+                data = f.read()
+        except Exception:
+            data = None
     with _lock:
         _pdf_cache[key] = data
     return data

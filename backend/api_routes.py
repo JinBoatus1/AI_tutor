@@ -43,7 +43,6 @@ except ImportError:
     _MEMORY_AVAILABLE = False
 
 MEMORY_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "memory")
-FOCS_BOOK_ID = bb.DEFAULT_BOOK_ID  # legacy constant; chat uses lr.effective_memory_book_id()
 
 
 router = APIRouter()
@@ -612,6 +611,11 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             print(f"[Learning] topic match/page extract failed: {e}")
 
         _book_label = lr.active_display_name()
+        if tid.startswith("user_"):
+            # Uploaded books don't get a curated display name — tell the model this
+            # endpoint is grounding it in the outline + PDF pages it just fetched above,
+            # not implying deeper familiarity with the book than that.
+            _book_label = f"{_book_label} (outline + PDF pages)"
         is_simple_def = _is_simple_definition_question(chat_message.message) and not combined_images
         if is_simple_def:
             system_content = (

@@ -2,7 +2,6 @@
 
 import base64
 import json
-import os
 import re
 import tempfile
 import threading
@@ -22,8 +21,6 @@ except ImportError:
     pytesseract = None
 
 from deps import create_chat_completion, clamp_int_0_100
-
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 # Kept as module attributes because other modules still read them; they now
 # describe the default builtin book rather than a special-cased FOCS.
@@ -166,7 +163,7 @@ def _sanitize_memory_segment(s: str) -> str:
 
 def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
     """
-    在 FOCS.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
+    在当前教材 outline.json 顶层查找章节标题键，如 chapter_num='5' -> '5 Induction: Proving \"FOR ALL ...\" '。
     仅匹配顶层章（首词等于章节号）。
     """
     if not chapter_num:
@@ -186,7 +183,7 @@ def get_chapter_heading_key(chapter_num: str) -> Optional[str]:
 
 def topic_name_to_memory_address(topic_name: str) -> str:
     """
-    将 FOCS.json 的 topic 名称转为 memory 地址（允许用 / 分层）。
+    将当前教材 outline.json 的 topic 名称转为 memory 地址（允许用 / 分层）。
 
     - 小节（首词形如 5.1、5.1.1）：存到「章」目录下，例如
       5_Induction_.../5_1_Ordinary_Induction，这样同一章下 5.1、5.2 共用父目录。
@@ -223,7 +220,7 @@ def topic_name_to_memory_address(topic_name: str) -> str:
 
 def get_focs_chapter_tree(chapter_filter: Optional[str] = None) -> str:
     """
-    从 FOCS.json 生成教材章节树（缩进 + 页码）。
+    从当前教材的 outline.json 生成教材章节树（缩进 + 页码）。
     chapter_filter: 若为 "5"，只返回第 5 章及其 sections，不返回全书；None 则返回全书。
     """
     raw = get_effective_raw()
@@ -402,7 +399,7 @@ def load_focs_pdf() -> Optional[bytes]:
 
 
 def match_topic_with_llm(question: str) -> Optional[Dict[str, Any]]:
-    """用 LLM 根据学生问题匹配 FOCS.json 中最相关的 topic。若问题与课程完全无关则返回 None。"""
+    """用 LLM 根据学生问题匹配当前教材 outline.json 中最相关的 topic。若问题与课程完全无关则返回 None。"""
     topics = load_focs_topic_list()
     if not topics:
         return None

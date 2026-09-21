@@ -3,7 +3,7 @@
 // that this module can safely import BOOKS without creating an import cycle
 // (Task 8 ruling 1).
 import { chapterOfProblems } from "../practice/isProblemsSection";
-import { compareChapterTokens } from "../utils/chapterToken";
+import { compareChapterTokens, isChapterToken } from "../utils/chapterToken";
 import { BOOKS } from "../books/registry";
 import type { PracticeSet } from "../practice/types";
 
@@ -21,7 +21,7 @@ export function problemChaptersFor(bookId: string): string[] {
   } else {
     for (const key of Object.keys(book.tree)) {
       const token = key.trim().split(/\s+/)[0] ?? "";
-      if (token) chapters.add(token);
+      if (isChapterToken(token)) chapters.add(token);
     }
   }
   return [...chapters].sort(compareChapterTokens);

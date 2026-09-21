@@ -21,7 +21,7 @@ const ch4 = (bookPage: number, sectionTitle: string, sectionHint: string): BookA
   sectionHint,
 });
 
-/** Chapter-level study notes for FCOS (keyed by section number: "1", "5.1", …). */
+/** Chapter-level study notes for FOCS (keyed by section number: "1", "5.1", …). */
 export const FOCS_SECTION_NOTES: Record<string, SectionNote> = {
   "0": {
     objectives:

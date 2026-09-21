@@ -98,3 +98,20 @@ def test_cache_is_keyed_by_books_dir_so_a_repoint_cannot_serve_stale_data(tmp_pa
     monkeypatch.undo()
     assert bb.load_outline("focs") == real, "reverting BOOKS_DIR must restore the real outline"
     assert bb.load_meta("focs")["display_name"] == "FOCS (Mathematics for Computer Science)"
+
+
+def test_unknown_ids_are_never_cached():
+    """GET /api/textbook_tree?id=<x> takes an arbitrary, unauthenticated id. A loop of
+    unknown ids must not grow the module-level caches without bound — each read of an
+    id that does not resolve to a real book directory must be rejected before the
+    cache is ever written to."""
+    bb.invalidate_cache()
+    for i in range(100):
+        book_id = f"unknown_{i}"
+        assert bb.load_meta(book_id) is None
+        assert bb.load_outline(book_id) is None
+        assert bb.load_pdf_bytes(book_id) is None
+
+    assert len(bb._meta_cache) == 0
+    assert len(bb._outline_cache) == 0
+    assert len(bb._pdf_cache) == 0

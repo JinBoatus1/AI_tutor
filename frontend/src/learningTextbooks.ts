@@ -72,7 +72,7 @@ function purgeLegacyTextbookLocalStorage(): void {
   }
 }
 
-/** FCOS + last server list (in-memory). Not persisted to localStorage.
+/** FOCS + last server list (in-memory). Not persisted to localStorage.
  *  Calls builtinBookOptions() live rather than caching it, so a builtin registered after
  *  module load — the only way tests can simulate a second builtin book today — is still
  *  served, matching the backend's live bb.list_builtin(). */
@@ -200,7 +200,7 @@ export function clearAllUploadedTextbooksFromBrowser(): void {
   );
 }
 
-/** FCOS from bundle; user books from session cache (filled by fetchTree / writeCatalogAndTree). */
+/** FOCS from bundle; user books from session cache (filled by fetchTree / writeCatalogAndTree). */
 export function getTextbookTree(id: string): TextbookTreeRoot {
   if (isBuiltinBook(id)) return getBook(id).tree;
   return sessionTreeCache.get(id) ?? {};

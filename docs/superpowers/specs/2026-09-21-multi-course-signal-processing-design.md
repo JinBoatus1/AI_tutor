@@ -309,7 +309,7 @@ ambiguous options, two correct MCQ choices, a strong-induction off-by-one.
 
 | PR | Contents | State on merge |
 |---|---|---|
-| **1** | registry both sides; FOCS migrated into `books/focs/`; 4 token sites widened; FCOS→FOCS; prompts de-hardcoded; `/api/textbook_tree` | **Zero behaviour change.** Reviewable on its own; contains no Lathi content |
+| **1** | registry both sides; FOCS migrated into `books/focs/`; 4 token sites widened; FCOS→FOCS; prompts de-hardcoded; `/api/textbook_tree` | Zero behaviour change **for FOCS**, proven byte-for-byte, plus two intentional changes affecting **uploaded** books only: (a) practice no longer falls back to FOCS's sets for a book that is not a registered builtin, and (b) the widened chapter token can re-address an uploaded book's memory for a lettered chapter (`"A Appendix"` / `"A.1 Foo"` moves from flat `A_1_Foo` to nested `A_Appendix/A_1_Foo`). Reviewable on its own; contains no Lathi content |
 | **2** | S1–S4 → `books/lathi/` | **SP students can use it**: per-section Q&A, textbook pages, progress bar. Practice hidden for Lathi |
 | **3** | S5–S7 scripts and gates + first reviewed chapters | Practice opens for SP |
 | **4** | remaining chapters + notes | Rolling completion |
@@ -326,7 +326,9 @@ ambiguous options, two correct MCQ choices, a strong-induction off-by-one.
    enumerated and handled.
 4. Every committed Lathi practice item passes all S6 gates, and every item that reached a
    student was seen by a human.
-5. Adding a third course requires a `books/<id>/` directory and one registry entry — no new
+5. Adding a third course requires a `books/<id>/` directory and one registry entry on the
+   backend. On the frontend it also needs three edits: a `TREE_FILE` entry in
+   `frontend/scripts/sync-focs-tree.mjs`, a `BOOKS` entry, and a static JSON import — no new
    conditionals.
 
 ---

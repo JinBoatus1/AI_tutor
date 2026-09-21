@@ -1024,7 +1024,7 @@ export default function LearningModel() {
     if (Object.keys(book.sectionNotes).length === 0) return null;
     return getSectionNoteWithNewVocab(
       book.sectionNotes,
-      sectionTokensPreorder(textbookId),
+      sectionTokensPreorder(book),
       dataMatchedTopic.sectionHint,
       dataMatchedTopic.name
     );

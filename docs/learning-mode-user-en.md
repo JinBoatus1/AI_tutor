@@ -22,7 +22,7 @@ Use the top nav for Home, Auto Grader, My profile, etc.
 
 ## 2. Left: Learning progress
 
-- Tree of **chapter → section** for the current book (e.g. FCOS).  
+- Tree of **chapter → section** for the current book (e.g. FOCS).  
 - Numbers in parentheses are **printed book page numbers** (same as the textbook TOC).
 
 **Dots:** solid green = learned; hollow = not learned. Click to toggle.

@@ -56,7 +56,7 @@ def _bar_path(student_id: str, textbook_id: str = "focs") -> str:
 
 
 def delete_all_file_bars_for_textbook(textbook_id: str) -> int:
-    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FCOS."""
+    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FOCS."""
     tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
     if tid == "focs":
         return 0

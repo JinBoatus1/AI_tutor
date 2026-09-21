@@ -95,7 +95,7 @@ describe("focsPracticeSets content integrity", () => {
       id: "fixture_book",
       shortLabel: "Fixture",
       practiceAnchor: { kind: "chapter" },
-      tree: { "3 Foo": {}, "4 Bar": {}, "B Background": {} },
+      tree: { "3 Foo": {}, "4 Bar": {}, "B Background": {}, "Answers to Selected Problems": {} },
       sectionNotes: {},
       practiceSets: { "4": FIXTURE_PROOFS },
     };
