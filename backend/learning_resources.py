@@ -26,8 +26,8 @@ from deps import create_chat_completion, clamp_int_0_100
 PDF_PAGE_OFFSET = 15
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-FOCS_JSON_PATH = os.path.join(DATA_DIR, "FOCS.json")
-FOCS_PDF_PATH = os.path.join(DATA_DIR, "FOCS.pdf")  # 或 data 下首个 .pdf
+FOCS_JSON_PATH = os.path.join(DATA_DIR, "books", "focs", "outline.json")
+FOCS_PDF_PATH = os.path.join(DATA_DIR, "books", "focs", "book.pdf")
 
 _topic_list: List[Dict[str, Any]] = []  # [{name, start, end}, ...]
 _focs_pdf_bytes: Optional[bytes] = None
