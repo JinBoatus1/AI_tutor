@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { FOCS_PRACTICE_SETS, FOCS_PROBLEM_CHAPTERS, getPracticeSet } from "./focsPracticeSets";
+import { describe, it, expect, afterEach } from "vitest";
+import { FOCS_PRACTICE_SETS } from "./practice/focsSets";
+import { getPracticeSet, problemChaptersFor } from "./focsPracticeSets";
 import { isValidTopoOrder } from "../practice/grading";
+import { BOOKS } from "../books/registry";
+import type { BookDef } from "../books/registry";
+import type { PracticeSet } from "../practice/types";
 
 describe("focsPracticeSets content integrity", () => {
   const sets = Object.values(FOCS_PRACTICE_SETS);
@@ -50,17 +54,72 @@ describe("focsPracticeSets content integrity", () => {
   });
 
   it("every FOCS Problems chapter has a practice set", () => {
-    expect(FOCS_PROBLEM_CHAPTERS.length).toBeGreaterThan(1);
-    for (const chapter of FOCS_PROBLEM_CHAPTERS) {
-      expect(getPracticeSet(chapter), `chapter ${chapter}`).not.toBeNull();
+    const chapters = problemChaptersFor("focs");
+    expect(chapters.length).toBeGreaterThan(1);
+    for (const chapter of chapters) {
+      expect(getPracticeSet("focs", chapter), `chapter ${chapter}`).not.toBeNull();
     }
   });
 
   it("getPracticeSet returns Chapter 4 and null for unknown", () => {
-    expect(getPracticeSet("4")?.title).toBe("Proofs");
-    expect(getPracticeSet("1")?.chapter).toBe("1");
-    expect(getPracticeSet("1")?.warmup[0].front).not.toBe(getPracticeSet("4")?.warmup[0].front);
-    expect(getPracticeSet("99")).toBeNull();
+    expect(getPracticeSet("focs", "4")?.title).toBe("Proofs");
+    expect(getPracticeSet("focs", "1")?.chapter).toBe("1");
+    expect(getPracticeSet("focs", "1")?.warmup[0].front).not.toBe(
+      getPracticeSet("focs", "4")?.warmup[0].front
+    );
+    expect(getPracticeSet("focs", "99")).toBeNull();
+  });
+
+  it("keys practice by book, so same-numbered chapters do not collide", () => {
+    expect(getPracticeSet("focs", "4")?.title).toBe("Proofs");
+    // Task 8 ruling 2: an unregistered book id gets null, NOT a silent fallback to
+    // FOCS. (The brief's original assertion here was `.toBe("Proofs")` — inverted
+    // deliberately; see LearningModel.tsx's practiceActive for the bug this avoids.)
+    expect(getPracticeSet("no_such_book", "4")).toBeNull();
+    expect(getPracticeSet("focs", "999")).toBeNull();
+    expect(problemChaptersFor("no_such_book")).toEqual([]);
+  });
+
+  describe("a second builtin book (fixture, not shipped)", () => {
+    // Throwaway second book, mirroring backend test_builtin_books.py's `tb` fixture
+    // and frontend/src/learningTextbooks.test.ts's FAKE_BUILTIN (Task 8 ruling 4).
+    // PR1 ships no second course — never add Lathi (or any real) content here.
+    const FIXTURE_PROOFS: PracticeSet = {
+      chapter: "4",
+      title: "Fixture Proofs",
+      warmup: [],
+      practice: [],
+      challenge: [],
+    };
+    const FIXTURE_BOOK: BookDef = {
+      id: "fixture_book",
+      shortLabel: "Fixture",
+      practiceAnchor: { kind: "chapter" },
+      tree: { "3 Foo": {}, "4 Bar": {}, "B Background": {} },
+      sectionNotes: {},
+      practiceSets: { "4": FIXTURE_PROOFS },
+    };
+
+    afterEach(() => {
+      delete BOOKS[FIXTURE_BOOK.id];
+    });
+
+    it("same chapter token in two books resolves to each book's own set", () => {
+      BOOKS[FIXTURE_BOOK.id] = FIXTURE_BOOK;
+      expect(getPracticeSet("focs", "4")?.title).toBe("Proofs");
+      expect(getPracticeSet(FIXTURE_BOOK.id, "4")?.title).toBe("Fixture Proofs");
+    });
+
+    it("a `chapter` anchor yields top-level chapter tokens (no Problems-section scan)", () => {
+      BOOKS[FIXTURE_BOOK.id] = FIXTURE_BOOK;
+      expect(problemChaptersFor(FIXTURE_BOOK.id)).toEqual(["B", "3", "4"]);
+    });
+
+    it("FOCS keeps its `problems_section` anchor behaviour untouched", () => {
+      const chapters = problemChaptersFor("focs");
+      expect(chapters).toContain("4");
+      expect(chapters).toEqual([...chapters].sort((a, b) => Number(a) - Number(b)));
+    });
   });
 
   for (const set of sets) {

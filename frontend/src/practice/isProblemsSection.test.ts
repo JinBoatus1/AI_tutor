@@ -33,4 +33,13 @@ describe("isProblemsSection", () => {
     expect(chapterOfProblems("11.5 Problem Solving with Graphs")).toBeNull();
     expect(chapterOfProblems(null)).toBeNull();
   });
+
+  it("accepts a lettered chapter's problem section", () => {
+    expect(isProblemsSection("B.8 Problems")).toBe(true);
+    expect(chapterOfProblems("B.8 Problems")).toBe("B");
+  });
+
+  it("rejects back-matter titles", () => {
+    expect(isProblemsSection("Answers to Selected Problems")).toBe(false);
+  });
 });

@@ -1,8 +1,10 @@
 // Detect a chapter problem-set section from its title. Strict regex (eng-review #3):
 // only "X.Y Problems" matches, so decoys like "11.5 Problem Solving with Graphs",
 // "12.3 Whirlwind Tour of Graph Problems", "23.1 Decision Problems", and the
-// chapter-level "27 ... Problems" are correctly excluded.
-const PROBLEMS_RE = /^(\d+)\.\d+\s+Problems$/;
+// chapter-level "27 ... Problems" are correctly excluded. The chapter token also
+// accepts a single uppercase letter (Task 8) so a lettered chapter's "B.8 Problems"
+// matches too — mirrors CHAPTER_TOKEN_RE in ../utils/chapterToken.
+const PROBLEMS_RE = /^((?:\d+|[A-Z]))\.\d+\s+Problems$/;
 
 export function isProblemsSection(title: string | null | undefined): boolean {
   return !!title && PROBLEMS_RE.test(title.trim());

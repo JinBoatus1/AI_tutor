@@ -1,6 +1,6 @@
 import focsTree from "../data/focsTree.json";
 import { FOCS_SECTION_NOTES } from "../data/focsSectionNotes";
-import { FOCS_PRACTICE_SETS } from "../data/focsPracticeSets";
+import { FOCS_PRACTICE_SETS } from "../data/practice/focsSets";
 import { INDUCTION_GUIDE } from "../guide/inductionGuide";
 import {
   ONBOARDING_NOTE_SECTION,

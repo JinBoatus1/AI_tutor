@@ -445,7 +445,7 @@ export default function LearningModel() {
   const practiceChapter = isProblemsSection(activeSectionTitle)
     ? chapterOfProblems(activeSectionTitle)
     : null;
-  const practiceActive = Boolean(practiceChapter && getPracticeSet(practiceChapter));
+  const practiceActive = Boolean(practiceChapter && getPracticeSet(textbookId, practiceChapter));
   const guideActive = textbookId === "focs" && isInductionGuideSection(activeSectionTitle);
 
   const hasLeftPanelContent = Boolean(
