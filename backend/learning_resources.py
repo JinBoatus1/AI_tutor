@@ -202,8 +202,8 @@ def topic_name_to_memory_address(topic_name: str) -> str:
         return "unknown"
     token = parts[0]
 
-    # 小节：5.1 / 5.1.1 → 父目录为 FOCS 顶层章标题，子目录为本节
-    if re.match(r"^\d+\.\d+(?:\.\d+)*$", token):
+    # 小节：5.1 / 5.1.1 / B.1 → 父目录为顶层章标题，子目录为本节
+    if re.match(r"^(?:\d+|[A-Z])\.\d+(?:\.\d+)*$", token):
         chapter_num = token.split(".")[0]
         ch_key = get_chapter_heading_key(chapter_num)
         if ch_key:
@@ -212,8 +212,8 @@ def topic_name_to_memory_address(topic_name: str) -> str:
             return f"{parent}/{child}"
         return _sanitize_memory_segment(s)
 
-    # 章级：首词仅为章节号 → 单层（对应整章记忆）
-    if re.match(r"^\d+$", token):
+    # 章级：首词仅为章节号（数字或单个大写字母，如 B）→ 单层
+    if re.match(r"^(?:\d+|[A-Z])$", token):
         ch_key = get_chapter_heading_key(token)
         if ch_key:
             return _sanitize_memory_segment(ch_key)
