@@ -11,6 +11,8 @@ import {
   reconcileSelectedTextbookWithCatalog,
   resetServerTextbookSessionForLogout,
 } from "./learningTextbooks";
+import { BOOKS } from "./books/registry";
+import type { BookDef } from "./books/registry";
 
 describe("learningTextbooks", () => {
   beforeEach(() => localStorage.clear());
@@ -115,5 +117,59 @@ describe("logout", () => {
     writeSelectedTextbookId("focs");
     resetServerTextbookSessionForLogout();
     expect(readSelectedTextbookId()).toBe("focs");
+  });
+});
+
+/** A throwaway second builtin, mirroring backend test_builtin_books.py's `tb` fixture.
+ *  Registered only for the duration of a test — never shipped, never real course content. */
+const FAKE_BUILTIN: BookDef = {
+  id: "tb",
+  shortLabel: "TB",
+  practiceAnchor: { kind: "chapter" },
+  tree: { "B Background": { _range: { start: 1, end: 9 } } },
+  sectionNotes: {},
+  practiceSets: {},
+};
+
+describe("a second builtin book (fixture, not shipped)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetServerTextbookSessionForLogout();
+    BOOKS[FAKE_BUILTIN.id] = FAKE_BUILTIN;
+  });
+  afterEach(() => {
+    delete BOOKS[FAKE_BUILTIN.id];
+    vi.unstubAllGlobals();
+  });
+
+  it("a server row for a second builtin is NOT treated as an upload and NOT dropped", async () => {
+    // This is the regression the isBuiltinBook filters exist to prevent: under the old
+    // `id !== "focs"` literal, "tb" looks like an upload, then fails the user_ id pattern
+    // and disappears from the picker entirely.
+    mockServerTextbooks([
+      { id: "focs", label: "FOCS (built-in)" },
+      { id: "tb", label: "TB (built-in)" },
+      { id: "user_abcd1234", label: "My Upload" },
+    ]);
+    await fetchTextbookOptionsFromServer("tok");
+
+    const ids = readTextbookOptionList().map((x) => x.id);
+    expect(ids).toContain("tb");
+    expect(ids.filter((i) => i === "tb")).toHaveLength(1);
+    expect(ids).toContain("user_abcd1234");
+  });
+
+  it("a second builtin can be selected and survives a catalog sync", async () => {
+    writeSelectedTextbookId("tb");
+    expect(readSelectedTextbookId()).toBe("tb");
+    mockServerTextbooks([{ id: "focs" }, { id: "tb" }]);
+    await fetchTextbookOptionsFromServer("tok");
+    expect(readSelectedTextbookId()).toBe("tb");   // not reset as if it were a stale upload
+  });
+
+  it("a second builtin is not cleared on logout", () => {
+    writeSelectedTextbookId("tb");
+    resetServerTextbookSessionForLogout();
+    expect(readSelectedTextbookId()).toBe("tb");
   });
 });

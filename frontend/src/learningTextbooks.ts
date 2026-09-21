@@ -67,11 +67,14 @@ function purgeLegacyTextbookLocalStorage(): void {
   }
 }
 
-/** FCOS + last server list (in-memory). Not persisted to localStorage. */
+/** FCOS + last server list (in-memory). Not persisted to localStorage.
+ *  Reads the registry live (not the frozen BUILTIN_TEXTBOOK_OPTIONS snapshot) so a
+ *  builtin registered after module load — the only way tests can simulate a second
+ *  builtin book today — is still served, matching the backend's live bb.list_builtin(). */
 export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
   const seen = new Set<string>();
   const out: { id: string; linkLabel: string }[] = [];
-  for (const o of [...BUILTIN_TEXTBOOK_OPTIONS, ...lastServerUploads]) {
+  for (const o of [...builtinBookOptions(), ...lastServerUploads]) {
     if (seen.has(o.id)) continue;
     seen.add(o.id);
     out.push(o);
