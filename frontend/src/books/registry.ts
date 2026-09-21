@@ -67,6 +67,14 @@ export function getBook(id: string): BookDef {
   return BOOKS[id] ?? BOOKS[DEFAULT_BOOK_ID];
 }
 
+/** The book with this id, or null if it is not a registered builtin.
+ *  Use this — not getBook — whenever "no such book" must stay distinguishable from
+ *  "the default book". getBook's fallback is for callers that genuinely want a default,
+ *  and it cannot tell an uploaded book's id from focs. */
+export function tryGetBook(id: string): BookDef | null {
+  return BOOKS[id] ?? null;
+}
+
 export function builtinBookOptions(): { id: string; linkLabel: string }[] {
   return Object.values(BOOKS).map((b) => ({ id: b.id, linkLabel: b.shortLabel }));
 }

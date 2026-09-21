@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BOOKS, DEFAULT_BOOK_ID, isBuiltinBook, getBook, builtinBookOptions } from "./registry";
+import { BOOKS, DEFAULT_BOOK_ID, isBuiltinBook, getBook, tryGetBook, builtinBookOptions } from "./registry";
 
 describe("book registry", () => {
   it("has focs as the default builtin", () => {
@@ -27,5 +27,13 @@ describe("book registry", () => {
 
   it("falls back to the default book for an unknown id", () => {
     expect(getBook("nope").id).toBe("focs");
+  });
+
+  it("tryGetBook does not fall back — an uploaded book id is not the default book", () => {
+    expect(tryGetBook("focs")?.id).toBe("focs");
+    expect(tryGetBook("user_abcd1234")).toBeNull();
+    expect(tryGetBook("nope")).toBeNull();
+    // getBook keeps its documented fallback; the two must differ for an unregistered id.
+    expect(getBook("user_abcd1234").id).toBe("focs");
   });
 });

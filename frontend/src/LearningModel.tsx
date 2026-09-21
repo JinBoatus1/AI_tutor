@@ -29,7 +29,7 @@ import { GuidePanel } from "./guide/GuidePanel";
 import { isInductionGuideSection } from "./guide/chapterOfSection";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
 import { sectionTokensPreorder } from "./utils/focsSectionOrder";
-import { getBook } from "./books/registry";
+import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
 import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import {
@@ -440,7 +440,8 @@ export default function LearningModel() {
     ? chapterOfProblems(activeSectionTitle)
     : null;
   const practiceActive = Boolean(practiceChapter && getPracticeSet(textbookId, practiceChapter));
-  const guide = getBook(textbookId).guides?.[0];
+  const book = tryGetBook(textbookId);
+  const guide = book?.guides?.[0];
   const guideActive = Boolean(guide) && isInductionGuideSection(activeSectionTitle);
 
   const hasLeftPanelContent = Boolean(
@@ -1019,8 +1020,7 @@ export default function LearningModel() {
   sessionApiRef.current = { load: loadSession, newChat: handleNewChat, preview: handleOutlineSectionPreview };
 
   const activeSectionNote = useMemo(() => {
-    if (!dataMatchedTopic) return null;
-    const book = getBook(textbookId);
+    if (!dataMatchedTopic || !book) return null;
     if (Object.keys(book.sectionNotes).length === 0) return null;
     return getSectionNoteWithNewVocab(
       book.sectionNotes,
@@ -1028,7 +1028,7 @@ export default function LearningModel() {
       dataMatchedTopic.sectionHint,
       dataMatchedTopic.name
     );
-  }, [textbookId, dataMatchedTopic]);
+  }, [textbookId, dataMatchedTopic, book]);
 
   const sectionNoteLabel = dataMatchedTopic
     ? `${dataMatchedTopic.sectionHint ?? ""}:${dataMatchedTopic.name}`
@@ -1045,7 +1045,7 @@ export default function LearningModel() {
   useEffect(() => {
     const onTourStep = (e: Event) => {
       const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
-      const onboarding = getBook(textbookId).onboarding;
+      const onboarding = book?.onboarding;
       if (!onboarding) return;
       if (stepId === "note") {
         void (async () => {
@@ -1067,7 +1067,7 @@ export default function LearningModel() {
     };
     window.addEventListener(ONBOARDING_STEP_EVENT, onTourStep);
     return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourStep);
-  }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen]);
+  }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen, book]);
 
   useEffect(() => {
     const onFinished = () => closeSectionNoteRef.current();
@@ -1417,7 +1417,7 @@ export default function LearningModel() {
                   textbookId={textbookId}
                   onViewNote={activeSectionNote ? () => setGuideViewNote(true) : undefined}
                   onOpenProblems={() => {
-                    const ob = getBook(textbookId).onboarding;
+                    const ob = book?.onboarding;
                     if (ob) void handleOutlineSectionPreview(ob.problemsSection);
                   }}
                 />
