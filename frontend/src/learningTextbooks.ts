@@ -17,14 +17,19 @@ export function invalidateTextbookCatalogSync(): void {
   textbookCatalogSyncGeneration++;
 }
 
-export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = builtinBookOptions();
-
 const USER_BOOK_ID_RE = /^user_[A-Za-z0-9_-]{4,64}$/;
 
 export function isValidUploadedTextbookId(id: string): boolean {
   return USER_BOOK_ID_RE.test(id);
 }
 
+/** Membership tests here, and in fetchTextbookOptionsFromServer and
+ *  resetServerTextbookSessionForLogout, are AND-gated with isValidUploadedTextbookId, which
+ *  already rejects any id lacking a `user_` prefix. They are therefore equivalent to the old
+ *  `id === "focs"` literal for every realistic builtin id, and are kept for consistency with
+ *  the registry idiom rather than because they change behaviour today. The checks that DO
+ *  carry weight are in readSelectedTextbookId and reconcileSelectedTextbookWithCatalog, both
+ *  pinned by the second-builtin fixture tests. */
 function dedupeCatalogById(items: { id: string; linkLabel: string }[]): { id: string; linkLabel: string }[] {
   const map = new Map<string, string>();
   for (const row of items) {
@@ -68,9 +73,9 @@ function purgeLegacyTextbookLocalStorage(): void {
 }
 
 /** FCOS + last server list (in-memory). Not persisted to localStorage.
- *  Reads the registry live (not the frozen BUILTIN_TEXTBOOK_OPTIONS snapshot) so a
- *  builtin registered after module load — the only way tests can simulate a second
- *  builtin book today — is still served, matching the backend's live bb.list_builtin(). */
+ *  Calls builtinBookOptions() live rather than caching it, so a builtin registered after
+ *  module load — the only way tests can simulate a second builtin book today — is still
+ *  served, matching the backend's live bb.list_builtin(). */
 export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
   const seen = new Set<string>();
   const out: { id: string; linkLabel: string }[] = [];

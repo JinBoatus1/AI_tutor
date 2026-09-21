@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
-  BUILTIN_TEXTBOOK_OPTIONS,
   readSelectedTextbookId,
   writeSelectedTextbookId,
   getTextbookTree,
@@ -11,14 +10,14 @@ import {
   reconcileSelectedTextbookWithCatalog,
   resetServerTextbookSessionForLogout,
 } from "./learningTextbooks";
-import { BOOKS } from "./books/registry";
+import { BOOKS, builtinBookOptions } from "./books/registry";
 import type { BookDef } from "./books/registry";
 
 describe("learningTextbooks", () => {
   beforeEach(() => localStorage.clear());
 
   it("exposes builtins from the registry, spelled FOCS", () => {
-    expect(BUILTIN_TEXTBOOK_OPTIONS).toEqual([{ id: "focs", linkLabel: "FOCS" }]);
+    expect(builtinBookOptions()).toEqual([{ id: "focs", linkLabel: "FOCS" }]);
   });
 
   it("defaults to focs and round-trips a builtin selection", () => {
