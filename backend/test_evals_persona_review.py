@@ -96,9 +96,8 @@ def test_comparative_html_renders():
 
 def test_persona_pipeline_mock(tmp_path, monkeypatch):
     import evals.pipeline as pl
-    import evals.product_critique as pc
 
-    monkeypatch.setattr(pc, "evaluate_persona_product_review", _mock_persona_review)
+    monkeypatch.setattr(pl, "evaluate_persona_product_review", _mock_persona_review)
     monkeypatch.setattr(pl, "run_evaluation", _mock_evaluate)
 
     result = run_persona_product_review(
