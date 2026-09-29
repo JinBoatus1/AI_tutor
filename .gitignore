@@ -152,6 +152,9 @@ backend/.venv/
 backend/venv/
 backend/*.db
 backend/*.sqlite3
+# Console captures (e.g. `pytest > test_output.txt`). pytest collects test*.txt files as
+# doctests, so a stray UTF-16 capture here once broke collection for the whole suite.
+backend/test_output.txt
 
 # Frontend specific
 frontend/node_modules/
