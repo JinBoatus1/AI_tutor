@@ -21,7 +21,7 @@ export function loadLocalLearningBar(studentId: string, textbookId: string = "fo
   try {
     const k = key(studentId, textbookId);
     let raw = localStorage.getItem(k);
-    // 旧版仅使用 aiTutorLearningBarV1:<sid>（无 :textbook），等价于 FCOS；迁移到带 :focs 的键以免换书后「丢进度」
+    // 旧版仅使用 aiTutorLearningBarV1:<sid>（无 :textbook），等价于 FOCS；迁移到带 :focs 的键以免换书后「丢进度」
     if (!raw && (textbookId === "focs" || textbookId === "")) {
       const legacyKey = STORAGE_PREFIX + studentId;
       const legacy = localStorage.getItem(legacyKey);

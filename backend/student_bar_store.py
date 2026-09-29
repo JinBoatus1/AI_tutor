@@ -56,7 +56,7 @@ def _bar_path(student_id: str, textbook_id: str = "focs") -> str:
 
 
 def delete_all_file_bars_for_textbook(textbook_id: str) -> int:
-    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FCOS."""
+    """Remove local student_bars JSON files for this textbook (any student id prefix). Never touches FOCS."""
     tid = re.sub(r"[^A-Za-z0-9_\-]", "_", (textbook_id or "focs").strip()) or "focs"
     if tid == "focs":
         return 0
@@ -196,7 +196,11 @@ def _extract_section_tokens(message: str, valid_tokens: set[str]) -> List[str]:
 
 
 def _root_chapter_ints_from_raw(raw: Dict[str, Any]) -> List[int]:
-    """教材目录顶层章编号（如 1,2,…,5），不含小节。"""
+    """顶层章编号中的数字章（如 1,2,…,5），不含小节。
+
+    字母章（如 Lathi 的 "B Background"）按设计排除：它们是背景/复习章，
+    与 FOCS 的第 0 章同类，不参与「学到第 n 章」的自动标记。
+    """
     if not raw:
         return []
     nums: List[int] = []
@@ -236,7 +240,10 @@ def _extract_explicit_chapter_numbers(msg: str) -> List[int]:
 def _apply_learned_through_chapter_n(
     bar: Dict[str, Any], n: int, valid_tokens: set[str], raw: Dict[str, Any]
 ) -> None:
-    """学到第 n 章 → 默认正文第 1..n 章（FOCS 顶层章号，跳过第 0 章 Background）均已掌握。"""
+    """学到第 n 章 → 正文第 1..n 章均已掌握。
+
+    背景章不计入：数字 0 章显式跳过，字母章（"B"）由 _root_chapter_ints_from_raw 排除。
+    """
     learned = set(bar.get("learned_sections") or [])
     for ch in _root_chapter_ints_from_raw(raw):
         if ch == 0:

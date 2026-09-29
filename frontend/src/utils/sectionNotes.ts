@@ -1,3 +1,5 @@
+import { isChapterToken } from "./chapterToken";
+
 /** Printed-book page anchor for “see in textbook” jumps. */
 export type BookAnchor = {
   bookPage: number;
@@ -31,10 +33,10 @@ export type SectionNote = {
   formulas: FormulaEntry[];
 };
 
-/** First token in a section title if it looks like 1, 1.1, 24.2, … */
+/** First token in a section title if it looks like 1, 1.1, 24.2, B, B.1, … */
 export function sectionTokenFromTitle(title: string): string | null {
   const w = title.trim().split(/\s+/)[0] ?? "";
-  return /^\d+(?:\.\d+)*$/.test(w) ? w : null;
+  return isChapterToken(w) ? w : null;
 }
 
 export function resolveSectionToken(

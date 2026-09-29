@@ -1,0 +1,7 @@
+{
+  "id": "focs",
+  "display_name": "FOCS (Mathematics for Computer Science)",
+  "short_label": "FOCS",
+  "pdf_page_offset": 15,
+  "practice_anchor": { "kind": "problems_section" }
+}

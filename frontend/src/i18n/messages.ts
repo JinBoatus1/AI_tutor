@@ -16,7 +16,7 @@ const EN = {
   "profile.notSignedIn": "You are not signed in. Sign in to save chat history and sync learning progress.",
   "profile.textbooks": "Textbooks and outlines",
   "profile.textbooksDesc":
-    "When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch to that book. After you upload a PDF, the server checks that it is a real textbook or course book, then builds an outline JSON in the same shape as FCOS (nested objects and page numbers). Other PDF types are not accepted here—use Auto Grader for those.",
+    "When you pick a textbook, the learning progress bar and all outline / PDF references in Learning Mode switch to that book. After you upload a PDF, the server checks that it is a real textbook or course book, then builds an outline JSON in the same shape as FOCS (nested objects and page numbers). Other PDF types are not accepted here—use Auto Grader for those.",
   "profile.signInToUpload": "Sign in to upload your own PDF and save it to your account.",
   "profile.currentTextbook": "Current textbook",
   "profile.deleteUpload": "Delete this uploaded textbook",
@@ -34,7 +34,7 @@ const EN = {
   "profile.noFileChosen": "No file chosen",
   "profile.buildingOutline": "Building outline…",
   "profile.clearLocalConfirm":
-    "Remove every uploaded book from this browser only? This does not delete files on the server. FCOS stays available.",
+    "Remove every uploaded book from this browser only? This does not delete files on the server. FOCS stays available.",
   "profile.deleteConfirm":
     'Permanently delete "{label}"? The PDF, outline, and learning progress for this book will be removed. This cannot be undone.',
   "profile.errSignInUpload": "Sign in to upload a PDF textbook.",
@@ -388,7 +388,7 @@ const ZH: Record<MessageKey, string> = {
   "profile.notSignedIn": "您尚未登录。登录后可保存聊天记录并同步学习进度。",
   "profile.textbooks": "教材与大纲",
   "profile.textbooksDesc":
-    "选择教材后，学习进度条以及学习模式中的大纲与 PDF 引用都会切换到该书。上传 PDF 后，服务器会校验是否为真实教材或课程用书，并生成与 FCOS 相同结构的大纲 JSON（嵌套对象与页码）。其他类型 PDF 请使用自动批改功能。",
+    "选择教材后，学习进度条以及学习模式中的大纲与 PDF 引用都会切换到该书。上传 PDF 后，服务器会校验是否为真实教材或课程用书，并生成与 FOCS 相同结构的大纲 JSON（嵌套对象与页码）。其他类型 PDF 请使用自动批改功能。",
   "profile.signInToUpload": "登录后可上传 PDF 并保存到您的账号。",
   "profile.currentTextbook": "当前教材",
   "profile.deleteUpload": "删除此上传教材",
@@ -406,7 +406,7 @@ const ZH: Record<MessageKey, string> = {
   "profile.noFileChosen": "未选择文件",
   "profile.buildingOutline": "正在生成大纲…",
   "profile.clearLocalConfirm":
-    "仅从本浏览器移除所有上传教材？不会删除服务器上的文件，FCOS 仍可用。",
+    "仅从本浏览器移除所有上传教材？不会删除服务器上的文件，FOCS 仍可用。",
   "profile.deleteConfirm": "永久删除「{label}」？PDF、大纲及该书学习进度将被移除，且无法撤销。",
   "profile.errSignInUpload": "请登录后再上传 PDF 教材。",
   "profile.errPdfOnly": "请选择 PDF 文件。",
@@ -747,7 +747,7 @@ const ES: Record<MessageKey, string> = {
     "No has iniciado sesión. Inicia sesión para guardar el historial y sincronizar el progreso.",
   "profile.textbooks": "Libros y esquemas",
   "profile.textbooksDesc":
-    "Al elegir un libro, la barra de progreso y las referencias de esquema/PDF en Modo de aprendizaje cambian a ese libro. Tras subir un PDF, el servidor verifica que sea un libro de texto real y genera un esquema JSON con la misma forma que FCOS. Otros PDF no se aceptan aquí — usa el Corrector automático.",
+    "Al elegir un libro, la barra de progreso y las referencias de esquema/PDF en Modo de aprendizaje cambian a ese libro. Tras subir un PDF, el servidor verifica que sea un libro de texto real y genera un esquema JSON con la misma forma que FOCS. Otros PDF no se aceptan aquí — usa el Corrector automático.",
   "profile.signInToUpload": "Inicia sesión para subir tu PDF y guardarlo en tu cuenta.",
   "profile.currentTextbook": "Libro actual",
   "profile.deleteUpload": "Eliminar este libro subido",
@@ -766,7 +766,7 @@ const ES: Record<MessageKey, string> = {
   "profile.noFileChosen": "Ningún archivo",
   "profile.buildingOutline": "Generando esquema…",
   "profile.clearLocalConfirm":
-    "¿Quitar todos los libros subidos solo de este navegador? No borra archivos del servidor. FCOS sigue disponible.",
+    "¿Quitar todos los libros subidos solo de este navegador? No borra archivos del servidor. FOCS sigue disponible.",
   "profile.deleteConfirm":
     '¿Eliminar permanentemente "{label}"? Se quitarán el PDF, el esquema y el progreso. No se puede deshacer.',
   "profile.errSignInUpload": "Inicia sesión para subir un PDF.",

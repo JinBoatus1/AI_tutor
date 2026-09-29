@@ -1,8 +1,9 @@
-import focsTreeBundled from "./data/focsTree.json";
 import { apiUrl } from "./apiBase";
+import { DEFAULT_BOOK_ID, builtinBookOptions, getBook, isBuiltinBook } from "./books/registry";
+import type { TextbookTreeRoot } from "./books/registry";
 
 /** Bundled outline roots (same shape as FOCS tree JSON). */
-export type TextbookTreeRoot = Record<string, unknown>;
+export type { TextbookTreeRoot };
 
 /** Only the last-selected id is persisted in the browser; lists and trees come from the API (server data dir). */
 const STORAGE_KEY = "ai_tutor_selected_textbook_id";
@@ -16,20 +17,23 @@ export function invalidateTextbookCatalogSync(): void {
   textbookCatalogSyncGeneration++;
 }
 
-export const BUILTIN_TEXTBOOK_OPTIONS: { id: string; linkLabel: string }[] = [
-  { id: "focs", linkLabel: "FCOS" },
-];
-
 const USER_BOOK_ID_RE = /^user_[A-Za-z0-9_-]{4,64}$/;
 
 export function isValidUploadedTextbookId(id: string): boolean {
   return USER_BOOK_ID_RE.test(id);
 }
 
+/** Membership tests here, and in fetchTextbookOptionsFromServer and
+ *  resetServerTextbookSessionForLogout, are AND-gated with isValidUploadedTextbookId, which
+ *  already rejects any id lacking a `user_` prefix. They are therefore equivalent to the old
+ *  `id === "focs"` literal for every realistic builtin id, and are kept for consistency with
+ *  the registry idiom rather than because they change behaviour today. The checks that DO
+ *  carry weight are in readSelectedTextbookId and reconcileSelectedTextbookWithCatalog, both
+ *  pinned by the second-builtin fixture tests. */
 function dedupeCatalogById(items: { id: string; linkLabel: string }[]): { id: string; linkLabel: string }[] {
   const map = new Map<string, string>();
   for (const row of items) {
-    if (!row.id || row.id === "focs" || !isValidUploadedTextbookId(row.id)) continue;
+    if (!row.id || isBuiltinBook(row.id) || !isValidUploadedTextbookId(row.id)) continue;
     map.set(row.id, row.linkLabel || row.id);
   }
   return Array.from(map.entries()).map(([id, linkLabel]) => ({ id, linkLabel }));
@@ -68,11 +72,14 @@ function purgeLegacyTextbookLocalStorage(): void {
   }
 }
 
-/** FCOS + last server list (in-memory). Not persisted to localStorage. */
+/** FOCS + last server list (in-memory). Not persisted to localStorage.
+ *  Calls builtinBookOptions() live rather than caching it, so a builtin registered after
+ *  module load — the only way tests can simulate a second builtin book today — is still
+ *  served, matching the backend's live bb.list_builtin(). */
 export function readTextbookOptionList(): { id: string; linkLabel: string }[] {
   const seen = new Set<string>();
   const out: { id: string; linkLabel: string }[] = [];
-  for (const o of [...BUILTIN_TEXTBOOK_OPTIONS, ...lastServerUploads]) {
+  for (const o of [...builtinBookOptions(), ...lastServerUploads]) {
     if (seen.has(o.id)) continue;
     seen.add(o.id);
     out.push(o);
@@ -92,7 +99,7 @@ export async function fetchTextbookOptionsFromServer(token: string): Promise<{ i
   if (myGen !== textbookCatalogSyncGeneration) throw new Error("aborted");
   const items = dedupeCatalogById(
     (Array.isArray(data?.textbooks) ? data.textbooks : [])
-      .filter((x) => x?.id && x.id !== "focs" && isValidUploadedTextbookId(x.id))
+      .filter((x) => x?.id && !isBuiltinBook(x.id) && isValidUploadedTextbookId(x.id))
       .map((x) => ({ id: x.id, linkLabel: x.label || x.id }))
   );
   purgeLegacyTextbookLocalStorage();
@@ -119,28 +126,28 @@ export function writeCatalogAndTree(id: string, linkLabel: string, tree: Textboo
 export function readSelectedTextbookId(): string {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw || raw.length === 0) return "focs";
-    if (raw === "focs") return "focs";
+    if (!raw || raw.length === 0) return DEFAULT_BOOK_ID;
+    if (isBuiltinBook(raw)) return raw;
     if (!isValidUploadedTextbookId(raw)) {
       localStorage.removeItem(STORAGE_KEY);
-      return "focs";
+      return DEFAULT_BOOK_ID;
     }
     if (serverUploadsLoaded && !lastServerIdSet.has(raw)) {
-      localStorage.setItem(STORAGE_KEY, "focs");
+      localStorage.setItem(STORAGE_KEY, DEFAULT_BOOK_ID);
       queueMicrotask(() =>
-        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: "focs" } }))
+        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: DEFAULT_BOOK_ID } }))
       );
-      return "focs";
+      return DEFAULT_BOOK_ID;
     }
     return raw;
   } catch {
     /* ignore */
   }
-  return "focs";
+  return DEFAULT_BOOK_ID;
 }
 
 export function writeSelectedTextbookId(id: string): void {
-  const safe = id === "focs" || isValidUploadedTextbookId(id) ? id : "focs";
+  const safe = isBuiltinBook(id) || isValidUploadedTextbookId(id) ? id : DEFAULT_BOOK_ID;
   try {
     localStorage.setItem(STORAGE_KEY, safe);
     window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: safe } }));
@@ -152,13 +159,13 @@ export function writeSelectedTextbookId(id: string): void {
 export function reconcileSelectedTextbookWithCatalog(): void {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw || raw === "focs") return;
+    if (!raw || isBuiltinBook(raw)) return;
     if (!isValidUploadedTextbookId(raw)) {
-      writeSelectedTextbookId("focs");
+      writeSelectedTextbookId(DEFAULT_BOOK_ID);
       return;
     }
     if (serverUploadsLoaded && !lastServerIdSet.has(raw)) {
-      writeSelectedTextbookId("focs");
+      writeSelectedTextbookId(DEFAULT_BOOK_ID);
     }
   } catch {
     /* ignore */
@@ -187,15 +194,15 @@ export function clearAllUploadedTextbooksFromBrowser(): void {
   lastServerIdSet.clear();
   serverUploadsLoaded = true;
   purgeLegacyTextbookLocalStorage();
-  writeSelectedTextbookId("focs");
+  writeSelectedTextbookId(DEFAULT_BOOK_ID);
   window.dispatchEvent(
     new CustomEvent("ai-tutor-textbook-changed", { detail: { id: readSelectedTextbookId() } })
   );
 }
 
-/** FCOS from bundle; user books from session cache (filled by fetchTree / writeCatalogAndTree). */
+/** FOCS from bundle; user books from session cache (filled by fetchTree / writeCatalogAndTree). */
 export function getTextbookTree(id: string): TextbookTreeRoot {
-  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+  if (isBuiltinBook(id)) return getBook(id).tree;
   return sessionTreeCache.get(id) ?? {};
 }
 
@@ -204,7 +211,7 @@ export async function fetchTextbookTreeForId(
   token: string | null | undefined,
   id: string
 ): Promise<TextbookTreeRoot> {
-  if (id === "focs") return focsTreeBundled as TextbookTreeRoot;
+  if (isBuiltinBook(id)) return getBook(id).tree;
   if (!isValidUploadedTextbookId(id)) return {};
   if (sessionTreeCache.has(id)) return sessionTreeCache.get(id)!;
   if (!token) return {};
@@ -229,7 +236,7 @@ export function getTextbookLinkLabel(id: string): string {
   return readTextbookOptionList().find((t) => t.id === id)?.linkLabel ?? id;
 }
 
-export function focsOutlineToCurriculum(tree: TextbookTreeRoot): {
+export function outlineToCurriculum(tree: TextbookTreeRoot): {
   topics: { topic: string; chapters: { chapter: string; key_points: string[] }[] }[];
 } {
   const chapters: { chapter: string; key_points: string[] }[] = [];
@@ -269,10 +276,10 @@ export function resetServerTextbookSessionForLogout(): void {
   sessionTreeCache.clear();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && raw !== "focs" && isValidUploadedTextbookId(raw)) {
-      localStorage.setItem(STORAGE_KEY, "focs");
+    if (raw && !isBuiltinBook(raw) && isValidUploadedTextbookId(raw)) {
+      localStorage.setItem(STORAGE_KEY, DEFAULT_BOOK_ID);
       queueMicrotask(() =>
-        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: "focs" } }))
+        window.dispatchEvent(new CustomEvent("ai-tutor-textbook-changed", { detail: { id: DEFAULT_BOOK_ID } }))
       );
     }
   } catch {

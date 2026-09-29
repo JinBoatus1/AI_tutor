@@ -5,7 +5,7 @@ import { apiUrl } from "./apiBase";
 import { useCurriculum } from "./context/CurriculumContext";
 import {
   fetchTextbookTreeForId,
-  focsOutlineToCurriculum,
+  outlineToCurriculum,
   readSelectedTextbookId,
   reconcileSelectedTextbookWithCatalog,
 } from "./learningTextbooks";
@@ -22,15 +22,14 @@ import {
 } from "./TextbookSectionNote";
 import { useVerticalSplitPct } from "./hooks/useVerticalSplitPct";
 import { useDragScroll } from "./hooks/useDragScroll";
-import { FOCS_SECTION_NOTES } from "./data/focsSectionNotes";
 import { PracticePanel } from "./practice/PracticePanel";
 import { isProblemsSection, chapterOfProblems } from "./practice/isProblemsSection";
 import { getPracticeSet } from "./data/focsPracticeSets";
 import { GuidePanel } from "./guide/GuidePanel";
 import { isInductionGuideSection } from "./guide/chapterOfSection";
-import { INDUCTION_GUIDE } from "./guide/inductionGuide";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
-import { FOCS_SECTION_TOKENS_PREORDER } from "./utils/focsSectionOrder";
+import { sectionTokensPreorder } from "./utils/focsSectionOrder";
+import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
 import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import {
@@ -40,11 +39,6 @@ import {
   emitOnboardingExpandPaths,
   ONBOARDING_FINISHED_EVENT,
 } from "./onboarding/onboardingStorage";
-import {
-  ONBOARDING_NOTE_SECTION,
-  ONBOARDING_PROBLEMS_SECTION,
-  ONBOARDING_INDUCTION_EXPAND_PATHS,
-} from "./onboarding/onboardingDemoSection";
 import { WELCOME_MSG_SENTINEL } from "./i18n/messages";
 
 /** Left textbook panel width as % of layout (matches state rightPanelWidth). */
@@ -271,7 +265,7 @@ export default function LearningModel() {
     void (async () => {
       const tree = await fetchTextbookTreeForId(token, textbookId);
       if (cancelled) return;
-      setCurriculumTree(focsOutlineToCurriculum(tree));
+      setCurriculumTree(outlineToCurriculum(tree));
     })();
     return () => {
       cancelled = true;
@@ -445,8 +439,10 @@ export default function LearningModel() {
   const practiceChapter = isProblemsSection(activeSectionTitle)
     ? chapterOfProblems(activeSectionTitle)
     : null;
-  const practiceActive = Boolean(practiceChapter && getPracticeSet(practiceChapter));
-  const guideActive = textbookId === "focs" && isInductionGuideSection(activeSectionTitle);
+  const practiceActive = Boolean(practiceChapter && getPracticeSet(textbookId, practiceChapter));
+  const book = tryGetBook(textbookId);
+  const guide = book?.guides?.[0];
+  const guideActive = Boolean(guide) && isInductionGuideSection(activeSectionTitle);
 
   const hasLeftPanelContent = Boolean(
     practiceActive ||
@@ -1024,14 +1020,15 @@ export default function LearningModel() {
   sessionApiRef.current = { load: loadSession, newChat: handleNewChat, preview: handleOutlineSectionPreview };
 
   const activeSectionNote = useMemo(() => {
-    if (textbookId !== "focs" || !dataMatchedTopic) return null;
+    if (!dataMatchedTopic || !book) return null;
+    if (Object.keys(book.sectionNotes).length === 0) return null;
     return getSectionNoteWithNewVocab(
-      FOCS_SECTION_NOTES,
-      FOCS_SECTION_TOKENS_PREORDER,
+      book.sectionNotes,
+      sectionTokensPreorder(book),
       dataMatchedTopic.sectionHint,
       dataMatchedTopic.name
     );
-  }, [textbookId, dataMatchedTopic]);
+  }, [textbookId, dataMatchedTopic, book]);
 
   const sectionNoteLabel = dataMatchedTopic
     ? `${dataMatchedTopic.sectionHint ?? ""}:${dataMatchedTopic.name}`
@@ -1048,9 +1045,11 @@ export default function LearningModel() {
   useEffect(() => {
     const onTourStep = (e: Event) => {
       const stepId = (e as CustomEvent<{ stepId?: string }>).detail?.stepId;
+      const onboarding = book?.onboarding;
+      if (!onboarding) return;
       if (stepId === "note") {
         void (async () => {
-          await handleOutlineSectionPreview(ONBOARDING_NOTE_SECTION);
+          await handleOutlineSectionPreview(onboarding.noteSection);
           window.setTimeout(() => {
             sectionNoteToggle.setOpen(true);
             emitOnboardingNoteReady();
@@ -1059,16 +1058,16 @@ export default function LearningModel() {
       } else if (stepId === "problems") {
         sectionNoteToggle.setOpen(false);
         setPracticeViewNote(false);
-        emitOnboardingExpandPaths(ONBOARDING_INDUCTION_EXPAND_PATHS);
+        emitOnboardingExpandPaths(onboarding.expandPaths);
         void (async () => {
-          await handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION);
+          await handleOutlineSectionPreview(onboarding.problemsSection);
           emitOnboardingProblemsReady();
         })();
       }
     };
     window.addEventListener(ONBOARDING_STEP_EVENT, onTourStep);
     return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourStep);
-  }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen]);
+  }, [handleOutlineSectionPreview, sectionNoteToggle.setOpen, book]);
 
   useEffect(() => {
     const onFinished = () => closeSectionNoteRef.current();
@@ -1412,14 +1411,17 @@ export default function LearningModel() {
                     actions={sectionNoteActions}
                   />
                 </div>
-              ) : (
+              ) : guide ? (
                 <GuidePanel
-                  script={INDUCTION_GUIDE}
+                  script={guide}
                   textbookId={textbookId}
                   onViewNote={activeSectionNote ? () => setGuideViewNote(true) : undefined}
-                  onOpenProblems={() => void handleOutlineSectionPreview(ONBOARDING_PROBLEMS_SECTION)}
+                  onOpenProblems={() => {
+                    const ob = book?.onboarding;
+                    if (ob) void handleOutlineSectionPreview(ob.problemsSection);
+                  }}
                 />
-              )}
+              ) : null}
             </div>
             <div
               className="textbook-note-split-handle"

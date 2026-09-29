@@ -29,7 +29,7 @@ export function PracticePanel({
   token: string | null;
   onViewNote?: () => void;
 }) {
-  const rawSet = getPracticeSet(chapter);
+  const rawSet = getPracticeSet(textbookId, chapter);
   // Restrict to renderable formats; keep everything else (warm-up, challenge) intact.
   const set: PracticeSet | null = useMemo(
     () => (rawSet ? { ...rawSet, practice: rawSet.practice.filter((q) => SUPPORTED_KINDS.has(q.kind)) } : null),

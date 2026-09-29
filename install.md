@@ -33,7 +33,7 @@
 
 ### 教材数据（Learning Mode 必需）
 
-将 **FOCS 教材 PDF** 放到 `backend/data/`，默认文件名为 **`FOCS.pdf`**（或与 `backend/learning_resources.py` 中逻辑一致的首个 `.pdf`）。目录结构 **`backend/data/FOCS.json`** 需与仓库一并存在，用于章节树与页码匹配。
+**FOCS 教材** 已随仓库一并提供，位于 **`backend/data/books/focs/`**：**`meta.json`**、**`outline.json`**（章节树与页码），以及 **`book.pdf`**（教材 PDF）。
 
 ### 环境变量
 
@@ -95,7 +95,7 @@ python init.py
 
 ### Textbook data (required for full Learning Mode)
 
-Place the **FOCS PDF** under `backend/data/` (default name **`FOCS.pdf`**). Keep **`backend/data/FOCS.json`** in sync with the repo for the chapter tree and page ranges.
+The **FOCS textbook** ships with the repo under **`backend/data/books/focs/`**: **`meta.json`**, **`outline.json`** (chapter tree and page ranges), and **`book.pdf`** (the textbook PDF).
 
 ### Environment variables
 
