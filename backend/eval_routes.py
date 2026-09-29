@@ -30,12 +30,14 @@ router = APIRouter(prefix="/api/eval", tags=["eval"])
 
 
 def _eval_enabled() -> bool:
-    return os.getenv("EVAL_MODE", "1").strip().lower() not in {"0", "false", "no", "off"}
+    # Off unless EVAL_MODE=1 (docs/agent-eval-workflow-design.md §3.1): these routes have no auth,
+    # and several of them start paid LLM runs.
+    return os.getenv("EVAL_MODE", "0").strip().lower() not in {"0", "false", "no", "off"}
 
 
 def _require_eval_mode() -> None:
     if not _eval_enabled():
-        raise HTTPException(status_code=404, detail="Eval endpoints are disabled (EVAL_MODE=0).")
+        raise HTTPException(status_code=404, detail="Eval endpoints are disabled. Set EVAL_MODE=1 to enable them.")
 
 
 MemoryMode = Literal["none", "read_only", "isolated_write"]

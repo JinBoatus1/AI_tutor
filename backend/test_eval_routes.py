@@ -28,6 +28,12 @@ def test_eval_disabled_returns_404(client, monkeypatch):
     assert resp.status_code == 404
 
 
+def test_eval_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("EVAL_MODE", raising=False)
+    resp = TestClient(main.app).get("/api/eval/health")
+    assert resp.status_code == 404
+
+
 def test_list_t1_fixtures(client):
     resp = client.get("/api/eval/practice/fixtures/t1")
     assert resp.status_code == 200
