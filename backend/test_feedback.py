@@ -460,3 +460,65 @@ def test_log_config_status_flags_a_malformed_repo(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert out == "[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_REPO must look like owner/name\n"
     assert TOKEN not in out
+
+
+# === Task 3: rate limiter =====================================================
+
+class FakeClock:
+    def __init__(self, now=1000.0):
+        self.now = now
+
+    def __call__(self):
+        return self.now
+
+
+def test_limiter_allows_five_then_says_how_long_to_wait():
+    limiter = fb.FeedbackRateLimiter(clock=FakeClock())
+    assert [limiter.reserve("a@b.com") for _ in range(5)] == [None] * 5
+    assert limiter.reserve("a@b.com") == 3600
+
+
+def test_limiter_frees_a_slot_when_the_oldest_report_is_an_hour_old():
+    clock = FakeClock(1000.0)
+    limiter = fb.FeedbackRateLimiter(clock=clock)
+    for _ in range(5):
+        limiter.reserve("a@b.com")
+    clock.now = 1000.0 + 3599.5
+    assert limiter.reserve("a@b.com") == 1
+    clock.now = 1000.0 + 3600
+    assert limiter.reserve("a@b.com") is None
+
+
+def test_limiter_counts_each_identity_separately():
+    limiter = fb.FeedbackRateLimiter(clock=FakeClock())
+    for _ in range(5):
+        limiter.reserve("a@b.com")
+    assert limiter.reserve("c@d.com") is None
+
+
+def test_release_gives_the_slot_back():
+    limiter = fb.FeedbackRateLimiter(clock=FakeClock())
+    for _ in range(5):
+        limiter.reserve("a@b.com")
+    limiter.release("a@b.com")
+    assert limiter.reserve("a@b.com") is None
+    assert limiter.reserve("a@b.com") == 3600
+
+
+def test_release_without_a_reservation_is_harmless():
+    limiter = fb.FeedbackRateLimiter(clock=FakeClock())
+    limiter.release("nobody@example.com")
+    assert limiter.reserve("nobody@example.com") is None
+
+
+def test_release_forgets_the_newest_reservation():
+    clock = FakeClock(1000.0)
+    limiter = fb.FeedbackRateLimiter(clock=clock)
+    limiter.reserve("a@b.com")
+    clock.now = 2000.0
+    for _ in range(4):
+        limiter.reserve("a@b.com")
+    limiter.release("a@b.com")  # the send at t=2000 failed
+    assert limiter.reserve("a@b.com") is None
+    # The report from t=1000 is still the oldest, so the wait counts from it.
+    assert limiter.reserve("a@b.com") == 1000 + 3600 - 2000

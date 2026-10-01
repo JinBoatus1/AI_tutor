@@ -7,14 +7,18 @@ Design: docs/superpowers/specs/2026-10-01-in-app-feedback-design.md
 import hashlib
 import http.client
 import json
+import math
 import os
 import re
+import threading
+import time
 import unicodedata
 import urllib.error
 import urllib.request
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Optional
+from typing import Any, Callable, Literal, Optional
 
 import pymongo
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -300,3 +304,52 @@ def log_config_status() -> None:
             "feedback is stored in MongoDB only",
             flush=True,
         )
+
+
+# --- rate limit --------------------------------------------------------------
+
+class FeedbackRateLimiter:
+    """At most `limit` accepted reports per identity in any `window_seconds`.
+
+    In memory, per process: it resets on restart, and separate processes count separately.
+    That's enough to stop a flood, which is all it is for.
+    """
+
+    def __init__(
+        self, limit: int = 5, window_seconds: int = 3600, clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._limit = limit
+        self._window = window_seconds
+        self._clock = clock
+        self._lock = threading.Lock()  # plain route handlers run concurrently in FastAPI's thread pool
+        self._stamps: dict[str, deque[float]] = {}
+
+    def _forget_expired(self, now: float) -> None:
+        cutoff = now - self._window
+        for identity in list(self._stamps):
+            stamps = self._stamps[identity]
+            while stamps and stamps[0] <= cutoff:
+                stamps.popleft()
+            if not stamps:
+                del self._stamps[identity]
+
+    def reserve(self, identity: str) -> Optional[int]:
+        """Record a submission and return None; or, at the limit, record nothing and return
+        the seconds to wait (at least 1)."""
+        with self._lock:
+            now = self._clock()
+            self._forget_expired(now)
+            stamps = self._stamps.setdefault(identity, deque())
+            if len(stamps) >= self._limit:
+                return max(1, math.ceil(stamps[0] + self._window - now))
+            stamps.append(now)
+            return None
+
+    def release(self, identity: str) -> None:
+        """Forget identity's most recent reservation, because its delivery failed."""
+        with self._lock:
+            stamps = self._stamps.get(identity)
+            if stamps:
+                stamps.pop()
+                if not stamps:
+                    del self._stamps[identity]
