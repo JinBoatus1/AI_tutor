@@ -39,3 +39,8 @@ def learning_bars():
 def grades():
     """Return the grades collection, or None."""
     return _db["grades"] if _db is not None else None
+
+
+def feedback():
+    """Return the feedback collection, or None."""
+    return _db["feedback"] if _db is not None else None

@@ -3,11 +3,15 @@
 Run from backend/: pytest test_feedback.py --ignore=test_output.txt
 """
 
+import json
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
 import pytest
 from pydantic import ValidationError
 
+import database
 import feedback as fb
 from feedback import FeedbackContext, FeedbackRequest, build_issue, neutralize_mentions
 
@@ -189,3 +193,270 @@ def test_wrong_types_in_context_are_dropped():
 
 def test_missing_context_is_empty():
     assert make_request().context == FeedbackContext()
+
+
+# === Task 2: delivery =========================================================
+
+TOKEN = "github_pat_test_secret_123"
+REPO = "lius24/ai-tutor-feedback"
+
+
+@pytest.fixture
+def github_env(monkeypatch):
+    monkeypatch.setenv("FEEDBACK_GITHUB_TOKEN", TOKEN)
+    monkeypatch.setenv("FEEDBACK_GITHUB_REPO", REPO)
+
+
+class FakeResponse:
+    def __init__(self, status, body):
+        self.status = status
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class FakeUrlopen:
+    """Stands in for urllib.request.urlopen: records each request and plays back outcomes in order."""
+
+    def __init__(self, *outcomes):
+        self.outcomes = list(outcomes)
+        self.requests = []
+
+    def __call__(self, request, timeout=None):
+        self.requests.append((request, timeout))
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+
+def http_error(code):
+    return urllib.error.HTTPError(f"https://api.github.com/repos/{REPO}/issues", code, "error", {}, None)
+
+
+def sample_issue():
+    return fb.Issue(title="[Bug] It broke", body="body text", labels=["type:bug", "book:lathi"])
+
+
+class FakeCollection:
+    def __init__(self, error=None):
+        self.docs = []
+        self.error = error
+
+    def insert_one(self, doc):
+        if self.error:
+            raise self.error
+        self.docs.append(doc)
+
+
+# --- configuration -----------------------------------------------------------
+
+def test_github_config_needs_a_token_and_an_owner_name_repo(monkeypatch):
+    monkeypatch.delenv("FEEDBACK_GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("FEEDBACK_GITHUB_REPO", REPO)
+    assert fb.github_config() is None
+    monkeypatch.setenv("FEEDBACK_GITHUB_TOKEN", TOKEN)
+    assert fb.github_config() == (TOKEN, REPO)
+    for bad in ("", "no-slash", "a/b/c", "../etc/passwd", "owner/name?x=1"):
+        monkeypatch.setenv("FEEDBACK_GITHUB_REPO", bad)
+        assert fb.github_config() is None, bad
+
+
+# --- GitHub client -----------------------------------------------------------
+
+def test_create_github_issue_sends_the_documented_request(github_env, monkeypatch):
+    urlopen = FakeUrlopen(FakeResponse(201, json.dumps({"number": 12}).encode()))
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+
+    assert fb.create_github_issue(sample_issue()) == 12
+
+    request, timeout = urlopen.requests[0]
+    assert request.full_url == f"https://api.github.com/repos/{REPO}/issues"
+    assert request.get_method() == "POST"
+    assert {k.lower(): v for k, v in request.header_items()} == {
+        "authorization": f"Bearer {TOKEN}",
+        "accept": "application/vnd.github+json",
+        "x-github-api-version": "2022-11-28",
+        "user-agent": "ai-tutor-feedback",
+        "content-type": "application/json",
+    }
+    assert json.loads(request.data) == {
+        "title": "[Bug] It broke",
+        "body": "body text",
+        "labels": ["type:bug", "book:lathi"],
+    }
+    assert timeout == 10
+
+
+def test_created_issue_with_unreadable_reply_still_counts(github_env, monkeypatch):
+    monkeypatch.setattr(urllib.request, "urlopen", FakeUrlopen(FakeResponse(201, b"<html>oops")))
+    assert fb.create_github_issue(sample_issue()) is None
+
+
+def test_a_rejected_label_is_retried_once_without_labels(github_env, monkeypatch):
+    urlopen = FakeUrlopen(http_error(422), FakeResponse(201, b'{"number": 13}'))
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+
+    assert fb.create_github_issue(sample_issue()) == 13
+    assert [json.loads(r.data) for r, _ in urlopen.requests] == [
+        {"title": "[Bug] It broke", "body": "body text", "labels": ["type:bug", "book:lathi"]},
+        {"title": "[Bug] It broke", "body": "body text"},
+    ]
+
+
+def test_a_second_422_is_a_delivery_error(github_env, monkeypatch):
+    monkeypatch.setattr(urllib.request, "urlopen", FakeUrlopen(http_error(422), http_error(422)))
+    with pytest.raises(fb.FeedbackDeliveryError, match="^HTTP 422$"):
+        fb.create_github_issue(sample_issue())
+
+
+@pytest.mark.parametrize(
+    "outcome, message",
+    [
+        (http_error(500), "HTTP 500"),
+        (http_error(401), "HTTP 401"),
+        (urllib.error.URLError("no route"), "URLError"),
+        (TimeoutError("timed out"), "TimeoutError"),
+        (FakeResponse(200, b"{}"), "HTTP 200"),
+    ],
+)
+def test_failures_become_short_delivery_errors_without_the_token(github_env, monkeypatch, outcome, message):
+    monkeypatch.setattr(urllib.request, "urlopen", FakeUrlopen(outcome))
+    with pytest.raises(fb.FeedbackDeliveryError) as excinfo:
+        fb.create_github_issue(sample_issue())
+    assert str(excinfo.value) == message
+    assert TOKEN not in repr(excinfo.value)
+
+
+def test_missing_configuration_never_calls_github(monkeypatch):
+    monkeypatch.delenv("FEEDBACK_GITHUB_TOKEN", raising=False)
+    urlopen = FakeUrlopen()
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    with pytest.raises(fb.FeedbackDeliveryError, match="^not configured$"):
+        fb.create_github_issue(sample_issue())
+    assert urlopen.requests == []
+
+
+# --- MongoDB fallback --------------------------------------------------------
+
+def test_store_pending_keeps_a_ready_to_file_record(monkeypatch):
+    collection = FakeCollection()
+    monkeypatch.setattr(database, "feedback", lambda: collection)
+    req = make_request(context={"book_id": "lathi", "page": 170})
+    issue = build_issue(req, "student@example.com", "Mozilla/5.0 Test", NOW)
+
+    fb.store_pending(issue, req, "student@example.com", "Mozilla/5.0 Test", "HTTP 502", NOW)
+
+    assert collection.docs == [{
+        "created_at": NOW,
+        "type": "content",
+        "title": issue.title,
+        "body": issue.body,
+        "labels": ["type:content", "book:lathi"],
+        "reporter_ref": "66048931",
+        "contact_email": None,
+        "context": {"book_id": "lathi", "page": 170},
+        "user_agent": "Mozilla/5.0 Test",
+        "status": "pending",
+        "github_error": "HTTP 502",
+    }]
+
+
+def test_store_pending_keeps_the_email_only_with_consent(monkeypatch):
+    collection = FakeCollection()
+    monkeypatch.setattr(database, "feedback", lambda: collection)
+    req = make_request(contact_ok=True)
+    issue = build_issue(req, "student@example.com", "", NOW)
+    fb.store_pending(issue, req, "student@example.com", "", "HTTP 502", NOW)
+    assert collection.docs[0]["contact_email"] == "student@example.com"
+
+
+def test_store_pending_fails_without_mongodb(monkeypatch):
+    monkeypatch.setattr(database, "feedback", lambda: None)
+    req = make_request()
+    with pytest.raises(fb.FeedbackStoreError, match="^not configured$"):
+        fb.store_pending(build_issue(req, "a@b.com", "", NOW), req, "a@b.com", "", "HTTP 502", NOW)
+
+
+def test_store_pending_turns_driver_errors_into_store_errors(monkeypatch):
+    monkeypatch.setattr(database, "feedback", lambda: FakeCollection(error=RuntimeError("boom")))
+    req = make_request()
+    with pytest.raises(fb.FeedbackStoreError, match="^RuntimeError$"):
+        fb.store_pending(build_issue(req, "a@b.com", "", NOW), req, "a@b.com", "", "HTTP 502", NOW)
+
+
+# --- deliver -----------------------------------------------------------------
+
+def _github_down(issue):
+    raise fb.FeedbackDeliveryError("HTTP 502")
+
+
+def test_deliver_files_the_issue_and_skips_the_fallback(monkeypatch, capsys):
+    filed = []
+    monkeypatch.setattr(fb, "create_github_issue", lambda issue: filed.append(issue) or 12)
+    collection = FakeCollection()
+    monkeypatch.setattr(database, "feedback", lambda: collection)
+
+    assert fb.deliver(make_request(context={"book_id": "lathi"}), "student@example.com", "UA") is True
+    assert [i.title for i in filed] == ["[Content] Page 170 shows the wrong figure."]
+    assert collection.docs == []
+    assert capsys.readouterr().out == "[Feedback] issue #12 created (type=content, book=lathi)\n"
+
+
+def test_deliver_falls_back_to_mongodb(monkeypatch, capsys):
+    monkeypatch.setattr(fb, "create_github_issue", _github_down)
+    collection = FakeCollection()
+    monkeypatch.setattr(database, "feedback", lambda: collection)
+
+    assert fb.deliver(make_request(), "student@example.com", "UA") is True
+    assert [d["github_error"] for d in collection.docs] == ["HTTP 502"]
+    assert capsys.readouterr().out == "[Feedback] GitHub failed (HTTP 502); stored in MongoDB as pending\n"
+
+
+def test_deliver_reports_failure_when_both_fail(monkeypatch, capsys):
+    monkeypatch.setattr(fb, "create_github_issue", _github_down)
+    monkeypatch.setattr(database, "feedback", lambda: None)
+
+    assert fb.deliver(make_request(contact_ok=True), "student@example.com", "UA") is False
+    assert capsys.readouterr().out == (
+        "[Feedback] GitHub failed (HTTP 502) and MongoDB failed (not configured); returned 503\n"
+    )
+
+
+def test_deliver_logs_an_unknown_issue_number_as_a_question_mark(monkeypatch, capsys):
+    monkeypatch.setattr(fb, "create_github_issue", lambda issue: None)
+    assert fb.deliver(make_request(), "student@example.com", "UA") is True
+    assert capsys.readouterr().out == "[Feedback] issue #? created (type=content, book=-)\n"
+
+
+# --- startup log -------------------------------------------------------------
+
+def test_log_config_status_names_the_repo_when_enabled(github_env, capsys):
+    fb.log_config_status()
+    assert capsys.readouterr().out == f"[Feedback] GitHub delivery enabled ({REPO})\n"
+
+
+def test_log_config_status_when_disabled(monkeypatch, capsys):
+    monkeypatch.delenv("FEEDBACK_GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("FEEDBACK_GITHUB_REPO", raising=False)
+    fb.log_config_status()
+    assert capsys.readouterr().out == (
+        "[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_TOKEN or FEEDBACK_GITHUB_REPO not set; "
+        "feedback is stored in MongoDB only\n"
+    )
+
+
+def test_log_config_status_flags_a_malformed_repo(monkeypatch, capsys):
+    monkeypatch.setenv("FEEDBACK_GITHUB_TOKEN", TOKEN)
+    monkeypatch.setenv("FEEDBACK_GITHUB_REPO", "https://github.com/lius24/ai-tutor-feedback")
+    fb.log_config_status()
+    out = capsys.readouterr().out
+    assert out == "[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_REPO must look like owner/name\n"
+    assert TOKEN not in out

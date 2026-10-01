@@ -5,15 +5,22 @@ Design: docs/superpowers/specs/2026-10-01-in-app-feedback-design.md
 """
 
 import hashlib
+import http.client
+import json
+import os
 import re
 import unicodedata
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
+import pymongo
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 import builtin_books as bb
+import database
 
 MAX_DESCRIPTION_CHARS = 2000
 SUMMARY_CHARS = 60
@@ -152,3 +159,144 @@ def build_issue(req: FeedbackRequest, identity: str, user_agent: str, now: datet
         labels.append(f"book:{ctx.book_id}")
     title = neutralize_mentions(f"[{TYPE_TAGS[req.type]}] {_summary(req.description)}")
     return Issue(title=title, body=body, labels=labels)
+
+
+# --- delivery ----------------------------------------------------------------
+
+GITHUB_API = "https://api.github.com"
+GITHUB_TIMEOUT_SECONDS = 10
+MONGO_TIMEOUT_SECONDS = 5
+_REPO_RE = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+")
+
+
+class FeedbackDeliveryError(Exception):
+    """GitHub didn't take the issue. The message is short and never contains the token."""
+
+
+class FeedbackStoreError(Exception):
+    """The MongoDB fallback didn't take the report."""
+
+
+def _github_env() -> tuple[str, str]:
+    token = (os.getenv("FEEDBACK_GITHUB_TOKEN") or "").strip()
+    repo = (os.getenv("FEEDBACK_GITHUB_REPO") or "").strip()
+    return token, repo
+
+
+def github_config() -> Optional[tuple[str, str]]:
+    """(token, repo) when GitHub delivery is configured, else None. Read at call time."""
+    token, repo = _github_env()
+    if not token or not _REPO_RE.fullmatch(repo):
+        return None
+    return token, repo
+
+
+def _post_issue(token: str, repo: str, payload: dict[str, Any]) -> Optional[int]:
+    request = urllib.request.Request(
+        f"{GITHUB_API}/repos/{repo}/issues",
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "ai-tutor-feedback",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=GITHUB_TIMEOUT_SECONDS) as response:
+        if response.status != 201:
+            raise FeedbackDeliveryError(f"HTTP {response.status}")
+        raw = response.read()
+    try:
+        number = json.loads(raw)["number"]
+    except (ValueError, KeyError, TypeError):
+        return None  # The issue exists; we just can't tell its number.
+    return number if isinstance(number, int) else None
+
+
+def create_github_issue(issue: Issue) -> Optional[int]:
+    """File the issue. Returns its number, or None if GitHub's reply couldn't be read."""
+    config = github_config()
+    if config is None:
+        raise FeedbackDeliveryError("not configured")
+    token, repo = config
+    payload = {"title": issue.title, "body": issue.body, "labels": issue.labels}
+    try:
+        try:
+            return _post_issue(token, repo, payload)
+        except urllib.error.HTTPError as err:
+            if err.code != 422:
+                raise
+        # 422: GitHub rejected part of the issue, usually a label. Send it once more without labels.
+        return _post_issue(token, repo, {"title": issue.title, "body": issue.body})
+    except FeedbackDeliveryError:
+        raise
+    except urllib.error.HTTPError as err:
+        raise FeedbackDeliveryError(f"HTTP {err.code}") from None
+    except (OSError, http.client.HTTPException) as err:
+        raise FeedbackDeliveryError(type(err).__name__) from None
+
+
+def store_pending(
+    issue: Issue, req: FeedbackRequest, identity: str, user_agent: str, github_error: str, now: datetime,
+) -> None:
+    """Keep a report GitHub didn't take, ready to be filed by hand. Raises FeedbackStoreError."""
+    collection = database.feedback()
+    if collection is None:
+        raise FeedbackStoreError("not configured")
+    doc = {
+        "created_at": now,
+        "type": req.type,
+        "title": issue.title,
+        "body": issue.body,
+        "labels": list(issue.labels),
+        "reporter_ref": reporter_ref(identity),
+        "contact_email": identity if req.contact_ok else None,
+        "context": req.context.model_dump(exclude_none=True),
+        "user_agent": clean_text(user_agent).strip()[:USER_AGENT_CHARS],
+        "status": "pending",
+        "github_error": github_error,
+    }
+    try:
+        with pymongo.timeout(MONGO_TIMEOUT_SECONDS):
+            collection.insert_one(doc)
+    except Exception as err:  # any driver failure means the fallback failed
+        raise FeedbackStoreError(type(err).__name__) from None
+
+
+def deliver(req: FeedbackRequest, identity: str, user_agent: str) -> bool:
+    """File the report on GitHub, or else store it in MongoDB. False only when both fail."""
+    now = datetime.now(timezone.utc)
+    issue = build_issue(req, identity, user_agent, now)
+    book = req.context.book_id or "-"
+    try:
+        number = create_github_issue(issue)
+    except FeedbackDeliveryError as err:
+        github_error = str(err)
+    else:
+        shown = "?" if number is None else number
+        print(f"[Feedback] issue #{shown} created (type={req.type}, book={book})", flush=True)
+        return True
+    try:
+        store_pending(issue, req, identity, user_agent, github_error, now)
+    except FeedbackStoreError as err:
+        print(f"[Feedback] GitHub failed ({github_error}) and MongoDB failed ({err}); returned 503", flush=True)
+        return False
+    print(f"[Feedback] GitHub failed ({github_error}); stored in MongoDB as pending", flush=True)
+    return True
+
+
+def log_config_status() -> None:
+    """One startup line saying whether reports go to GitHub. Never prints the token."""
+    token, repo = _github_env()
+    if token and _REPO_RE.fullmatch(repo):
+        print(f"[Feedback] GitHub delivery enabled ({repo})", flush=True)
+    elif token and repo:
+        print("[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_REPO must look like owner/name", flush=True)
+    else:
+        print(
+            "[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_TOKEN or FEEDBACK_GITHUB_REPO not set; "
+            "feedback is stored in MongoDB only",
+            flush=True,
+        )
