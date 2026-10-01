@@ -5,6 +5,8 @@ The book is a text PDF, so nothing is split, OCR'd or sent to a model. Run from 
   python -m book_pipeline.lathi outline   bookmarks + printed CONTENTS -> .build/outline.json
                                           and .build/outline_review.md; a human reviews it, then
                                           it is copied to data/books/lathi/outline.json
+  python -m book_pipeline.lathi verify    the page convention (printed folios) and every section
+                                          start, through the runtime render/extract functions
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import asdict
 
 import pymupdf
 
@@ -95,6 +98,24 @@ def cmd_outline(args) -> int:
     return 1 if problems else 0
 
 
+def cmd_verify(args) -> int:
+    from book_pipeline import verify as V
+
+    with open(args.source, "rb") as f:
+        pdf = f.read()
+    with open(OUTLINE_PATH, encoding="utf-8") as f:
+        outline = json.load(f)
+    folio = V.folio_sweep(pdf, offset=PDF_PAGE_OFFSET, first=FIRST_BODY_PAGE, last=LAST_CHAPTER_END)
+    sections = V.check_sections(pdf, outline, offset=PDF_PAGE_OFFSET)
+    path = _write_json("verify_report.json", {"folio": asdict(folio), "sections": asdict(sections)})
+    problems = V.gate(folio, sections)
+    print(f"verify: folio {len(folio.confirmed)}/{len(folio.confirmed) + len(folio.unconfirmed)} "
+          f"({folio.coverage:.1%}); {sections.checked} sections checked; report {path}")
+    for problem in problems:
+        print("    GATE:", problem)
+    return 1 if problems else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="python -m book_pipeline.lathi", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -102,6 +123,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source", default=BOOK_PDF, help="the book PDF (default: data/books/lathi/book.pdf)")
     p.add_argument("--check", metavar="OUTLINE_JSON", help="only validate an edited outline")
     p.set_defaults(func=cmd_outline)
+    p = sub.add_parser("verify", help="check the page convention and every section start through the runtime paths")
+    p.add_argument("--source", default=BOOK_PDF, help="the book PDF (default: data/books/lathi/book.pdf)")
+    p.set_defaults(func=cmd_verify)
     return ap
 
 
