@@ -31,6 +31,7 @@ import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } fr
 import { sectionTokensPreorder } from "./utils/focsSectionOrder";
 import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
+import { useFeedback } from "./feedback/FeedbackContext";
 import {
   ONBOARDING_STEP_EVENT,
   emitOnboardingNoteReady,
@@ -122,6 +123,7 @@ export default function LearningModel() {
   const { t, chatLanguageSuffix } = useLocale();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
   const { token } = useAuth();
+  const { openFeedback, registerPageContext } = useFeedback();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -180,6 +182,18 @@ export default function LearningModel() {
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
   const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
   const [sectionPageIndex, setSectionPageIndex] = useState(0);
+  // Tell the feedback form which book, section and printed page are on screen.
+  useEffect(() => {
+    registerPageContext({
+      bookId: textbookId,
+      section: dataMatchedTopic?.name,
+      page:
+        dataMatchedTopic && referenceSectionPages?.length
+          ? dataMatchedTopic.startBook + sectionPageIndex
+          : undefined,
+    });
+  }, [registerPageContext, textbookId, dataMatchedTopic, referenceSectionPages, sectionPageIndex]);
+  useEffect(() => () => registerPageContext(null), [registerPageContext]);
   const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
   const [outlinePreviewError, setOutlinePreviewError] = useState<string | null>(null);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
@@ -1297,6 +1311,14 @@ export default function LearningModel() {
                 </span>
               </div>
               <div className="left-panel-topic-bar-actions">
+                <button
+                  type="button"
+                  className="left-panel-hide-btn left-panel-hide-btn--in-bar left-panel-report-btn"
+                  onClick={() => openFeedback({ type: "content" })}
+                  title={t("feedback.reportProblemTitle")}
+                >
+                  {t("feedback.reportProblem")}
+                </button>
                 {activeSectionNote ? (
                   <SectionNoteButton
                     open={sectionNoteToggle.open}
