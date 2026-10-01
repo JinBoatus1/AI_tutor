@@ -267,9 +267,9 @@ Content-Type: application/json
 
 **Outcomes**
 
-- **HTTP 201:** success. Log the issue `number` from the response.
+- **HTTP 201:** success. Log the issue `number` from the response. A 201 whose body can't be parsed still counts as success and is logged as `#?`: the issue exists, and raising would also store it in the fallback as a duplicate.
 - **HTTP 422:** GitHub rejected part of the issue, usually a label. Send it once more without `labels`, so a label problem never pushes reports into the fallback.
-- **Anything else** raises `FeedbackDeliveryError`. "Anything else" means another status, a timeout, `URLError`, `OSError`, `http.client.HTTPException`, or a response that can't be parsed. The error's message is short and never includes the token or a response body:
+- **Anything else** raises `FeedbackDeliveryError`. "Anything else" means another status, a timeout, `URLError`, `OSError` or `http.client.HTTPException`. The error's message is short and never includes the token or a response body:
   - `"HTTP <code>"` for an HTTP error status;
   - the exception's class name otherwise, such as `"TimeoutError"` or `"URLError"`;
   - `"not configured"` when the environment variables are missing. This one is raised before any request is made.
@@ -365,6 +365,7 @@ The worst case is therefore about 15 s: 10 s for GitHub plus 5 s for MongoDB.
 
 - `[Feedback] GitHub delivery enabled (lius24/ai-tutor-feedback)`
 - `[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_TOKEN or FEEDBACK_GITHUB_REPO not set; feedback is stored in MongoDB only`
+- `[Feedback] GitHub delivery disabled: FEEDBACK_GITHUB_REPO must look like owner/name`, when both are set but the repo is malformed, so a typo isn't reported as "not set".
 
 **For each report.** One line is logged. It never includes the description or the email:
 
@@ -381,6 +382,7 @@ The worst case is therefore about 15 s: 10 s for GitHub plus 5 s for MongoDB.
 | `frontend/src/feedback/FeedbackContext.tsx` | **New.** The provider and `useFeedback()` (§5.2). |
 | `frontend/src/feedback/FeedbackModal.tsx` and `FeedbackModal.css` | **New.** The dialog (§3.3). |
 | `frontend/src/feedback/feedbackApi.ts` | **New.** `submitFeedback()` (§5.4). |
+| `frontend/src/feedback/types.ts` | **New.** The shared types and constants, so the three files above don't import each other for types. |
 | `frontend/src/context/AuthContext.tsx` | Add `getFreshToken()` (§5.3). |
 | `frontend/src/main.tsx` | Wrap `<App />` in `<FeedbackProvider>`, inside the existing providers, so it can read auth and locale. |
 | `frontend/src/App.tsx` | Mount `<FeedbackModal />` next to `<SignInModal />`. |
@@ -461,10 +463,12 @@ export type SubmitResult =
 
 export async function submitFeedback(
   token: string,
-  payload: { type: FeedbackType; description: string; contact_ok: boolean; context: FeedbackRequestContext },
-  signal?: AbortSignal,
+  payload: FeedbackPayload, // { type, description, contact_ok, context }
+  timeoutMs = SUBMIT_TIMEOUT_MS, // 30 000
 ): Promise<SubmitResult>;
 ```
+
+The 30 s timeout lives inside `submitFeedback`, as an internal `AbortController`. Only the dialog calls it, and this keeps the timeout testable without rendering the dialog.
 
 - **Request:** `POST apiUrl("/api/feedback")`, with the headers `Authorization: Bearer <token>` and `Content-Type: application/json`, and the payload as the body.
 - **Rate limit:** `retryAfterMinutes = max(1, ceil(retry_after_seconds / 60))`, read from the response body. When the body has no usable number, use 60.
