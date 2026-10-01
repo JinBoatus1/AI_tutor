@@ -1,7 +1,6 @@
 """Every backend builtin needs its three frontend edits (spec §7 AC5), and the
 bundled tree must equal the backend outline (catches a forgotten `npm run sync-focs`)."""
 
-import json
 import os
 import re
 
@@ -33,8 +32,8 @@ def test_every_builtin_book_has_all_three_frontend_edits():
 
 def test_bundled_trees_match_the_backend_outlines():
     for book_id, name in _tree_files().items():
-        with open(os.path.join(BOOKS, book_id, "outline.json"), encoding="utf-8") as f:
-            backend = json.load(f)
-        with open(os.path.join(REPO, "frontend", "src", "data", name), encoding="utf-8") as f:
-            bundled = json.load(f)
+        with open(os.path.join(BOOKS, book_id, "outline.json"), "rb") as f:
+            backend = f.read()
+        with open(os.path.join(REPO, "frontend", "src", "data", name), "rb") as f:
+            bundled = f.read()
         assert bundled == backend, f"{name} is stale: run `npm run sync-focs` in frontend/"
