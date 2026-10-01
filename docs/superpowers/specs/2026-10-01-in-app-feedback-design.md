@@ -3,6 +3,7 @@
 **Date:** 2026-10-01
 **Status:** The design was approved in conversation, section by section, on 2026-10-01. This written spec is awaiting review. The implementation plan comes after it.
 **Branch:** `feat/feedback-window`, from `function` at `153d090`.
+**Depends on:** `fix/auth-token-refresh`, which keeps the signed-in token fresh (§5.3).
 
 ---
 
@@ -432,25 +433,21 @@ interface FeedbackContextValue {
 
 ### 5.3 A fresh ID token
 
-**The problem.** `AuthContext` asks Firebase for the ID token once, inside `onAuthStateChanged`, and never again. Firebase ID tokens expire after an hour. In a tab left open longer than that, `token` is stale and the server answers 401.
+**Background.** Firebase ID tokens last an hour. `AuthContext` used to fetch the token once, at sign-in, so a tab left open longer sent stale tokens and got 401s on every signed-in request. The fix on branch `fix/auth-token-refresh` (commit `ffe024a`) merges before this feature. It asks Firebase for the token every 4 minutes, when the tab becomes visible again, and when the browser comes back online, so `token` stays valid in the background.
 
-**The fix.** Add a function to the context:
+**Just in time for a send.** A send can still land in the moment between a laptop waking up and the background refresh running. So the dialog asks for a token right before each send, through a new context function:
 
 ```ts
 getFreshToken: () => Promise<string | null>;
 
 const getFreshToken = useCallback(async () => {
   const current = auth?.currentUser;
-  if (!current) return null;
-  const fresh = await current.getIdToken(); // Firebase refreshes the token once it has expired
-  setToken(fresh);
-  return fresh;
+  return current ? current.getIdToken() : null; // cached, or refreshed when close to expiry
 }, []);
 ```
 
 - The dialog calls `getFreshToken()` just before every send.
 - If `getIdToken()` throws (for example, offline), the result is `unavailable`. If `getFreshToken()` returns null, the result is `auth`.
-- Other features keep using `token`. Moving them over is out of scope (§8).
 
 ### 5.4 Submitting and errors
 
@@ -658,7 +655,6 @@ These tests use vitest and Testing Library, which are already in `devDependencie
 - An admin page. Triage happens in GitHub.
 - Replaying `pending` fallback records automatically. If any ever appear, add a script.
 - Feedback from guests or signed-out visitors.
-- Moving other features to `getFreshToken()`.
 - A rate limit that survives restarts or spans processes.
 - Restyling to match the parked redesign mockups. If the team adopts one, these entry points are restyled with the rest of the app.
 
@@ -668,8 +664,6 @@ These tests use vitest and Testing Library, which are already in `devDependencie
 
 - choose the longest expiry the account allows, and put the date in the team calendar;
 - search the Render logs for `[Feedback] GitHub failed` from time to time.
-
-**Stale tokens elsewhere.** Other signed-in features send the token fetched at sign-in, so after an hour in an open tab they may get 401s. That isn't fixed here (§8), but `getFreshToken()` is the fix whenever someone picks it up.
 
 **The rate limit lives in memory.** See §4.3.
 
