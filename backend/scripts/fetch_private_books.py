@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import sys
@@ -52,7 +53,7 @@ def fetch_one(book_dir: str, source: dict, token, *, urlopen=urllib.request.urlo
     if os.path.isfile(dest) and sha256_file(dest) == want:
         return "present"
     if not token:
-        return "skipped-no-token"
+        return "skipped-no-token-stale" if os.path.isfile(dest) else "skipped-no-token"
     fd, tmp = tempfile.mkstemp(dir=book_dir, prefix=".book.pdf.", suffix=".part")
     try:
         digest = hashlib.sha256()
@@ -95,17 +96,22 @@ def main(argv=None, *, env=os.environ, urlopen=urllib.request.urlopen) -> int:
             continue
         try:
             result = fetch_one(os.path.join(args.books_dir, book_id), source, token, urlopen=urlopen)
-        except (FetchError, OSError) as e:
+        except (FetchError, OSError, http.client.HTTPException) as e:
             print(f"[books] {book_id}: FAILED: {e}", file=sys.stderr)
             status = 1
             continue
-        if result == "skipped-no-token":
-            message = f"[books] {book_id}: book.pdf is missing and {TOKEN_ENV} is not set"
+        if result in ("skipped-no-token", "skipped-no-token-stale"):
+            if result == "skipped-no-token":
+                message = f"[books] {book_id}: book.pdf is missing and {TOKEN_ENV} is not set"
+                suffix = " (skipped; this book has no page images locally)"
+            else:
+                message = f"[books] {book_id}: book.pdf does not match meta.json's sha256 and {TOKEN_ENV} is not set"
+                suffix = " (skipped; the local copy is out of date)"
             if args.required:
                 print(message, file=sys.stderr)
                 status = 1
             else:
-                print(message + " (skipped; this book has no page images locally)")
+                print(message + suffix)
         else:
             print(f"[books] {book_id}: {result}")
     return status
