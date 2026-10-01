@@ -1,4 +1,5 @@
 import focsTree from "../data/focsTree.json";
+import lathiTree from "../data/lathiTree.json";
 import { FOCS_SECTION_NOTES } from "../data/focsSectionNotes";
 import { FOCS_PRACTICE_SETS } from "../data/practice/focsSets";
 import { INDUCTION_GUIDE } from "../guide/inductionGuide";
@@ -11,6 +12,7 @@ import type { OutlineSectionPreviewDetail } from "../LearningBarPanel";
 import type { SectionNote } from "../utils/sectionNotes";
 import type { PracticeSet } from "../practice/types";
 import type { GuideScript } from "../guide/types";
+import { LEARNING_CHAT_EXAMPLES } from "../learningChatExamples";
 
 export type TextbookTreeRoot = Record<string, unknown>;
 
@@ -28,6 +30,13 @@ export interface BookOnboarding {
   expandPaths: string[];
 }
 
+/** A starter prompt shown above the empty Learning Mode chat. */
+export interface ChatExample {
+  id: string;
+  label: string;
+  sendText: string;
+}
+
 export interface BookDef {
   id: string;
   /** Label in the textbook picker. */
@@ -38,6 +47,8 @@ export interface BookDef {
   practiceSets: Record<string, PracticeSet>;
   guides?: GuideScript[];
   onboarding?: BookOnboarding;
+  /** Starter prompts above the empty Learning Mode chat. A book without them shows none. */
+  chatExamples?: readonly ChatExample[];
 }
 
 export const DEFAULT_BOOK_ID = "focs";
@@ -56,6 +67,15 @@ export const BOOKS: Record<string, BookDef> = {
       problemsSection: ONBOARDING_PROBLEMS_SECTION,
       expandPaths: ONBOARDING_INDUCTION_EXPAND_PATHS,
     },
+    chatExamples: LEARNING_CHAT_EXAMPLES,
+  },
+  lathi: {
+    id: "lathi",
+    shortLabel: "Signals",
+    practiceAnchor: { kind: "chapter" },
+    tree: lathiTree as TextbookTreeRoot,
+    sectionNotes: {},
+    practiceSets: {},
   },
 };
 

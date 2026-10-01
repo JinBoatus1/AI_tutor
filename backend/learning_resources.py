@@ -56,7 +56,8 @@ def effective_pdf_page_offset() -> int:
 
 def get_effective_pdf_bytes() -> Optional[bytes]:
     ctx = getattr(_tls, "book", None)
-    if ctx is not None and ctx.pdf_bytes is not None:
+    # A builtin book never borrows another book's PDF: without its own, it has no pages.
+    if ctx is not None and (ctx.pdf_bytes is not None or bb.is_builtin(ctx.book_id)):
         return ctx.pdf_bytes
     return load_focs_pdf()
 

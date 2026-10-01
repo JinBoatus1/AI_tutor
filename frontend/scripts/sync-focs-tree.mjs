@@ -13,7 +13,7 @@ const repoRoot = path.join(frontendRoot, "..");
 const booksDir = path.join(repoRoot, "backend", "data", "books");
 
 /** book id -> bundled tree filename (kept explicit so imports stay greppable). */
-const TREE_FILE = { focs: "focsTree.json" };
+const TREE_FILE = { focs: "focsTree.json", lathi: "lathiTree.json" };
 
 if (!fs.existsSync(booksDir)) {
   console.error("Books directory not found:", booksDir);

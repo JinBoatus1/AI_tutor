@@ -1,0 +1,510 @@
+{
+  "B Background": {
+    "_range": {
+      "start": 1,
+      "end": 63
+    },
+    "B.1 Complex Numbers": {
+      "start": 1,
+      "end": 15
+    },
+    "B.2 Sinusoids": {
+      "start": 16,
+      "end": 19
+    },
+    "B.3 Sketching Signals": {
+      "start": 20,
+      "end": 22
+    },
+    "B.4 Cramer’s Rule": {
+      "start": 23,
+      "end": 24
+    },
+    "B.5 Partial Fraction Expansion": {
+      "start": 25,
+      "end": 35
+    },
+    "B.6 Vectors and Matrices": {
+      "start": 36,
+      "end": 41
+    },
+    "B.7 MATLAB: Elementary Operations": {
+      "start": 42,
+      "end": 53
+    },
+    "B.8 Appendix: Useful Mathematical Formulas": {
+      "start": 54,
+      "end": 63
+    }
+  },
+  "1 Signals and Systems": {
+    "_range": {
+      "start": 64,
+      "end": 149
+    },
+    "1.1 Size of a Signal": {
+      "start": 64,
+      "end": 70
+    },
+    "1.2 Some Useful Signal Operations": {
+      "start": 71,
+      "end": 77
+    },
+    "1.3 Classification of Signals": {
+      "start": 78,
+      "end": 81
+    },
+    "1.4 Some Useful Signal Models": {
+      "start": 82,
+      "end": 91
+    },
+    "1.5 Even and Odd Functions": {
+      "start": 92,
+      "end": 94
+    },
+    "1.6 Systems": {
+      "start": 95,
+      "end": 96
+    },
+    "1.7 Classification of Systems": {
+      "start": 97,
+      "end": 110
+    },
+    "1.8 System Model: Input–Output Description": {
+      "start": 111,
+      "end": 118
+    },
+    "1.9 Internal and External Descriptions of a System": {
+      "start": 119,
+      "end": 120
+    },
+    "1.10 Internal Description: The State-Space Description": {
+      "start": 121,
+      "end": 125
+    },
+    "1.11 MATLAB: Working with Functions": {
+      "start": 126,
+      "end": 132
+    },
+    "1.12 Summary": {
+      "start": 133,
+      "end": 149
+    }
+  },
+  "2 Time-Domain Analysis of Continuous-Time Systems": {
+    "_range": {
+      "start": 150,
+      "end": 236
+    },
+    "2.1 Introduction": {
+      "start": 150,
+      "end": 150
+    },
+    "2.2 System Response to Internal Conditions: The Zero-Input Response": {
+      "start": 151,
+      "end": 162
+    },
+    "2.3 The Unit Impulse Response h(t)": {
+      "start": 163,
+      "end": 167
+    },
+    "2.4 System Response to External Input: The Zero-State Response": {
+      "start": 168,
+      "end": 195
+    },
+    "2.5 System Stability": {
+      "start": 196,
+      "end": 202
+    },
+    "2.6 Intuitive Insights into System Behavior": {
+      "start": 203,
+      "end": 211
+    },
+    "2.7 MATLAB: M-Files": {
+      "start": 212,
+      "end": 219
+    },
+    "2.8 Appendix: Determining the Impulse Response": {
+      "start": 220,
+      "end": 220
+    },
+    "2.9 Summary": {
+      "start": 221,
+      "end": 236
+    }
+  },
+  "3 Time-Domain Analysis of Discrete-Time Systems": {
+    "_range": {
+      "start": 237,
+      "end": 329
+    },
+    "3.1 Introduction": {
+      "start": 237,
+      "end": 239
+    },
+    "3.2 Useful Signal Operations": {
+      "start": 240,
+      "end": 244
+    },
+    "3.3 Some Useful Discrete-Time Signal Models": {
+      "start": 245,
+      "end": 252
+    },
+    "3.4 Examples of Discrete-Time Systems": {
+      "start": 253,
+      "end": 264
+    },
+    "3.5 Discrete-Time System Equations": {
+      "start": 265,
+      "end": 269
+    },
+    "3.6 System Response to Internal Conditions: The Zero-Input Response": {
+      "start": 270,
+      "end": 276
+    },
+    "3.7 The Unit Impulse Response h[n]": {
+      "start": 277,
+      "end": 279
+    },
+    "3.8 System Response to External Input: The Zero-State Response": {
+      "start": 280,
+      "end": 297
+    },
+    "3.9 System Stability": {
+      "start": 298,
+      "end": 304
+    },
+    "3.10 Intuitive Insights into System Behavior": {
+      "start": 305,
+      "end": 305
+    },
+    "3.11 MATLAB: Discrete-Time Signals and Systems": {
+      "start": 306,
+      "end": 312
+    },
+    "3.12 Appendix: Impulse Response for a Special Case": {
+      "start": 313,
+      "end": 313
+    },
+    "3.13 Summary": {
+      "start": 313,
+      "end": 329
+    }
+  },
+  "4 Continuous-Time System Analysis Using the Laplace Transform": {
+    "_range": {
+      "start": 330,
+      "end": 487
+    },
+    "4.1 The Laplace Transform": {
+      "start": 330,
+      "end": 348
+    },
+    "4.2 Some Properties of the Laplace Transform": {
+      "start": 349,
+      "end": 359
+    },
+    "4.3 Solution of Differential and Integro-Differential Equations": {
+      "start": 360,
+      "end": 372
+    },
+    "4.4 Analysis of Electrical Networks: The Transformed Network": {
+      "start": 373,
+      "end": 385
+    },
+    "4.5 Block Diagrams": {
+      "start": 386,
+      "end": 387
+    },
+    "4.6 System Realization": {
+      "start": 388,
+      "end": 403
+    },
+    "4.7 Application to Feedback and Controls": {
+      "start": 404,
+      "end": 411
+    },
+    "4.8 Frequency Response of an LTIC System": {
+      "start": 412,
+      "end": 418
+    },
+    "4.9 Bode Plots": {
+      "start": 419,
+      "end": 435
+    },
+    "4.10 Filter Design by Placement of Poles and Zeros of H(s)": {
+      "start": 436,
+      "end": 444
+    },
+    "4.11 The Bilateral Laplace Transform": {
+      "start": 445,
+      "end": 454
+    },
+    "4.12 MATLAB: Continuous-Time Filters": {
+      "start": 455,
+      "end": 465
+    },
+    "4.13 Summary": {
+      "start": 466,
+      "end": 487
+    }
+  },
+  "5 Discrete-Time System Analysis Using the z-Transform": {
+    "_range": {
+      "start": 488,
+      "end": 592
+    },
+    "5.1 The z-Transform": {
+      "start": 488,
+      "end": 500
+    },
+    "5.2 Some Properties of the z-Transform": {
+      "start": 501,
+      "end": 509
+    },
+    "5.3 z-Transform Solution of Linear Difference Equations": {
+      "start": 510,
+      "end": 518
+    },
+    "5.4 System Realization": {
+      "start": 519,
+      "end": 525
+    },
+    "5.5 Frequency Response of Discrete-Time Systems": {
+      "start": 526,
+      "end": 537
+    },
+    "5.6 Frequency Response from Pole-Zero Locations": {
+      "start": 538,
+      "end": 546
+    },
+    "5.7 Digital Processing of Analog Signals": {
+      "start": 547,
+      "end": 553
+    },
+    "5.8 The Bilateral z-Transform": {
+      "start": 554,
+      "end": 562
+    },
+    "5.9 Connecting the Laplace and z-Transforms": {
+      "start": 563,
+      "end": 564
+    },
+    "5.10 MATLAB: Discrete-Time IIR Filters": {
+      "start": 565,
+      "end": 573
+    },
+    "5.11 Summary": {
+      "start": 574,
+      "end": 592
+    }
+  },
+  "6 Continuous-Time Signal Analysis: The Fourier Series": {
+    "_range": {
+      "start": 593,
+      "end": 679
+    },
+    "6.1 Periodic Signal Representation by Trigonometric Fourier Series": {
+      "start": 593,
+      "end": 611
+    },
+    "6.2 Existence and Convergence of the Fourier Series": {
+      "start": 612,
+      "end": 620
+    },
+    "6.3 Exponential Fourier Series": {
+      "start": 621,
+      "end": 636
+    },
+    "6.4 LTIC System Response to Periodic Inputs": {
+      "start": 637,
+      "end": 640
+    },
+    "6.5 Generalized Fourier Series: Signals as Vectors": {
+      "start": 641,
+      "end": 658
+    },
+    "6.6 Numerical Computation of Dn": {
+      "start": 659,
+      "end": 660
+    },
+    "6.7 MATLAB: Fourier Series Applications": {
+      "start": 661,
+      "end": 666
+    },
+    "6.8 Summary": {
+      "start": 667,
+      "end": 679
+    }
+  },
+  "7 Continuous-Time Signal Analysis: The Fourier Transform": {
+    "_range": {
+      "start": 680,
+      "end": 775
+    },
+    "7.1 Aperiodic Signal Representation by the Fourier Integral": {
+      "start": 680,
+      "end": 688
+    },
+    "7.2 Transforms of Some Useful Functions": {
+      "start": 689,
+      "end": 700
+    },
+    "7.3 Some Properties of the Fourier Transform": {
+      "start": 701,
+      "end": 720
+    },
+    "7.4 Signal Transmission Through LTIC Systems": {
+      "start": 721,
+      "end": 729
+    },
+    "7.5 Ideal and Practical Filters": {
+      "start": 730,
+      "end": 732
+    },
+    "7.6 Signal Energy": {
+      "start": 733,
+      "end": 735
+    },
+    "7.7 Application to Communications: Amplitude Modulation": {
+      "start": 736,
+      "end": 748
+    },
+    "7.8 Data Truncation: Window Functions": {
+      "start": 749,
+      "end": 754
+    },
+    "7.9 MATLAB: Fourier Transform Topics": {
+      "start": 755,
+      "end": 761
+    },
+    "7.10 Summary": {
+      "start": 762,
+      "end": 775
+    }
+  },
+  "8 Sampling: The Bridge from Continuous to Discrete": {
+    "_range": {
+      "start": 776,
+      "end": 844
+    },
+    "8.1 The Sampling Theorem": {
+      "start": 776,
+      "end": 784
+    },
+    "8.2 Signal Reconstruction": {
+      "start": 785,
+      "end": 798
+    },
+    "8.3 Analog-to-Digital (A/D) Conversion": {
+      "start": 799,
+      "end": 801
+    },
+    "8.4 Dual of Time Sampling: Spectral Sampling": {
+      "start": 802,
+      "end": 804
+    },
+    "8.5 Numerical Computation of the Fourier Transform: The Discrete Fourier Transform": {
+      "start": 805,
+      "end": 823
+    },
+    "8.6 The Fast Fourier Transform (FFT)": {
+      "start": 824,
+      "end": 826
+    },
+    "8.7 MATLAB: The Discrete Fourier Transform": {
+      "start": 827,
+      "end": 833
+    },
+    "8.8 Summary": {
+      "start": 834,
+      "end": 844
+    }
+  },
+  "9 Fourier Analysis of Discrete-Time Signals": {
+    "_range": {
+      "start": 845,
+      "end": 907
+    },
+    "9.1 Discrete-Time Fourier Series (DTFS)": {
+      "start": 845,
+      "end": 854
+    },
+    "9.2 Aperiodic Signal Representation by Fourier Integral": {
+      "start": 855,
+      "end": 866
+    },
+    "9.3 Properties of the DTFT": {
+      "start": 867,
+      "end": 877
+    },
+    "9.4 LTI Discrete-Time System Analysis by DTFT": {
+      "start": 878,
+      "end": 882
+    },
+    "9.5 DTFT Connection with the CTFT": {
+      "start": 883,
+      "end": 885
+    },
+    "9.6 Generalization of the DTFT to the z-Transform": {
+      "start": 886,
+      "end": 888
+    },
+    "9.7 MATLAB: Working with the DTFS and the DTFT": {
+      "start": 889,
+      "end": 897
+    },
+    "9.8 Summary": {
+      "start": 898,
+      "end": 907
+    }
+  },
+  "10 State-Space Analysis": {
+    "_range": {
+      "start": 908,
+      "end": 974
+    },
+    "10.1 Mathematical Preliminaries": {
+      "start": 909,
+      "end": 912
+    },
+    "10.2 Introduction to State Space": {
+      "start": 913,
+      "end": 915
+    },
+    "10.3 A Systematic Procedure to Determine State Equations": {
+      "start": 916,
+      "end": 925
+    },
+    "10.4 Solution of State Equations": {
+      "start": 926,
+      "end": 938
+    },
+    "10.5 Linear Transformation of a State Vector": {
+      "start": 939,
+      "end": 946
+    },
+    "10.6 Controllability and Observability": {
+      "start": 947,
+      "end": 952
+    },
+    "10.7 State-Space Analysis of Discrete-Time Systems": {
+      "start": 953,
+      "end": 960
+    },
+    "10.8 MATLAB: Toolboxes and State-Space Analysis": {
+      "start": 961,
+      "end": 968
+    },
+    "10.9 Summary": {
+      "start": 969,
+      "end": 974
+    }
+  },
+  "Index": {
+    "_range": {
+      "start": 975,
+      "end": null
+    }
+  }
+}

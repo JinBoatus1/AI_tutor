@@ -10,7 +10,7 @@ import builtin_books as bb
 
 def test_focs_is_builtin_and_unknown_is_not():
     assert bb.is_builtin("focs") is True
-    assert bb.is_builtin("lathi") is False
+    assert bb.is_builtin("nosuchbook") is False
     assert bb.is_builtin("user_abcd1234") is False
     assert bb.is_builtin("") is False
     assert bb.is_builtin("../etc") is False
@@ -38,7 +38,7 @@ def test_focs_pdf_loads_as_a_pdf():
 
 def test_list_builtin_returns_focs_spelled_correctly():
     rows = bb.list_builtin()
-    assert {r["id"] for r in rows} == {"focs"}
+    assert {r["id"] for r in rows} == {"focs", "lathi"}
     assert rows[0]["label"] == "FOCS"
 
 

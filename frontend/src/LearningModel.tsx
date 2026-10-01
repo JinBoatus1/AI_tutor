@@ -31,7 +31,6 @@ import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } fr
 import { sectionTokensPreorder } from "./utils/focsSectionOrder";
 import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
-import { LEARNING_CHAT_EXAMPLES } from "./learningChatExamples";
 import {
   ONBOARDING_STEP_EVENT,
   emitOnboardingNoteReady,
@@ -964,6 +963,7 @@ export default function LearningModel() {
   // CLEAR EVERYTHING
   // ============================
   const hasUserMessage = messages.some((m) => m.sender === "user");
+  const chatExamples = book?.chatExamples ?? [];
 
   const reset = () => {
     setMessages([]);
@@ -1596,11 +1596,11 @@ export default function LearningModel() {
           </div>
         )}
 
-        {!hasUserMessage && (
+        {!hasUserMessage && chatExamples.length > 0 && (
           <div className="chat-example-prompts" role="group" aria-label={t("learning.exampleLabel")}>
             <p className="chat-example-label">{t("learning.exampleLabel")}</p>
             <div className="chat-example-list">
-              {LEARNING_CHAT_EXAMPLES.map((ex, i) => (
+              {chatExamples.map((ex, i) => (
                 <button
                   key={ex.id}
                   type="button"

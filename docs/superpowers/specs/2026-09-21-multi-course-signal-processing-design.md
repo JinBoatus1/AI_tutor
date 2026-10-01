@@ -1,8 +1,54 @@
 # Multi-Course Support + Signal Processing (Lathi) — Design Spec
 
 **Date:** 2026-09-21
-**Status:** Approved (brainstorming complete; implementation plan to follow)
-**Textbook:** B. P. Lathi, *Signal Processing and Linear Systems* (scanned PDF, 432 sheets / 864 book pages)
+**Status:** Approved (brainstorming complete; implementation plan to follow). **Amended 2026-09-30 — see §0.**
+**Textbook:** B. P. Lathi & R. A. Green, *Linear Systems and Signals*, 3rd ed. (text PDF, 1010 pages) — replaces the
+scanned *Signal Processing and Linear Systems* this spec was first written for (§0).
+
+---
+
+## 0. Amendment 1 (2026-09-30): the textbook is *Linear Systems and Signals*, 3rd ed.
+
+**Decision (user, 2026-09-30).** The lab's existing signals demo (`JinBoatus1/Fourier`) already
+teaches from Lathi & Green, *Linear Systems and Signals*, 3rd ed. ("LSS3"), and the course team
+does not mind the edition. LSS3 replaces *Signal Processing and Linear Systems* (SPLS) from PR2 on.
+The SPLS scan pipeline that PR2 first built (split, Tesseract pagination, vision outline, vision OCR
+text layer) is archived on branch `feat/lathi-ingestion` and is not part of the PR.
+
+**Measured facts about LSS3** (do not re-derive):
+
+- 1010 PDF pages, every page 576 × 720 pt (single portrait pages; nothing to split), with a full
+  text layer (about 2,000+ extractable characters per body page).
+- **`pdf_page = book_page + 20`.** Three independent checks agree:
+  - the printed CONTENTS page numbers equal (bookmark page − 20) for all 109 numbered sections;
+  - the printed folio matches on 972 of the 974 body pages, against 2 coincidental matches for offset 19 and none for offset 21;
+  - each section's heading token begins a line on its start page, for all 109 sections.
+- Bookmarks: 19 at level 1 (front matter, chapters B and 1–10, Index), 130 at level 2 (numbered
+  sections plus unnumbered References/Problems), 218 at level 3 (sub-subsections such as `2.4-1`).
+  Level-2 bookmark titles are ALL CAPS; the printed CONTENTS (PDF pages 7–16) carries the titles in
+  their printed case, e.g. `B.4 Cramer’s Rule 23`, `1.8 System Model: Input–Output Description 111`.
+- Chapters (book pages): B Background 1, 1 Signals and Systems 64, 2 150, 3 237, 4 330, 5 488,
+  6 593, 7 680, 8 776, 9 845, 10 908. Chapter 10 ends at 974. Back matter: **Index 975** only.
+  109 numbered sections. Chapter B stays lettered, so §2.3's token widening applies unchanged.
+
+**What changes in this spec:**
+
+- §2.4 and §3.2 describe SPLS. For LSS3 nothing is split, `pdf_page_offset` is **20**, and the text
+  layer is native, so the runtime still reads it with no new code.
+- §3.1 `meta.json` for Lathi: `"display_name": "Linear Systems and Signals (Lathi)"`,
+  `"pdf_page_offset": 20`. `id` (`lathi`), `short_label` (`Signals`) and `practice_anchor` are unchanged.
+- §4: S1 (split) and S4 (OCR text layer) are dropped. S3 builds the outline deterministically from
+  the bookmarks (structure and pages) and the printed CONTENTS (titles), with no model call, then one
+  human pass. S2 becomes a text-layer check: the printed folio on every body page, plus each
+  section's heading on its start page. Sub-subsections stay out of the outline, as before. S5–S8
+  (practice, notes; PR3+) are unchanged, now against LSS3.
+- §6 PR2: `books/lathi/` = committed `meta.json` + `outline.json`; `book.pdf` stays in private
+  storage (`lius24/ai-tutor-books`) and is fetched at build time, pinned by SHA-256.
+- §7 AC3 becomes: *`pdf_page = book_page + 20` holds — the printed folio confirms it on ≥ 95% of
+  body pages, and every section's heading is on its start page.*
+- §8: the OCR-fidelity risk and the OCR API cost no longer apply to PR2 (no model calls). The PDF
+  is still copyrighted and stays out of this public repository. (FYI: the Fourier repo hosts a
+  public copy; flagged to its owner.)
 
 ---
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BOOKS, DEFAULT_BOOK_ID, isBuiltinBook, getBook, tryGetBook, builtinBookOptions } from "./registry";
+import { getPracticeSet } from "../data/focsPracticeSets";
 
 describe("book registry", () => {
   it("has focs as the default builtin", () => {
@@ -11,7 +12,7 @@ describe("book registry", () => {
 
   it("spells the label FOCS", () => {
     expect(BOOKS.focs.shortLabel).toBe("FOCS");
-    expect(builtinBookOptions()).toEqual([{ id: "focs", linkLabel: "FOCS" }]);
+    expect(builtinBookOptions()[0]).toEqual({ id: "focs", linkLabel: "FOCS" });
   });
 
   it("carries focs content through the registry", () => {
@@ -35,5 +36,30 @@ describe("book registry", () => {
     expect(tryGetBook("nope")).toBeNull();
     // getBook keeps its documented fallback; the two must differ for an unregistered id.
     expect(getBook("user_abcd1234").id).toBe("focs");
+  });
+
+  it("registers Lathi as the second builtin with no practice, notes or tour yet", () => {
+    const lathi = BOOKS.lathi;
+    expect(lathi.shortLabel).toBe("Signals");
+    expect(lathi.practiceAnchor).toEqual({ kind: "chapter" });
+    expect(Object.keys(lathi.practiceSets)).toEqual([]);
+    expect(Object.keys(lathi.sectionNotes)).toEqual([]);
+    expect(lathi.guides).toBeUndefined();
+    expect(lathi.onboarding).toBeUndefined();
+    expect(lathi.chatExamples).toBeUndefined();
+    expect(Object.keys(lathi.tree)[0]).toBe("B Background");
+    expect(getPracticeSet("lathi", "4")).toBeNull();
+  });
+
+  it("offers the builtins default-first", () => {
+    expect(builtinBookOptions()).toEqual([
+      { id: "focs", linkLabel: "FOCS" },
+      { id: "lathi", linkLabel: "Signals" },
+    ]);
+  });
+
+  it("carries FOCS's starter prompts in the registry, so other books show none", () => {
+    expect(BOOKS.focs.chatExamples?.map((e) => e.id)).toEqual(["induction", "problem-5-1"]);
+    expect(BOOKS.lathi.chatExamples).toBeUndefined();
   });
 });
