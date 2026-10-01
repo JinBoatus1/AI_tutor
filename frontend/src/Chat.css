@@ -1351,14 +1351,16 @@
   color: #0f766e;
 }
 
+/* Zoom is relative to the panel: 100% fits the page to the panel's width, 75% is three
+   quarters of it, and anything above 100% overflows so the panel scrolls sideways. */
 .reference-page-img-wrap--zoom {
-  width: max-content;
+  width: var(--textbook-zoom-pct, 100%);
   max-width: none;
-  min-width: 100%;
+  margin-inline: auto;
 }
 
 .reference-page-sidebar .reference-page-img--zoomable {
-  width: var(--textbook-zoom-pct, 100%);
+  width: 100%;
   max-width: none;
 }
 
