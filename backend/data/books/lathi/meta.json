@@ -1,0 +1,15 @@
+{
+  "id": "lathi",
+  "display_name": "Linear Systems and Signals (Lathi)",
+  "short_label": "Signals",
+  "pdf_page_offset": 20,
+  "practice_anchor": { "kind": "chapter" },
+  "pdf_source": {
+    "kind": "github_private",
+    "repo": "lius24/ai-tutor-books",
+    "path": "lathi/book.pdf",
+    "ref": "355cd3e9b3270a13246c14492cbcb25608a3b54c",
+    "sha256": "287f52c8b80882219f5fd766f9402b12472e730cfe783791c53e6dfcfb4b3fc1",
+    "bytes": 6881883
+  }
+}
