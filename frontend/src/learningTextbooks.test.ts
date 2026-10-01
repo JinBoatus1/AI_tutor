@@ -17,7 +17,10 @@ describe("learningTextbooks", () => {
   beforeEach(() => localStorage.clear());
 
   it("exposes builtins from the registry, spelled FOCS", () => {
-    expect(builtinBookOptions()).toEqual([{ id: "focs", linkLabel: "FOCS" }]);
+    expect(builtinBookOptions()).toEqual([
+      { id: "focs", linkLabel: "FOCS" },
+      { id: "lathi", linkLabel: "Signals" },
+    ]);
   });
 
   it("defaults to focs and round-trips a builtin selection", () => {
@@ -85,7 +88,19 @@ describe("server catalog filtering", () => {
       { id: "user_abcd1234" },
     ]);
     await fetchTextbookOptionsFromServer("tok");
-    expect(readTextbookOptionList().map((x) => x.id)).toEqual(["focs", "user_abcd1234"]);
+    expect(readTextbookOptionList().map((x) => x.id)).toEqual(["focs", "lathi", "user_abcd1234"]);
+  });
+
+  it("shows a lathi row from the server exactly once, labelled from the registry", async () => {
+    mockServerTextbooks([
+      { id: "focs", label: "FOCS (built-in)" },
+      { id: "lathi", label: "Signals (built-in)" },
+      { id: "user_abcd1234", label: "My Upload" },
+    ]);
+    await fetchTextbookOptionsFromServer("tok");
+    const list = readTextbookOptionList();
+    expect(list.filter((x) => x.id === "lathi")).toEqual([{ id: "lathi", linkLabel: "Signals" }]);
+    expect(list.map((x) => x.id)).toEqual(["focs", "lathi", "user_abcd1234"]);
   });
 
   it("resets a selected upload that the server no longer lists", async () => {

@@ -1,4 +1,5 @@
 import focsTree from "../data/focsTree.json";
+import lathiTree from "../data/lathiTree.json";
 import { FOCS_SECTION_NOTES } from "../data/focsSectionNotes";
 import { FOCS_PRACTICE_SETS } from "../data/practice/focsSets";
 import { INDUCTION_GUIDE } from "../guide/inductionGuide";
@@ -56,6 +57,14 @@ export const BOOKS: Record<string, BookDef> = {
       problemsSection: ONBOARDING_PROBLEMS_SECTION,
       expandPaths: ONBOARDING_INDUCTION_EXPAND_PATHS,
     },
+  },
+  lathi: {
+    id: "lathi",
+    shortLabel: "Signals",
+    practiceAnchor: { kind: "chapter" },
+    tree: lathiTree as TextbookTreeRoot,
+    sectionNotes: {},
+    practiceSets: {},
   },
 };
 
