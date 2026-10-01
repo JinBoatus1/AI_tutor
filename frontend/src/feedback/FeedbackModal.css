@@ -1,0 +1,177 @@
+/* In-app feedback dialog. It follows SignInModal's look; the text and teal colours meet WCAG AA. */
+.feedback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* one below .signin-overlay, so the sign-in modal can open on top */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(8, 12, 24, 0.55);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.feedback-modal {
+  position: relative;
+  width: 520px;
+  max-width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 32px 32px 28px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 40px 120px -20px rgba(0, 0, 0, 0.45);
+  font-family: "DM Sans", sans-serif;
+  color: #0f172a;
+}
+
+.feedback-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+}
+.feedback-close:hover:not(:disabled) { color: #0f172a; background: #f1f5f9; }
+.feedback-close:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.feedback-title {
+  margin: 0 0 20px;
+  font-family: "DM Serif Display", Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.feedback-label {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.feedback-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  border: none;
+}
+
+.feedback-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.feedback-type:has(input:checked) { border-color: #0f766e; background: #f0fdfa; }
+.feedback-type input { margin: 0; accent-color: #0f766e; }
+
+.feedback-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fafbfc;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #1e293b;
+  resize: vertical;
+}
+.feedback-textarea:focus {
+  outline: none;
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+  background: #fff;
+}
+.feedback-textarea::placeholder { color: #64748b; }
+
+.feedback-count { margin: 6px 0 14px; text-align: right; font-size: 0.78rem; color: #5b6672; }
+
+.feedback-contact { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: #1e293b; cursor: pointer; }
+.feedback-contact input { margin: 0; accent-color: #0f766e; }
+
+.feedback-attached { margin: 10px 0 18px; font-size: 0.8rem; line-height: 1.45; color: #5b6672; }
+
+.feedback-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+.feedback-error-signin {
+  padding: 5px 12px;
+  border: 1px solid #b91c1c;
+  border-radius: 8px;
+  background: #fff;
+  color: #b91c1c;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feedback-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.feedback-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.feedback-btn--primary { border-color: #0f766e; background: #0f766e; color: #fff; }
+.feedback-btn--primary:hover:not(:disabled) { border-color: #115e59; background: #115e59; }
+
+.feedback-sent p { margin: 0 0 20px; font-size: 1rem; color: #166534; }
+
+.feedback-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: feedback-spin 0.8s linear infinite;
+}
+@keyframes feedback-spin { to { transform: rotate(360deg); } }
+
+/* Narrow screens: the card spans the full width, and the buttons stack at full width. */
+@media (max-width: 640px) {
+  .feedback-overlay { padding: 0; }
+  .feedback-modal { width: 100%; max-height: 100vh; border-radius: 0; padding: 24px 16px; }
+  .feedback-types { grid-template-columns: 1fr; }
+  .feedback-actions { flex-direction: column-reverse; }
+  .feedback-btn { width: 100%; }
+}
