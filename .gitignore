@@ -156,9 +156,12 @@ backend/*.sqlite3
 # doctests, so a stray UTF-16 capture here once broke collection for the whole suite.
 backend/test_output.txt
 
-# The Lathi PDF is copyrighted and this repository is public: book.pdf is fetched from
-# private storage at build time (backend/data/books/README.md). .build/ holds build reports.
-backend/data/books/lathi/book.pdf
+# Book PDFs are copyrighted and this repository is public: each builtin's book.pdf is fetched
+# from private storage at build time (backend/data/books/README.md). FOCS's PDF is the one
+# committed exception. .part files are interrupted downloads; .build/ holds build reports.
+backend/data/books/*/book.pdf
+!backend/data/books/focs/book.pdf
+backend/data/books/*/.book.pdf.*.part
 backend/data/books/*/.build/
 
 # Frontend specific

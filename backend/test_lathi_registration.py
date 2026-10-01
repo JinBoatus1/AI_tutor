@@ -66,8 +66,15 @@ def test_lettered_chapter_sections_get_nested_memory_addresses():
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
 def test_the_book_pdf_and_build_reports_can_never_be_committed():
-    for path in ("data/books/lathi/book.pdf", "data/books/lathi/.build/verify_report.json"):
+    for path in (
+        "data/books/lathi/book.pdf",
+        "data/books/lathi/.build/verify_report.json",
+        "data/books/lathi/.book.pdf.k3j9x2.part",
+        "data/books/some_future_book/book.pdf",
+    ):
         assert subprocess.run(["git", "check-ignore", "-q", path], cwd=BACKEND).returncode == 0, path
+    # FOCS's PDF is the one committed book.
+    assert subprocess.run(["git", "check-ignore", "-q", "data/books/focs/book.pdf"], cwd=BACKEND).returncode == 1
 
 
 @pytest.mark.skipif(not os.path.isfile(BOOK_PDF), reason="private PDF not fetched (backend/data/books/README.md)")
