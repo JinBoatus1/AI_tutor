@@ -31,6 +31,8 @@ import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } fr
 import { sectionTokensPreorder } from "./utils/focsSectionOrder";
 import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
+import { useFeedback } from "./feedback/FeedbackContext";
+import { pageContextFor } from "./feedback/pageContext";
 import {
   ONBOARDING_STEP_EVENT,
   emitOnboardingNoteReady,
@@ -122,6 +124,7 @@ export default function LearningModel() {
   const { t, chatLanguageSuffix } = useLocale();
   const [studentId] = useState<string>(() => getOrCreateStudentId());
   const { token } = useAuth();
+  const { openFeedback, registerPageContext } = useFeedback();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -166,6 +169,8 @@ export default function LearningModel() {
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
   const [dataMatchedTopic, setDataMatchedTopic] = useState<{
+    /** The book this section's pages came from, which can differ from the selection after a switch. */
+    bookId: string;
     name: string;
     startBook: number;
     endBook: number;
@@ -180,6 +185,13 @@ export default function LearningModel() {
   const [referencePageSnippets, setReferencePageSnippets] = useState<string[] | null>(null);
   const [referenceSectionPages, setReferenceSectionPages] = useState<string[] | null>(null);
   const [sectionPageIndex, setSectionPageIndex] = useState(0);
+  // Tell the feedback form which book, section and printed page are on screen.
+  useEffect(() => {
+    registerPageContext(
+      pageContextFor(textbookId, dataMatchedTopic, Boolean(referenceSectionPages?.length), sectionPageIndex),
+    );
+  }, [registerPageContext, textbookId, dataMatchedTopic, referenceSectionPages, sectionPageIndex]);
+  useEffect(() => () => registerPageContext(null), [registerPageContext]);
   const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
   const [outlinePreviewError, setOutlinePreviewError] = useState<string | null>(null);
   const [enlargedImageSrc, setEnlargedImageSrc] = useState<string | null>(null);
@@ -352,6 +364,7 @@ export default function LearningModel() {
               const sb = data.matched_topic.start_book ?? data.matched_topic.start ?? detail.startBook;
               const eb = data.matched_topic.end_book ?? data.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
+                bookId: textbookId,
                 name: data.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
@@ -406,6 +419,7 @@ export default function LearningModel() {
               const sb = cData.matched_topic.start_book ?? cData.matched_topic.start ?? detail.startBook;
               const eb = cData.matched_topic.end_book ?? cData.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
+                bookId: textbookId,
                 name: cData.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
@@ -661,6 +675,7 @@ export default function LearningModel() {
           const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
           const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
           setDataMatchedTopic({
+            bookId: textbookId,
             name: data.matched_topic.name,
             startBook: sb,
             endBook: eb,
@@ -869,6 +884,7 @@ export default function LearningModel() {
         const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
         const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
         setDataMatchedTopic({
+          bookId: textbookId,
           name: data.matched_topic.name,
           startBook: sb,
           endBook: eb,
@@ -1297,6 +1313,14 @@ export default function LearningModel() {
                 </span>
               </div>
               <div className="left-panel-topic-bar-actions">
+                <button
+                  type="button"
+                  className="left-panel-hide-btn left-panel-hide-btn--in-bar left-panel-report-btn"
+                  onClick={() => openFeedback({ type: "content" })}
+                  title={t("feedback.reportProblemTitle")}
+                >
+                  {t("feedback.reportProblem")}
+                </button>
                 {activeSectionNote ? (
                   <SectionNoteButton
                     open={sectionNoteToggle.open}

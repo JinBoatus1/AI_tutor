@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import fitz  # PyMuPDF
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from deps import clamp_int_0_100, create_chat_completion
@@ -30,6 +31,7 @@ from AutoGrader.public_api import (
 
 from auth import verify_token
 import database
+import feedback as fb
 import grade_store
 import grades_serde as g_serde
 import grades_math as g_math
@@ -1754,3 +1756,40 @@ async def upload_textbook(subject: str = Form(""), file: UploadFile = File(...))
 
     return {"tree": tree, "paragraph_count": len(lr.TEXTBOOK_PARAGRAPHS)}
 
+
+# ---------------------------------------------------------------------------
+# In-app feedback (docs/superpowers/specs/2026-10-01-in-app-feedback-design.md)
+# ---------------------------------------------------------------------------
+
+_feedback_limiter = fb.FeedbackRateLimiter()
+
+
+@router.post("/api/feedback")
+def submit_feedback(
+    req: fb.FeedbackRequest,
+    authorization: Optional[str] = Header(None),
+    user_agent: Optional[str] = Header(None),
+):
+    # A plain def on purpose: FastAPI runs it in its thread pool, so the blocking GitHub and
+    # MongoDB calls don't stall the event loop that the async routes share.
+    identity = verify_token(authorization)
+    if not identity:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if identity.startswith("anon:"):
+        raise HTTPException(status_code=403, detail="Guests can't send feedback")
+    wait = _feedback_limiter.reserve(identity)
+    if wait is not None:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many feedback submissions", "retry_after_seconds": wait},
+            headers={"Retry-After": str(wait)},
+        )
+    delivered = False
+    try:
+        delivered = fb.deliver(req, identity, user_agent or "")
+    finally:
+        if not delivered:  # failures, unexpected errors included, never use up the quota
+            _feedback_limiter.release(identity)
+    if not delivered:
+        raise HTTPException(status_code=503, detail="Feedback is temporarily unavailable")
+    return {"ok": True}

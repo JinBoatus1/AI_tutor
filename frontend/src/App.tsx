@@ -8,6 +8,7 @@ import MyLearningBar from "./MyLearningBar";
 import UserProfile from "./UserProfile";
 import Grades from "./Grades";
 import SignInModal from "./SignInModal";
+import FeedbackModal from "./feedback/FeedbackModal";
 import Sidebar from "./components/Sidebar";
 import OnboardingTour from "./components/OnboardingTour";
 import { OnboardingProvider } from "./context/OnboardingContext";
@@ -70,6 +71,7 @@ function AppShell() {
         </div>
 
         <SignInModal />
+        <FeedbackModal />
         <OnboardingTour />
       </div>
     </div>

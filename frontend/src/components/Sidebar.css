@@ -299,6 +299,7 @@
   font-family: "DM Sans", sans-serif; font-size: 0.9rem; font-weight: 600; transition: background 0.15s;
 }
 .sb-signin:hover { background: rgba(94, 234, 212, 0.16); }
+.sb-feedback { margin-bottom: 8px; }
 
 /* ---- collapsed (icon rail) ---- */
 .sb--collapsed .sb-brand-name,
@@ -314,7 +315,8 @@
 .sb--collapsed .sb-tour-btn { margin-left: 0; padding: 8px; }
 .sb--collapsed .sb-shell { padding: 8px 10px; }
 .sb--collapsed .sb-link, .sb--collapsed .sb-section-head, .sb--collapsed .sb-signin { justify-content: center; padding: 11px 0; gap: 0; }
-.sb--collapsed .sb-footer { display: flex; justify-content: center; }
+.sb--collapsed .sb-footer { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.sb--collapsed .sb-feedback { margin-bottom: 0; }
 .sb--collapsed .sb-user { justify-content: center; }
 /* Collapsed rail: Learning Progress / History shrink to just their icon head. Their
    `.is-open` bodies use a more specific selector than the generic `.sb-section-body`
