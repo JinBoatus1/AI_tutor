@@ -183,3 +183,32 @@ describe("AuthProvider keeps the ID token fresh", () => {
     expect(getIdToken.mock.calls.length).toBe(callsWhileMounted);
   });
 });
+
+describe("getFreshToken", () => {
+  function captureAuth() {
+    const captured: { auth?: ReturnType<typeof useAuth> } = {};
+    function Capture() {
+      captured.auth = useAuth();
+      return null;
+    }
+    render(<AuthProvider><Capture /></AuthProvider>);
+    return captured;
+  }
+
+  it("returns the token Firebase hands out right now", async () => {
+    const captured = captureAuth();
+    const { user, rotate } = makeUser("token-1");
+    await firebaseReports(user);
+
+    rotate("token-2");
+
+    await expect(captured.auth!.getFreshToken()).resolves.toBe("token-2");
+  });
+
+  it("returns null when nobody is signed in", async () => {
+    const captured = captureAuth();
+    await firebaseReports(null);
+
+    await expect(captured.auth!.getFreshToken()).resolves.toBeNull();
+  });
+});

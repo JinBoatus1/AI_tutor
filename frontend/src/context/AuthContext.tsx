@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
   onAuthStateChanged,
@@ -38,6 +38,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   showSignIn: boolean;
   setShowSignIn: (v: boolean) => void;
+  /** Asks Firebase for a token now: the cached one, or a new one when it is close to expiring. */
+  getFreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -170,11 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetServerTextbookSessionForLogout();
   };
 
+  const getFreshToken = useCallback(async () => {
+    const current = auth?.currentUser;
+    return current ? current.getIdToken() : null;
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user, token, loading,
       loginWithProvider, loginWithEmail,
       logout, showSignIn, setShowSignIn,
+      getFreshToken,
     }}>
       {children}
     </AuthContext.Provider>
