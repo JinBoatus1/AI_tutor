@@ -40,18 +40,19 @@ TYPE_NAMES = {
     "other": "Other",
 }
 
-# An @ that starts a word, which GitHub would turn into a notification.
-_MENTION_RE = re.compile(r"(?<![A-Za-z0-9_])@(?=[A-Za-z0-9])")
+# An @ that starts a word, which GitHub would turn into a notification, or one of its HTML-entity
+# spellings, which GitHub decodes before it looks for mentions.
+_MENTION_RE = re.compile(r"(?<![A-Za-z0-9_])(@|&#0*64;|&#[xX]0*40;|&commat;)(?=[A-Za-z0-9])")
 
 
-def clean_text(text: str) -> str:
-    """Drop control characters (Unicode category Cc) other than newline and tab."""
-    return "".join(ch for ch in text if ch in "\n\t" or unicodedata.category(ch) != "Cc")
+def clean_text(text: str, keep: str = "\n\t") -> str:
+    """Drop control characters (Unicode category Cc), except the ones in `keep`."""
+    return "".join(ch for ch in text if ch in keep or unicodedata.category(ch) != "Cc")
 
 
 def neutralize_mentions(text: str) -> str:
     """Put a zero-width space after any @ that starts a word, so GitHub notifies nobody."""
-    return _MENTION_RE.sub("@​", text)
+    return _MENTION_RE.sub(lambda m: m.group(1) + "\u200b", text)
 
 
 class FeedbackContext(BaseModel):
@@ -68,7 +69,9 @@ class FeedbackContext(BaseModel):
     def _clip_text(cls, value: Any, info: ValidationInfo) -> Optional[str]:
         if not isinstance(value, str):
             return None
-        return clean_text(value).strip()[: CONTEXT_LIMITS[info.field_name]] or None
+        limit = CONTEXT_LIMITS[info.field_name]
+        # Cut first, so a huge value costs nothing to clean.
+        return clean_text(value[: limit * 4], keep="").strip()[:limit] or None
 
     @field_validator("page", mode="before")
     @classmethod
@@ -87,6 +90,8 @@ class FeedbackRequest(BaseModel):
     @field_validator("description")
     @classmethod
     def _check_description(cls, value: str) -> str:
+        if len(value) > MAX_DESCRIPTION_CHARS * 4:  # refuse before the per-character scan below
+            raise ValueError(f"description is longer than {MAX_DESCRIPTION_CHARS} characters")
         cleaned = clean_text(value).strip()
         if not cleaned:
             raise ValueError("description is empty")
@@ -113,8 +118,8 @@ def _summary(description: str) -> str:
 
 
 def _cell(value: str) -> str:
-    one_line = value.replace("\r", " ").replace("\n", " ").replace("|", "\\|")
-    return neutralize_mentions(one_line)
+    one_line = value.replace("\r", " ").replace("\n", " ")
+    return neutralize_mentions(one_line.replace("\\", "\\\\").replace("|", "\\|"))
 
 
 def _course(book_id: str) -> str:
@@ -146,10 +151,6 @@ def build_issue(req: FeedbackRequest, identity: str, user_agent: str, now: datet
         f"**Type:** {TYPE_NAMES[req.type]}",
         f"**Reporter:** {reporter}",
         "",
-        "### Description",
-        "",
-        neutralize_mentions(req.description),
-        "",
         "### Context",
         "",
         "| Field | Value |",
@@ -157,6 +158,11 @@ def build_issue(req: FeedbackRequest, identity: str, user_agent: str, now: datet
         *(f"| {name} | {_cell(value)} |" for name, value in rows),
         "",
         "<sub>Sent from the AI Tutor feedback form.</sub>",
+        "",
+        "### Description",
+        "",
+        # Last, so nothing the student writes (an unclosed fence, an HTML comment) can swallow the context.
+        neutralize_mentions(req.description),
     ])
     labels = [f"type:{req.type}"]
     if ctx.book_id and bb.is_builtin(ctx.book_id):
@@ -211,7 +217,10 @@ def _post_issue(token: str, repo: str, payload: dict[str, Any]) -> Optional[int]
     with urllib.request.urlopen(request, timeout=GITHUB_TIMEOUT_SECONDS) as response:
         if response.status != 201:
             raise FeedbackDeliveryError(f"HTTP {response.status}")
-        raw = response.read()
+        try:
+            raw = response.read()
+        except (OSError, http.client.HTTPException):
+            return None  # The issue exists; its reply broke off.
     try:
         number = json.loads(raw)["number"]
     except (ValueError, KeyError, TypeError):
@@ -239,6 +248,8 @@ def create_github_issue(issue: Issue) -> Optional[int]:
     except urllib.error.HTTPError as err:
         raise FeedbackDeliveryError(f"HTTP {err.code}") from None
     except (OSError, http.client.HTTPException) as err:
+        raise FeedbackDeliveryError(type(err).__name__) from None
+    except Exception as err:  # e.g. ValueError from a malformed token, whose message contains the header
         raise FeedbackDeliveryError(type(err).__name__) from None
 
 

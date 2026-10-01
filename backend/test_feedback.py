@@ -3,7 +3,9 @@
 Run from backend/: pytest test_feedback.py --ignore=test_output.txt
 """
 
+import http.client
 import json
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -54,7 +56,7 @@ def test_title_cuts_a_61_character_summary():
 # --- mentions ----------------------------------------------------------------
 
 def test_neutralize_mentions_breaks_user_and_team_mentions():
-    assert neutralize_mentions("@alice and (@org/team)") == "@​alice and (@​org/team)"
+    assert neutralize_mentions("@alice and (@org/team)") == "@\u200balice and (@\u200borg/team)"
 
 
 def test_neutralize_mentions_leaves_email_addresses_alone():
@@ -70,7 +72,7 @@ def test_mentions_in_every_user_field_are_neutralized():
     assert "@alice" not in issue.title
     for name in ("alice", "bob", "carol", "dave", "erin"):
         assert f"@{name}" not in issue.body
-        assert f"@​{name}" in issue.body
+        assert f"@\u200b{name}" in issue.body
 
 
 # --- body --------------------------------------------------------------------
@@ -83,10 +85,6 @@ def test_body_lists_the_context_and_hides_the_email_without_consent():
     assert issue.body == "\n".join([
         "**Type:** Wrong page or content",
         "**Reporter:** anonymous #66048931",
-        "",
-        "### Description",
-        "",
-        "Page 170 shows the wrong figure.",
         "",
         "### Context",
         "",
@@ -101,6 +99,10 @@ def test_body_lists_the_context_and_hides_the_email_without_consent():
         "| Submitted | 2026-10-01 14:03 UTC |",
         "",
         "<sub>Sent from the AI Tutor feedback form.</sub>",
+        "",
+        "### Description",
+        "",
+        "Page 170 shows the wrong figure.",
     ])
 
 
@@ -123,8 +125,9 @@ def test_rows_without_a_value_are_left_out():
 
 
 def test_table_cells_escape_pipes_and_newlines():
-    issue = build_issue(make_request(context={"section": "A | B\nC"}), "a@b.com", "", NOW)
-    assert "| Section | A \\| B C |" in issue.body
+    issue = build_issue(make_request(context={"section": "A | B"}), "a@b.com", "Agent\nX | Y", NOW)
+    assert "| Section | A \\| B |" in issue.body
+    assert "| Browser | Agent X \\| Y |" in issue.body
 
 
 def test_user_agent_is_cut_to_300_characters():
@@ -522,3 +525,75 @@ def test_release_forgets_the_newest_reservation():
     assert limiter.reserve("a@b.com") is None
     # The report from t=1000 is still the oldest, so the wait counts from it.
     assert limiter.reserve("a@b.com") == 1000 + 3600 - 2000
+
+
+
+# === Final review fixes =======================================================
+
+class BrokenReadResponse(FakeResponse):
+    """A 201 whose body breaks off while it is read."""
+
+    def __init__(self, error):
+        super().__init__(201, b"")
+        self.error = error
+
+    def read(self):
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [http.client.IncompleteRead(b'{"num'), ConnectionResetError("reset"), TimeoutError("timed out")],
+)
+def test_created_issue_whose_reply_breaks_off_still_counts(github_env, monkeypatch, error):
+    monkeypatch.setattr(urllib.request, "urlopen", FakeUrlopen(BrokenReadResponse(error)))
+    assert fb.create_github_issue(sample_issue()) is None
+
+
+@pytest.mark.parametrize(
+    "error, name",
+    [
+        (ValueError(f"Invalid header value b'Bearer {TOKEN}\\n'"), "ValueError"),
+        (UnicodeEncodeError("latin-1", f"Bearer {TOKEN}\u20ac", 33, 34, "ordinal not in range(256)"), "UnicodeEncodeError"),
+    ],
+)
+def test_unexpected_errors_fall_back_without_leaking_the_token(github_env, monkeypatch, capsys, error, name):
+    monkeypatch.setattr(urllib.request, "urlopen", FakeUrlopen(error))
+    collection = FakeCollection()
+    monkeypatch.setattr(database, "feedback", lambda: collection)
+
+    assert fb.deliver(make_request(), "student@example.com", "UA") is True
+    assert [d["github_error"] for d in collection.docs] == [name]
+    assert TOKEN not in capsys.readouterr().out
+
+
+def test_context_strings_lose_every_control_character():
+    ctx = FeedbackContext(section="A\nB\tC\x00D", book_id="lathi\n[Feedback] GitHub failed (HTTP 401)")
+    assert ctx.section == "ABCD"
+    assert ctx.book_id == "lathi[Feedback] GitHub failed (HTTP 401)"
+
+
+def test_oversized_input_is_rejected_without_scanning_it():
+    huge = "x" * 20_000_000
+    started = time.perf_counter()
+    with pytest.raises(ValidationError):
+        make_request(description=huge)
+    FeedbackContext(section=huge, route=huge, book_id=huge, locale=huge)
+    assert time.perf_counter() - started < 0.5
+
+
+def test_the_description_comes_last_so_it_cannot_swallow_the_context():
+    req = make_request(description="```\nunclosed fence <!-- and a comment", context={"book_id": "lathi", "page": 170})
+    head, description = build_issue(req, "a@b.com", "", NOW).body.split("\n### Description\n\n", 1)
+    assert description == "```\nunclosed fence <!-- and a comment"
+    assert "| Page | 170 |" in head
+
+
+def test_entity_spelled_mentions_are_neutralized():
+    for entity in ("&#64;", "&#064;", "&#x40;", "&#X40;", "&commat;"):
+        assert neutralize_mentions(f"hi {entity}alice") == f"hi {entity}\u200balice"
+
+
+def test_cells_escape_backslashes_before_pipes():
+    issue = build_issue(make_request(context={"section": "a\\|b"}), "a@b.com", "", NOW)
+    assert "| Section | a\\\\\\|b |" in issue.body
