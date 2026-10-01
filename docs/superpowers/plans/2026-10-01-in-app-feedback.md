@@ -169,7 +169,7 @@ def test_title_cuts_a_61_character_summary():
 # --- mentions ----------------------------------------------------------------
 
 def test_neutralize_mentions_breaks_user_and_team_mentions():
-    assert neutralize_mentions("@alice and (@org/team)") == "@​alice and (@​org/team)"
+    assert neutralize_mentions("@alice and (@org/team)") == "@\u200balice and (@\u200borg/team)"
 
 
 def test_neutralize_mentions_leaves_email_addresses_alone():
@@ -185,7 +185,7 @@ def test_mentions_in_every_user_field_are_neutralized():
     assert "@alice" not in issue.title
     for name in ("alice", "bob", "carol", "dave", "erin"):
         assert f"@{name}" not in issue.body
-        assert f"@​{name}" in issue.body
+        assert f"@\u200b{name}" in issue.body
 
 
 # --- body --------------------------------------------------------------------
@@ -362,7 +362,7 @@ def clean_text(text: str) -> str:
 
 def neutralize_mentions(text: str) -> str:
     """Put a zero-width space after any @ that starts a word, so GitHub notifies nobody."""
-    return _MENTION_RE.sub("@​", text)
+    return _MENTION_RE.sub("@\u200b", text)
 
 
 class FeedbackContext(BaseModel):

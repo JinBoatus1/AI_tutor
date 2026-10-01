@@ -1,7 +1,7 @@
 # In-App Feedback: Design Spec
 
 **Date:** 2026-10-01
-**Status:** The design was approved in conversation, section by section, on 2026-10-01. This written spec is awaiting review. The implementation plan comes after it.
+**Status:** Approved on 2026-10-01: the design section by section in conversation, then this written spec. It was amended while the plan was written (§4.4, §4.6, §5.1, §5.4) and after the final code review (§3.3, §4.1, §4.4, §5.1, §5.5).
 **Branch:** `feat/feedback-window`, from `function` at `153d090`.
 **Depends on:** `fix/auth-token-refresh`, which keeps the signed-in token fresh (§5.3).
 
@@ -89,6 +89,7 @@ These were made with the user on 2026-10-01.
 **Closing**
 
 - ×, Cancel and Esc close the dialog, except while it is sending.
+- An Esc that dismisses an input method's candidate list (`isComposing`, or keyCode 229) is ignored, so typing Pinyin can't throw away a draft.
 - A click on the backdrop does nothing, so a stray click can't throw away a long description. (`SignInModal` does close on a backdrop click, but it has no typed text worth protecting.)
 - Every open starts with an empty form, apart from the preset type.
 
@@ -183,13 +184,14 @@ class FeedbackRequest(BaseModel):
 **Description**
 
 - Control characters (Unicode category `Cc`) other than `\n` and `\t` are removed, then surrounding whitespace is stripped.
+- A value longer than 8000 characters (4 × the limit) is refused before that scan. FastAPI validates bodies on the event loop, before the handler checks the token, so an oversized request must cost almost nothing.
 - An empty result, or one longer than 2000 characters, is a 422.
 - Python counts code points, while the browser's `maxLength` counts UTF-16 code units. So the client's limit is never looser than the server's.
 
 **Context**
 
 - Context is best-effort metadata, so it never causes a 422.
-- A `mode="before"` validator removes control characters from each string and cuts it to its limit. It drops any field whose value has the wrong type, and drops `page` unless it is an integer from 1 to 10000. Dropping a field means setting it to None.
+- A `mode="before"` validator removes every control character from each string, newline and tab included, and cuts it to its limit. It cuts the raw value to 4 × the limit first, so a huge value costs nothing to clean. It drops any field whose value has the wrong type, and drops `page` unless it is an integer from 1 to 10000. Dropping a field means setting it to None.
 - `context` itself must be an object, or left out.
 
 **Unknown fields** are ignored, which is Pydantic's default.
@@ -267,9 +269,9 @@ Content-Type: application/json
 
 **Outcomes**
 
-- **HTTP 201:** success. Log the issue `number` from the response. A 201 whose body can't be parsed still counts as success and is logged as `#?`: the issue exists, and raising would also store it in the fallback as a duplicate.
+- **HTTP 201:** success. Log the issue `number` from the response. A 201 whose body can't be read or parsed still counts as success and is logged as `#?`: the issue exists, and raising would also store it in the fallback as a duplicate.
 - **HTTP 422:** GitHub rejected part of the issue, usually a label. Send it once more without `labels`, so a label problem never pushes reports into the fallback.
-- **Anything else** raises `FeedbackDeliveryError`. "Anything else" means another status, a timeout, `URLError`, `OSError` or `http.client.HTTPException`. The error's message is short and never includes the token or a response body:
+- **Anything else** raises `FeedbackDeliveryError`. "Anything else" means another status, a timeout, `URLError`, `OSError`, `http.client.HTTPException`, or any other exception, such as the `ValueError` that `http.client` raises for a malformed token, whose message contains the header. The error's message is short and never includes the token or a response body:
   - `"HTTP <code>"` for an HTTP error status;
   - the exception's class name otherwise, such as `"TimeoutError"` or `"URLError"`;
   - `"not configured"` when the environment variables are missing. This one is raised before any request is made.
@@ -291,10 +293,6 @@ Content-Type: application/json
 **Type:** Wrong page or content
 **Reporter:** student@example.com
 
-### Description
-
-(the description)
-
 ### Context
 
 | Field | Value |
@@ -308,7 +306,13 @@ Content-Type: application/json
 | Submitted | 2026-10-01 14:03 UTC |
 
 <sub>Sent from the AI Tutor feedback form.</sub>
+
+### Description
+
+(the description)
 ```
+
+- **Order:** the description comes last, after the footer, so nothing the student writes (an unclosed code fence, an HTML comment, a fake `### Context`) can swallow or impersonate the part the server builds.
 
 - **Type line:** uses the English names "Something is broken", "Wrong page or content", "Suggestion" and "Other".
 - **Reporter line:**
@@ -318,9 +322,9 @@ Content-Type: application/json
 - **Course row:** for a builtin book, `bb.load_meta(book_id)["display_name"]` followed by the id in backticks. For any other book, just the id.
 - **Rows** with no value are left out.
 - **Submitted:** the server's time in UTC, formatted `%Y-%m-%d %H:%M UTC`.
-- **Table cells:** `|` becomes `\|`, and newlines become spaces.
-- **User-supplied strings:** every one goes through `neutralize_mentions`. That covers the title, description, section, route, book id and browser. The function inserts U+200B after any `@` that starts a word:
-  `re.sub(r"(?<![A-Za-z0-9_])@(?=[A-Za-z0-9])", "@​", text)`
+- **Table cells:** backslashes are doubled, then `|` becomes `\|`, and newlines become spaces.
+- **User-supplied strings:** every one goes through `neutralize_mentions`. That covers the title, description, section, route, book id and browser. The function inserts U+200B after any `@` that starts a word, and after its HTML-entity spellings (`&#64;`, `&#x40;`, `&commat;`), which GitHub decodes before it looks for mentions:
+  `re.sub(r"(?<![A-Za-z0-9_])(@|&#0*64;|&#[xX]0*40;|&commat;)(?=[A-Za-z0-9])", lambda m: m.group(1) + "\u200b", text)`
   - An `@name` typed in a report therefore notifies nobody.
   - Email addresses stay intact, because their `@` follows a letter.
 - **User-Agent:** cut to 300 characters.
@@ -382,6 +386,7 @@ The worst case is therefore about 15 s: 10 s for GitHub plus 5 s for MongoDB.
 | `frontend/src/feedback/FeedbackContext.tsx` | **New.** The provider and `useFeedback()` (§5.2). |
 | `frontend/src/feedback/FeedbackModal.tsx` and `FeedbackModal.css` | **New.** The dialog (§3.3). |
 | `frontend/src/feedback/feedbackApi.ts` | **New.** `submitFeedback()` (§5.4). |
+| `frontend/src/feedback/pageContext.ts` | **New.** `pageContextFor()`, which picks the book, section and page to register (§5.5). |
 | `frontend/src/feedback/types.ts` | **New.** The shared types and constants, so the three files above don't import each other for types. |
 | `frontend/src/context/AuthContext.tsx` | Add `getFreshToken()` (§5.3). |
 | `frontend/src/main.tsx` | Wrap `<App />` in `<FeedbackProvider>`, inside the existing providers, so it can read auth and locale. |
@@ -489,18 +494,16 @@ The 30 s timeout lives inside `submitFeedback`, as an internal `AbortController`
 const { openFeedback, registerPageContext } = useFeedback();
 
 useEffect(() => {
-  registerPageContext({
-    bookId: textbookId,
-    section: dataMatchedTopic?.name,
-    page:
-      dataMatchedTopic && referenceSectionPages?.length
-        ? dataMatchedTopic.startBook + sectionPageIndex
-        : undefined,
-  });
+  registerPageContext(
+    pageContextFor(textbookId, dataMatchedTopic, Boolean(referenceSectionPages?.length), sectionPageIndex),
+  );
 }, [registerPageContext, textbookId, dataMatchedTopic, referenceSectionPages, sectionPageIndex]);
 
 useEffect(() => () => registerPageContext(null), [registerPageContext]);
 ```
+
+- `dataMatchedTopic` stores `bookId`, the book its pages were fetched from, at every `setDataMatchedTopic` call. The type makes it required, so a call site can't leave it out.
+- Switching books in the sidebar doesn't clear the section on screen, so `pageContextFor` lets the section's own book win over the selection. A report then names the book the student is actually looking at.
 
 The Report a problem button calls `openFeedback({ type: "content" })`.
 
