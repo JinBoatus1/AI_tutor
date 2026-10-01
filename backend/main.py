@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from api_routes import router as api_router
 from eval_routes import router as eval_router
 import database
+import feedback
 
 app = FastAPI()
 
@@ -32,6 +33,7 @@ def startup():
         database.init_db()
     except Exception as e:
         print(f"[DB] MongoDB init failed: {e}", flush=True)
+    feedback.log_config_status()
 
 
 app.include_router(api_router)
