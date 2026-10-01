@@ -46,6 +46,7 @@ describe("book registry", () => {
     expect(Object.keys(lathi.sectionNotes)).toEqual([]);
     expect(lathi.guides).toBeUndefined();
     expect(lathi.onboarding).toBeUndefined();
+    expect(lathi.chatExamples).toBeUndefined();
     expect(Object.keys(lathi.tree)[0]).toBe("B Background");
     expect(getPracticeSet("lathi", "4")).toBeNull();
   });
@@ -55,5 +56,10 @@ describe("book registry", () => {
       { id: "focs", linkLabel: "FOCS" },
       { id: "lathi", linkLabel: "Signals" },
     ]);
+  });
+
+  it("carries FOCS's starter prompts in the registry, so other books show none", () => {
+    expect(BOOKS.focs.chatExamples?.map((e) => e.id)).toEqual(["induction", "problem-5-1"]);
+    expect(BOOKS.lathi.chatExamples).toBeUndefined();
   });
 });
