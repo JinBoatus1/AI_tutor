@@ -48,6 +48,8 @@ function FeedbackDialog() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // An Esc that dismisses an input method's candidates (Pinyin, for one) isn't meant for us.
+      if (event.isComposing || event.keyCode === 229) return;
       // Esc never closes mid-send, or while the sign-in modal sits on top of the dialog.
       if (event.key === "Escape" && !sending && !showSignIn) closeFeedback();
     };

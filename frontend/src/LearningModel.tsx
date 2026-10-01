@@ -32,6 +32,7 @@ import { sectionTokensPreorder } from "./utils/focsSectionOrder";
 import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
 import { useFeedback } from "./feedback/FeedbackContext";
+import { pageContextFor } from "./feedback/pageContext";
 import {
   ONBOARDING_STEP_EVENT,
   emitOnboardingNoteReady,
@@ -168,6 +169,8 @@ export default function LearningModel() {
 
   const [matchedSection, setMatchedSection] = useState<any>(null);
   const [dataMatchedTopic, setDataMatchedTopic] = useState<{
+    /** The book this section's pages came from, which can differ from the selection after a switch. */
+    bookId: string;
     name: string;
     startBook: number;
     endBook: number;
@@ -184,14 +187,9 @@ export default function LearningModel() {
   const [sectionPageIndex, setSectionPageIndex] = useState(0);
   // Tell the feedback form which book, section and printed page are on screen.
   useEffect(() => {
-    registerPageContext({
-      bookId: textbookId,
-      section: dataMatchedTopic?.name,
-      page:
-        dataMatchedTopic && referenceSectionPages?.length
-          ? dataMatchedTopic.startBook + sectionPageIndex
-          : undefined,
-    });
+    registerPageContext(
+      pageContextFor(textbookId, dataMatchedTopic, Boolean(referenceSectionPages?.length), sectionPageIndex),
+    );
   }, [registerPageContext, textbookId, dataMatchedTopic, referenceSectionPages, sectionPageIndex]);
   useEffect(() => () => registerPageContext(null), [registerPageContext]);
   const [outlinePreviewLoading, setOutlinePreviewLoading] = useState(false);
@@ -366,6 +364,7 @@ export default function LearningModel() {
               const sb = data.matched_topic.start_book ?? data.matched_topic.start ?? detail.startBook;
               const eb = data.matched_topic.end_book ?? data.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
+                bookId: textbookId,
                 name: data.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
@@ -420,6 +419,7 @@ export default function LearningModel() {
               const sb = cData.matched_topic.start_book ?? cData.matched_topic.start ?? detail.startBook;
               const eb = cData.matched_topic.end_book ?? cData.matched_topic.end ?? detail.endBook;
               setDataMatchedTopic({
+                bookId: textbookId,
                 name: cData.matched_topic.name,
                 startBook: sb,
                 endBook: eb,
@@ -675,6 +675,7 @@ export default function LearningModel() {
           const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
           const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
           setDataMatchedTopic({
+            bookId: textbookId,
             name: data.matched_topic.name,
             startBook: sb,
             endBook: eb,
@@ -883,6 +884,7 @@ export default function LearningModel() {
         const sb = data.matched_topic.start_book ?? data.matched_topic.startBook ?? data.matched_topic.start;
         const eb = data.matched_topic.end_book ?? data.matched_topic.endBook ?? data.matched_topic.end;
         setDataMatchedTopic({
+          bookId: textbookId,
           name: data.matched_topic.name,
           startBook: sb,
           endBook: eb,

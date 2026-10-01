@@ -250,6 +250,14 @@ describe("FeedbackModal", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("ignores Esc while an input method is composing", () => {
+    renderDialog();
+    fireEvent.keyDown(document, { key: "Escape", isComposing: true });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape", keyCode: 229 });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("starts with an empty form every time it opens", () => {
     renderDialog();
     fireEvent.change(description(), { target: { value: "half-typed" } });
