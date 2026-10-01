@@ -26,9 +26,10 @@ def client(monkeypatch):
 
 @pytest.fixture
 def fixture_book(tmp_path, monkeypatch):
-    """A throwaway builtin beside copies of the real ones: offset 2 and a 4-page PDF."""
+    """A throwaway builtin beside copies of the real ones (FOCS keeps its PDF): offset 2 and a 4-page PDF."""
     books = tmp_path / "books"
     shutil.copytree(bb.BOOKS_DIR, books, ignore=shutil.ignore_patterns("book.pdf", ".build"))
+    os.symlink(os.path.join(bb.BOOKS_DIR, "focs", "book.pdf"), books / "focs" / "book.pdf")
     d = books / "tiny"
     d.mkdir()
     (d / "meta.json").write_text(json.dumps({
