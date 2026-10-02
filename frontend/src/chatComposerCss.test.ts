@@ -29,6 +29,11 @@ describe("chat composer", () => {
     expect(both(input, "cursor")).toEqual(["not-allowed", "not-allowed"]);
   });
 
+  it("has the spec's --r2 corners (spec §5.4)", () => {
+    const input = composer();
+    expect(both(input.parentElement!, "border-radius")).toEqual(["var(--r2)", "var(--r2)"]);
+  });
+
   it("shows one focus ring, the shell's, however the input is focused", () => {
     const input = composer();
     expect(both(input, "outline", { states: ["focus-visible"] })).toEqual(["none", "none"]);

@@ -162,9 +162,19 @@
   flex-shrink: 0;
 }
 
+/* Learned: the same ink check the outline rows use (spec §5.2). */
 .my-learning-bar-dot--learned {
-  background: var(--ink-2);
-  box-shadow: 0 0 0 2px var(--track);
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+}
+
+.my-learning-bar-dot--learned::after {
+  content: "✓";
+  color: var(--ink-2);
+  font: 700 12px/1 var(--sans);
 }
 
 .my-learning-bar-dot--not {

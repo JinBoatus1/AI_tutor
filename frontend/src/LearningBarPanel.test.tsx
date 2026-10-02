@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { MessageKey } from "./i18n/messages";
+import { loadAppStyleSheets, resolveInBothOrders, resolveStyle } from "./test/cssCascade";
 
 vi.mock("./context/AuthContext", () => ({ useAuth: () => ({ token: null, user: null, loading: false }) }));
 vi.mock("./i18n/LocaleContext", async () => {
@@ -83,5 +84,24 @@ describe("outline current section in the FOCS book", () => {
     expect(current).toHaveLength(1);
     expect(current[0].textContent?.startsWith(title)).toBe(true);
     expect(container.querySelectorAll(".focs-node__row--current")).toHaveLength(1);
+  });
+});
+
+describe("outline legend", () => {
+  it("draws Learned with the same check the rows use (spec §5.2)", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <LearningBarPanel variant="embed" onOutlineSectionPreview={() => {}} />
+      </MemoryRouter>,
+    );
+    const sheets = loadAppStyleSheets();
+    const legend = container.querySelector(".my-learning-bar-dot--learned")!;
+    const row = document.createElement("span");
+    row.className = "focs-node__learn-dot focs-node__learn-dot--on";
+    container.appendChild(row);
+    const rowCheck = resolveStyle(row, "content", sheets, { pseudo: "::after" });
+    expect(rowCheck).toBe('"✓"');
+    expect(resolveInBothOrders(legend, "content", sheets, { pseudo: "::after" })).toEqual([rowCheck, rowCheck]);
+    expect(resolveInBothOrders(legend, "background", sheets)).toEqual(["transparent", "transparent"]);
   });
 });
