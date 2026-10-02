@@ -8,10 +8,7 @@ import { describe, expect, it } from "vitest";
 const SRC = fileURLToPath(new URL("..", import.meta.url));
 
 /** Files that still hold legacy colors. Each migration task removes its files; Task 9 empties this. */
-const PENDING = new Set<string>([
-  "ChatHistory.css",
-  "components/GooeyNav.css",
-]);
+const PENDING = new Set<string>([]);
 
 const EXCLUDED = new Set(["styles/tokens.css", "Home.css", "Home.tsx"]);
 
@@ -94,6 +91,10 @@ describe("colors live only in styles/tokens.css", () => {
   it("every PENDING file still has a literal (remove it from PENDING once it is clean)", () => {
     const stale = [...PENDING].filter((f) => !SCANNED.includes(f) || literals(f).length === 0);
     expect(stale).toEqual([]);
+  });
+
+  it("has no pending files left (spec success criterion 4)", () => {
+    expect([...PENDING]).toEqual([]);
   });
 
   it("no migrated stylesheet redefines a token name", () => {
