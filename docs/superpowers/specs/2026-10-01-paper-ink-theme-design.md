@@ -1,7 +1,7 @@
 # Paper & Ink Theme: Design Spec
 
 **Date:** 2026-10-01
-**Status:** Draft for review. The design was approved section by section in conversation on 2026-10-01.
+**Status:** Approved by the user on 2026-10-02, after the section-by-section approval in conversation on 2026-10-01. While the plan was written it was amended with D10, the chat title row, the `learning.textbook` copy and `AppearancePicker`.
 **Branch:** `feat/paper-ink-theme`, from `function` at `956eda9`.
 **Design source:** mockup A, "Paper & Ink", chosen by the team from three directions. The mockup files stay outside the repo because one embeds a page of a copyrighted textbook. Every value this spec needs from them is copied into §4.
 
@@ -16,7 +16,10 @@ Re-skin the AI Tutor app in the Paper & Ink language:
 - one deep ink-teal accent for interactive and current elements;
 - a red bookmark ribbon for the current section.
 
-This is a visual change. Layout, behavior and data stay as they are, except for the four layout changes marked **Layout change** in §5.
+This is a visual change. Layout, behavior and data stay as they are, with two kinds of exception:
+
+- the six layout changes marked **Layout change** in §5;
+- one small logic addition, the current-section marker (D10).
 
 **Success criteria**
 
@@ -41,6 +44,7 @@ These were made with the user on 2026-10-01.
 | D7 | Delivery: PR1 is the token system, Paper, Bright and every surface. PR2 is Night. The team reviews each on a Vercel preview, and the user merges. | PR1 is already large. Night needs its own pass over every surface. |
 | D8 | The unused components `ChatHistory`, `GooeyNav` and `IridescenceBackground` are deleted, with their stylesheets. The Outfit font link goes too; only `ChatHistory.css` used it. | Nothing renders them, and migrating dead CSS is waste. |
 | D9 | Handwriting (Caveat) disappears from the app: four uses, in Chat, Grades (2) and Practice. Each becomes Newsreader italic. Home keeps its own. | The Paper & Ink voice is typeset, not handwritten. |
+| D10 | The sidebar outline marks the section open in the textbook panel with the ribbon. Nothing tracks that today, so LearningModel publishes it through `SessionBridge` (§5.2). The user added this to PR1 on 2026-10-02. | The ribbon is Paper & Ink's signature element, and the data already exists on the textbook side. |
 
 ## 3. Scope
 
@@ -48,7 +52,13 @@ These were made with the user on 2026-10-01.
 
 - The stylesheets `App.css`, `Chat.css`, `AutoGrader.css`, `UserProfile.css`, `MyLearningBar.css`, `SignInModal.css`, `Grades.css`, `practice/Practice.css`, `feedback/FeedbackModal.css`, `components/Sidebar.css`, `components/OnboardingTour.css` and `index.css`. Together they hold about 630 hex and 220 `rgb()`/`rgba()` color literals today.
 - The inline colors in `LearningModel.tsx` (2), `UserProfile.tsx` (1) and the decorative SVG in `SignInModal.tsx`.
-- In `LearningModel.tsx`: the textbook header markup (§5.3), and the pager element's position if CSS alone cannot move it.
+- In `LearningModel.tsx`:
+  - the textbook header markup (§5.3);
+  - the pager element's position, if CSS alone cannot move it;
+  - the chat title row (§5.4);
+  - publishing the current section (D10).
+- The current-section marker: `context/SessionBridge.tsx`, `LearningBarPanel.tsx`, `components/Sidebar.tsx`, and a new pure helper `utils/currentSection.ts`.
+- A new `profile/AppearancePicker.tsx`, which takes the Appearance card out of `UserProfile.tsx` so it can be tested on its own.
 - `profile/profileSettings.ts`, `context/ProfileSettingsContext.tsx` and the Appearance card in `UserProfile.tsx`.
 - `App.tsx`, to remove the banner, and `components/Sidebar.tsx`, for the sign-in line.
 - `index.html`, for font links and the no-flash script.
@@ -189,7 +199,14 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 - **Learning progress outline:**
   - Chapter titles use `--serif`.
   - A learned section shows an ink check; an unlearned one shows a hollow `--ink-4` circle. The click toggles exactly as today.
-  - The current section is a `--sheet` card with the `--ribbon` bookmark.
+  - The current section is a `--sheet` card with the `--ribbon` bookmark, and its title button gets `aria-current="true"`.
+    - **Which section is current:** the section the textbook panel shows. LearningModel publishes `{ bookId, title, startBook, endBook }` from `dataMatchedTopic` through `SessionBridge`, or `null` when nothing is shown or Learning Mode unmounts.
+    - **How a node matches:** a node is current when the outline's selected book equals `bookId` and either:
+      - its title equals `title`, compared after trimming, collapsing whitespace and lowercasing; or
+      - it is a leaf whose page range equals `startBook`–`endBook`.
+    - A chapter that only shares a start page never matches.
+    - Publishing an equal value is a no-op, so the bridge cannot loop on re-renders.
+    - Chapters containing the current section are not auto-expanded (§9).
   - The Learned / Not learned legend stays.
 - **History:** restyled to the same palette.
 - **Footer:**
@@ -211,17 +228,19 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 - **Layout change: floating pager.** The toolbar `.section-pages-nav`, which holds the zoom group and the paging group, becomes a pill centered at the bottom of the page box, on `--sheet` with `--sh-float`, as in mockup A.
   - Today it sticks to the top (`position: sticky; top: 0`) so it stays visible while a long page scrolls. It now sticks to the bottom edge instead, keeping that property.
   - Controls, their order, their handlers and `data-no-drag` stay the same.
-  - It moves visually through CSS (`order` in the page box's flex column) if possible. Otherwise the same element moves after the page image in `LearningModel.tsx`.
-  - The pill must never cover the last line of a page, so the page box gains bottom padding equal to the pill's height plus `--s4`.
+  - It moves visually through CSS: `order` in the page box's flex column, plus `margin-top: auto` so it sits at the bottom when a page is short.
+  - It wraps at narrow widths.
+  - The pill stays in the normal flow, ordered last. So at the end of the scroll it sits below the page's last line and never covers it.
+  - The page box gains a `--s3` desk margin, so the sheet shadow shows around the page.
 - **Other parts:** the "In the book" callout becomes a `--teal-tint` label with a `--teal` arrow. The section-note split, resize handles, the image lightbox and the practice panel move to tokens. Practice's `--pr-*` variables are removed.
 
 ### 5.4 Chat panel (`Chat.css`)
 
 - **Panel:** `--paper`.
-- **Header:** a new "Tutor" title (§6) in `--serif` beside the existing "Start a new session" button, which keeps its label and becomes an outline button (`--teal-edge`, `--teal`).
+- **Layout change: title row.** The full-width "Start a new session" pill (`.reset-box`) becomes the right end of a title row. The row puts a new "Tutor" title (§6) in `--serif` on the left. The button keeps its label and becomes a compact outline button (`--teal-edge`, `--teal`). `data-onboarding="new-session"` stays on `.reset-box`, so the tour still spotlights it.
 - **Welcome:** the existing "Try an example" prompts become outlined `--teal` rows. They keep the same static content.
 - **Student message:** a right-aligned `--sheet` card with a `--rule-2` edge, in `--sans` and `--ink-body`.
-- **Tutor answer:**
+- **Layout change: tutor answer.** It gains a 30px gutter for the Σ seal and a padded margin rule.
   - Body text in `--serif` at `--fs-read` (16px / 24px) in `--ink-body`, with a 2px `--teal-line` margin rule and a small Σ seal.
   - Markdown headings render as `--fs-sm` (12px) uppercase labels in `--sans` 600, letter-spacing .08em, in `--ink-2`.
   - Lists use tabular numerals; code uses `--track` with `--mono`; tables use `--rule` hairlines; links use `--teal` with an underline.
@@ -239,7 +258,7 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 ### 5.6 Auto Grader (`AutoGrader.css`)
 
 - The two drop zones are `--sheet` cards with a dashed `--rule-input` border. The primary action uses `--teal-fill`.
-- Criterion results use `--success` and `--danger`, each with an icon and text.
+- The confidence badges keep their text labels and take status colors: high → `--success`, medium → `--warning`, low → `--danger`. Color is never the only signal.
 
 ### 5.7 Profile and Appearance (`UserProfile.css`, `UserProfile.tsx`)
 
@@ -270,6 +289,7 @@ The existing breakpoints and responsive behavior stay. Only paint properties cha
 | `theme.night` (new, PR2) | Night | 夜读 | Noche |
 | `profile.appearanceDesc` (changed) | Choose how AI Tutor looks. Every option keeps text easy to read. | 选择 AI Tutor 的外观。每个选项都保证文字清晰易读。 | Elige el aspecto de AI Tutor. Todas las opciones mantienen el texto fácil de leer. |
 | `profile.appearanceGroup` (changed) | Theme | 主题 | Tema |
+| `learning.textbook` (changed: no colon, now a small label) | Textbook | 教材 | Libro |
 
 `theme.default`, `theme.mint`, `theme.dark`, `theme.warm`, `theme.white`, `theme.black` and `theme.titleSuffix` are removed. The banner's hard-coded English string goes with the banner.
 
@@ -278,7 +298,7 @@ The existing breakpoints and responsive behavior stay. Only paint properties cha
 ### 7.1 Change boundary
 
 - Edits change paint properties: color, background, border color, shadow, font and radius.
-- Structural properties stay as they are: `display`, `position`, sizes, `overflow`, `z-index` and breakpoints. The exceptions are the four changes marked **Layout change** in §5.1–5.3: the banner removal, the sidebar sign-in line, the textbook header and the floating pager.
+- Structural properties stay as they are: `display`, `position`, sizes, `overflow`, `z-index` and breakpoints. The exceptions are the six changes marked **Layout change** in §5: the banner removal, the sidebar sign-in line, the textbook header, the floating pager, the chat title row and the tutor-answer margin.
 - No class name is renamed.
 
 ### 7.2 New automated tests (vitest)
@@ -298,10 +318,16 @@ The existing breakpoints and responsive behavior stay. Only paint properties cha
    - `readTheme` does not write storage.
    - `applyTheme` sets and removes `data-theme`.
 4. **`indexHtmlThemeScript.test.ts`:** extracts the inline script's mapping from `index.html` and asserts it equals `profileSettings.ts`'s.
-5. **`UserProfile` Appearance:** renders the available variants as radios with the new labels, and selecting one applies and persists it.
+5. **`AppearancePicker`:** renders the available variants as radios with the new labels, and selecting one applies and persists it.
 6. **Sign-in prompt:**
-   - Signed out: `App` renders no `.auth-prompt`, and the sidebar shows the prompt and Sign in.
+   - Signed out: the sidebar shows the prompt and Sign in.
    - Signed in: no prompt.
+   - The collapsed and narrow rules hide it.
+   - `App.tsx` no longer contains the banner.
+7. **Current section:**
+   - `utils/currentSection.test.ts` covers the matching rules in §5.2.
+   - A `SessionBridge` test covers publishing, clearing, and the equal-value no-op.
+   - An outline test proves the current row gets its class and `aria-current`.
 
 ### 7.3 Visual and functional review
 
@@ -340,12 +366,14 @@ All 442 frontend tests, `tsc -b` and `npm run build` pass. `textbookZoomCss.test
 **PR1**, as commits that each leave the app working:
 
 1. Tokens, fonts and the two guard tests (with the pending list).
-2. Global styles and the sidebar, including the sign-in prompt and the banner removal.
-3. Textbook panel, including the floating pager.
-4. Chat panel.
-5. Grades, Auto Grader, Profile and the Appearance switch with Paper and Bright.
-6. Modals and onboarding.
-7. Deleting the dead components and the Outfit link. The pending list is now empty.
+2. The Appearance switch with Paper and Bright, and the no-flash script.
+3. The current-section marker (D10).
+4. Global styles and the sidebar, including the sign-in prompt and the banner removal.
+5. Textbook panel, including the header and the floating pager.
+6. Chat panel, including the title row.
+7. Grades, Auto Grader and Profile.
+8. Modals and onboarding.
+9. Deleting the dead components and the Outfit link. The pending list is now empty.
 
 **PR2:** the Night tokens tuned, `NIGHT_AVAILABLE = true`, a per-surface Night pass, and Night screenshots.
 
@@ -371,6 +399,7 @@ The first implementation plan covers PR1 only. PR2 gets its own short plan once 
   - citation chips on answers;
   - the composer's page chip.
 - Possibly a "follow system" theme option once Night has proven itself.
+- Auto-expanding the outline chapter that contains the current section.
 
 ## 10. Risks
 
