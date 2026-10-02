@@ -357,6 +357,14 @@ def extract_section_from_message(message: str) -> Optional[str]:
         return None
     s = message.strip()
     m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
+    # A lettered section (Lathi's "B.4") counts only if the active book has it, so books
+    # without lettered chapters read every message exactly as before.
+    for lm in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)\b", s):
+        if m and m.start(1) < lm.start():
+            break
+        label = f"{lm.group(1).upper()}.{lm.group(2)}"
+        if get_section_start_end_name(label):
+            return label
     if m:
         return m.group(1).strip()
     m = re.search(r"\b(\d+\.\d+(?:\.\d+)*)\b", s)
