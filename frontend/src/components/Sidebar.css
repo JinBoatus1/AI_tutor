@@ -328,3 +328,22 @@
   .sb:not(.sb--collapsed) .sb-signin-prompt,
   .sb:not(.sb--collapsed) .sb-signout { display: none; }
 }
+
+/* LAYOUT CHANGE (final review): at 768px and below the stacked layout clips the sidebar to a
+   small box at the top left (it did on base too), hiding the footer. A guest's Sign in floats
+   into the empty strip beside that box, so phones keep the sign-in the old top banner gave. */
+@media (max-width: 768px) {
+  .sb .sb-footer .sb-signin {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 2;
+    width: auto;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--pill);
+    background: var(--sheet);
+    box-shadow: var(--sh-raised);
+  }
+  .sb .sb-footer .sb-signin .sb-link-label { display: inline; }
+}

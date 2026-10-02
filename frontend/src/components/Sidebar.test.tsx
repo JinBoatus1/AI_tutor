@@ -44,6 +44,7 @@ vi.mock("../LearningBarPanel", () => ({
 }));
 
 import Sidebar from "./Sidebar";
+import { loadAppStyleSheets, resolveInBothOrders } from "../test/cssCascade";
 
 function renderSidebar() {
   return render(
@@ -72,6 +73,18 @@ describe("Sidebar", () => {
     const prompt = screen.getByText("Sign in to save chats & track progress");
     expect(prompt).toHaveClass("sb-signin-prompt");
     expect(prompt.nextElementSibling).toHaveClass("sb-signin");
+  });
+
+  it("floats Sign in into the empty strip beside the phone's clipped sidebar box", () => {
+    const { container } = renderSidebar();
+    const sheets = loadAppStyleSheets();
+    const button = container.querySelector(".sb-signin")!;
+    expect(resolveInBothOrders(button, "position", sheets, { width: 390 })).toEqual(["fixed", "fixed"]);
+    expect(resolveInBothOrders(button.querySelector(".sb-link-label")!, "display", sheets, { width: 390 })).toEqual([
+      "inline",
+      "inline",
+    ]);
+    expect(resolveInBothOrders(button, "position", sheets, { width: 1280 })).toEqual([undefined, undefined]);
   });
 
   it("hides the prompt when signed in", () => {
