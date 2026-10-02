@@ -206,8 +206,8 @@
 .sb-progress-resize:hover,
 .sb-progress-resize:focus-visible {
   background: var(--track);
-  outline: none;
 }
+.sb-progress-resize:focus-visible { outline: 2px solid transparent; }
 .sb-progress-resize:hover::after,
 .sb-progress-resize:focus-visible::after {
   background: var(--teal);

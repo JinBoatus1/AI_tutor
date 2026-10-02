@@ -1,7 +1,7 @@
 # Paper & Ink Theme: Design Spec
 
 **Date:** 2026-10-01
-**Status:** Approved by the user on 2026-10-02, after the section-by-section approval in conversation on 2026-10-01. While the plan was written it was amended with D10, the chat title row, the `learning.textbook` copy and `AppearancePicker`. After the final code review (2026-10-02) it was amended in §5.2 (one current node per book; Sign in on phones), §5.7 (tile width) and §5.9.
+**Status:** Approved by the user on 2026-10-02, after the section-by-section approval in conversation on 2026-10-01. While the plan was written it was amended with D10, the chat title row, the `learning.textbook` copy and `AppearancePicker`. After the final code review (2026-10-02) it was amended in §5.2 (one current node per book; Sign in on phones), §5.7 (tile width) and §5.9. The polish PR after Night darkened Night's `--selection` to `#233a35` so selected text meets §4.7 (row added).
 **Branch:** `feat/paper-ink-theme`, from `function` at `956eda9`.
 **Design source:** mockup A, "Paper & Ink", chosen by the team from three directions. The mockup files stay outside the repo because one embeds a page of a copyrighted textbook. Every value this spec needs from them is copied into §4.
 
@@ -115,7 +115,7 @@ These were made with the user on 2026-10-01.
 | `--warning` / `--warning-tint` | Warnings | `#7f5208` / `#f5ead2` | `#7f5208` / `#f6edd8` | `#e2b763` / `#382d16` |
 | `--focus` | Focus outline color | `var(--teal)` | `var(--teal)` | `var(--teal)` |
 | `--scrim` | Modal overlay | `rgba(30,26,21,.45)` | `rgba(30,26,21,.40)` | `rgba(0,0,0,.60)` |
-| `--selection` | Text selection background | `var(--teal-tint)` | `var(--teal-tint)` | `#2c4741` |
+| `--selection` | Text selection background | `var(--teal-tint)` | `var(--teal-tint)` | `#233a35` |
 | `--page-image-filter` | Filter on scanned textbook page images | `none` | `none` | `brightness(.86) sepia(.06)` |
 
 Paper equals mockup A's values. `--teal-fill`, `--on-teal`, the status colors, `--focus`, `--scrim`, `--selection` and `--page-image-filter` are new. Night needs a lighter teal for text but a darker teal for fills, which is why `--teal` and `--teal-fill` are separate.
@@ -179,6 +179,7 @@ These are the worst case across the listed surfaces, computed with the WCAG 2.2 
 | `--ink-4` marks | parch, paper, sheet | 3.0 | 3.39 | 3.40 | 3.31 |
 | `--ribbon` | sheet, parch | 3.0 | 4.85 | 5.10 | 4.35 |
 | `--danger`, `--success`, `--warning` text | sheet, paper, own tint | 4.5 | ≥5.40 | ≥5.46 | ≥6.44 |
+| Text tokens (`--ink` to `--ink-3`, `--teal`, status colors) while selected | selection | 4.5 | ink-3 5.03 | ink-3 5.15 | ink-3 4.53 |
 
 ## 5. Surfaces
 

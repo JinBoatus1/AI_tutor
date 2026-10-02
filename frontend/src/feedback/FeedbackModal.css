@@ -96,7 +96,7 @@
   resize: vertical;
 }
 .feedback-textarea:focus {
-  outline: none;
+  outline: 2px solid transparent;
   border-color: var(--teal);
   box-shadow: 0 0 0 3px var(--teal-tint);
   background: var(--sheet);

@@ -29,6 +29,7 @@
 /* NEW. LAYOUT CHANGE (spec §5.4): "Tutor" on the left, New session on the right. */
 .chat-panel-titlebar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
@@ -485,7 +486,7 @@
   padding: 6px 10px;
   border-radius: 8px;
   background: var(--teal-tint);
-  color: var(--teal);
+  color: var(--ink);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.3;
@@ -495,6 +496,7 @@
 
 .book-page-highlight-arrow {
   flex-shrink: 0;
+  color: var(--teal);
   font-size: 1rem;
   line-height: 1;
 }
@@ -557,7 +559,7 @@
 }
 
 .left-panel-topic-bar-sep {
-  color: var(--ink-4);
+  color: var(--ink-3);
   font-size: var(--fs-ui);
   font-weight: 400;
   user-select: none;
@@ -657,7 +659,7 @@
 }
 
 .chat-panel-reveal-btn:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
   box-shadow: inset 0 0 0 2px var(--focus);
 }
 
@@ -680,9 +682,11 @@
   overflow: hidden;
 }
 
+/* Shrinks (and its label wraps) when the wrapped row is narrower than the button. */
 .reset-box {
   margin: 0;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .reset-box button {
@@ -832,7 +836,9 @@
 }
 
 .msg-ai::before {
+  /* Decorative: the empty alt text keeps screen readers quiet; the first line is the fallback. */
   content: "Σ";
+  content: "Σ" / "";
   position: absolute;
   left: 0;
   top: 2px;
@@ -1140,7 +1146,8 @@
   flex-shrink: 0;
 }
 
-.section-pages-zoom-btn {
+/* Scoped under the pager: .section-pages-nav button would otherwise outrank these. */
+.section-pages-nav .section-pages-zoom-btn {
   width: 2rem;
   height: 2rem;
   padding: 0;
@@ -1154,18 +1161,18 @@
   cursor: pointer;
 }
 
-.section-pages-zoom-btn:hover:not(:disabled) {
+.section-pages-nav .section-pages-zoom-btn:hover:not(:disabled) {
   background: var(--teal-tint);
   border-color: transparent;
   color: var(--teal);
 }
 
-.section-pages-zoom-btn:disabled {
+.section-pages-nav .section-pages-zoom-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.section-pages-zoom-label {
+.section-pages-nav .section-pages-zoom-label {
   min-width: 3.25rem;
   padding: 4px 6px;
   border: none;
@@ -1178,7 +1185,7 @@
   cursor: pointer;
 }
 
-.section-pages-zoom-label:hover {
+.section-pages-nav .section-pages-zoom-label:hover {
   background: var(--teal-tint);
   color: var(--teal);
 }
@@ -1285,7 +1292,7 @@
   margin-top: 0;
   padding: 5px 6px 5px 12px;
   background: var(--sheet);
-  border-radius: var(--r3);
+  border-radius: var(--r2);
   border: 1.5px solid var(--rule-input);
   box-shadow: var(--sh-raised);
 }
@@ -1346,9 +1353,10 @@
   color: var(--ink-body);
 }
 
-/* The shell's :focus-within ring is the focus indicator; this beats the global :focus-visible outline. */
+/* The shell's :focus-within ring is the visible focus; the outline is transparent, not none, so
+   forced-colors mode (where box-shadow is dropped) repaints it. Beats the global :focus-visible one. */
 .chat-input-text:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
 }
 
 .chat-input-text::placeholder {

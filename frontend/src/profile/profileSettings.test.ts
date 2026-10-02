@@ -25,10 +25,6 @@ describe("resolveTheme", () => {
     expect(resolveTheme({ pageBackground: legacy })).toBe(expected);
   });
 
-  it.each(["dark", "black"])("maps legacy %s to night only once Night ships", (legacy) => {
-    expect(resolveTheme({ pageBackground: legacy })).toBe(NIGHT_AVAILABLE ? "night" : "paper");
-  });
-
   it("lets a valid theme win over a legacy value", () => {
     expect(resolveTheme({ theme: "bright", pageBackground: "dark" })).toBe("bright");
   });
@@ -42,9 +38,9 @@ describe("resolveTheme", () => {
 });
 
 describe("storage", () => {
-  it("legacy dark maps to paper until Night ships and storage is untouched", () => {
+  it("maps legacy dark to Night without rewriting storage", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ pageBackground: "dark" }));
-    expect(readTheme()).toBe(NIGHT_AVAILABLE ? "night" : "paper");
+    expect(readTheme()).toBe("night");
     expect(localStorage.getItem(STORAGE_KEY)).toBe('{"pageBackground":"dark"}');
   });
 

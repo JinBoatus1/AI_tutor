@@ -84,13 +84,25 @@ describe("resolveStyle", () => {
     expect(resolveStyle(field(), "width", [sheet])).toBeUndefined();
   });
 
-  it("evaluates every selector and media query in the app's stylesheets", () => {
+  it("resolves a pseudo-element's own rules when asked for one", () => {
+    const sheet = parseStyleSheet('.box .field::after { content: "a"; } .field:after { content: "b"; } .field::before { content: "c"; }');
+    expect(resolveStyle(field(), "content", [sheet], { pseudo: "::after" })).toBe('"a"');
+    expect(resolveStyle(field(), "content", [sheet], { pseudo: "::before" })).toBe('"c"');
+    expect(resolveStyle(field(), "content", [sheet])).toBeUndefined();
+  });
+
+  it("honors a legacy single-colon :after on its own", () => {
+    const sheet = parseStyleSheet('.field:after { content: "b"; }');
+    expect(resolveStyle(field(), "content", [sheet], { pseudo: "::after" })).toBe('"b"');
+  });
+
+  it.each([undefined, "::before", "::after"] as const)("evaluates every selector and media query in the app's stylesheets (pseudo %s)", (pseudo) => {
     const probe = field();
     expect(() => {
       for (const sheet of loadAppStyleSheets()) {
         for (const rule of sheet.rules) {
           const property = rule.declarations.keys().next().value;
-          if (property) resolveStyle(probe, property, [{ file: sheet.file, rules: [rule] }], { width: 390 });
+          if (property) resolveStyle(probe, property, [{ file: sheet.file, rules: [rule] }], { width: 390, pseudo });
         }
       }
     }).not.toThrow();

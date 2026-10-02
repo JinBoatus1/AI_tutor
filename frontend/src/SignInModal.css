@@ -351,6 +351,12 @@
   background: var(--sheet);
 }
 
+/* A transparent outline, not none: the ring above is the visible focus in normal mode, and
+   forced-colors mode (where box-shadow is dropped) repaints the outline. Beats the global one. */
+.signin-input:focus-visible {
+  outline: 2px solid transparent;
+}
+
 .signin-input::placeholder {
   color: var(--ink-3);
 }
