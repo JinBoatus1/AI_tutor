@@ -46,17 +46,11 @@ const EN = {
   "profile.errCatalogLoad":
     "Could not load your textbook list from the server (network or sign-in). Your local list was not changed.",
   "profile.appearance": "Appearance",
-  "profile.appearanceDesc":
-    "Page background and Learning Mode chat panel — each preset updates both so text stays easy to read.",
-  "profile.appearanceGroup": "Page and chat panel colors",
+  "profile.appearanceDesc": "Choose how AI Tutor looks. Every option keeps text easy to read.",
+  "profile.appearanceGroup": "Theme",
 
-  "theme.default": "Default",
-  "theme.mint": "Mint",
-  "theme.dark": "Dark",
-  "theme.warm": "Warm",
-  "theme.white": "White",
-  "theme.black": "Black",
-  "theme.titleSuffix": "page + chat panel",
+  "theme.paper": "Paper",
+  "theme.bright": "Bright",
 
   "sidebar.workspace": "Workspace",
   "sidebar.study": "Study",
@@ -441,16 +435,11 @@ const ZH: Record<MessageKey, string> = {
   "profile.errDeleteFailed": "删除失败。",
   "profile.errCatalogLoad": "无法从服务器加载教材列表（网络或登录问题），本地列表未更改。",
   "profile.appearance": "外观",
-  "profile.appearanceDesc": "页面背景与学习模式聊天面板 — 每个预设会同时更新两者，保证文字易读。",
-  "profile.appearanceGroup": "页面与聊天面板颜色",
+  "profile.appearanceDesc": "选择 AI Tutor 的外观。每个选项都保证文字清晰易读。",
+  "profile.appearanceGroup": "主题",
 
-  "theme.default": "默认",
-  "theme.mint": "薄荷",
-  "theme.dark": "深色",
-  "theme.warm": "暖色",
-  "theme.white": "白色",
-  "theme.black": "黑色",
-  "theme.titleSuffix": "页面 + 聊天面板",
+  "theme.paper": "纸",
+  "theme.bright": "亮白",
 
   "sidebar.workspace": "工作区",
   "sidebar.study": "学习",
@@ -827,17 +816,11 @@ const ES: Record<MessageKey, string> = {
   "profile.errCatalogLoad":
     "No se pudo cargar la lista del servidor (red o inicio de sesión). La lista local no cambió.",
   "profile.appearance": "Apariencia",
-  "profile.appearanceDesc":
-    "Fondo de página y panel de chat del Modo de aprendizaje — cada preset actualiza ambos para mantener el texto legible.",
-  "profile.appearanceGroup": "Colores de página y panel de chat",
+  "profile.appearanceDesc": "Elige el aspecto de AI Tutor. Todas las opciones mantienen el texto fácil de leer.",
+  "profile.appearanceGroup": "Tema",
 
-  "theme.default": "Predeterminado",
-  "theme.mint": "Menta",
-  "theme.dark": "Oscuro",
-  "theme.warm": "Cálido",
-  "theme.white": "Blanco",
-  "theme.black": "Negro",
-  "theme.titleSuffix": "página + panel de chat",
+  "theme.paper": "Papel",
+  "theme.bright": "Claro",
 
   "sidebar.workspace": "Espacio de trabajo",
   "sidebar.study": "Estudio",

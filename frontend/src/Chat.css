@@ -23,7 +23,7 @@
   border: none;
   padding: 10px 16px;
   border-radius: 0;
-  background: var(--app-chat-panel-bg, #f7f3ea); /* ivory Report Card canvas */
+  background: var(--paper);
 }
 
 .chat-panel-header-row {

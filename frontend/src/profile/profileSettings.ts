@@ -1,62 +1,61 @@
-export type PageBackgroundId = "default" | "mint" | "dark" | "warm" | "white" | "black";
+/** Appearance: which Paper & Ink variant the app uses (spec §4.4). Stored only in this browser. */
+export type ThemeId = "paper" | "bright" | "night";
 
-const STORAGE_KEY = "ai_tutor_profile_settings";
+/** Night ships in PR2. While false, it is neither offered nor applied. Keep index.html in sync. */
+export const NIGHT_AVAILABLE = false;
 
-/** Outer page chrome + Learning Mode chat panel (dialog) surface — paired for readability. */
-const THEME: Record<PageBackgroundId, { page: string; chat: string }> = {
-  default: { page: "#e6eaf2", chat: "#ffffff" },
-  mint: { page: "#e0f2f0", chat: "#f5fdfb" },
-  dark: { page: "#1e293b", chat: "#fefefe" },
-  warm: { page: "#f5f0e8", chat: "#fffdf9" },
-  white: { page: "#ffffff", chat: "#fafafa" },
-  black: { page: "#0a0a0a", chat: "#f3f4f6" },
+export const STORAGE_KEY = "ai_tutor_profile_settings";
+
+/** The six pre-Paper-&-Ink presets and their nearest variant (spec D4). Keep index.html in sync. */
+export const LEGACY_THEME_MAP: Readonly<Record<string, ThemeId>> = {
+  default: "paper",
+  warm: "paper",
+  mint: "paper",
+  white: "bright",
+  dark: "night",
+  black: "night",
 };
 
-const LABELS: Record<PageBackgroundId, string> = {
-  default: "Default",
-  mint: "Mint",
-  dark: "Dark",
-  warm: "Warm",
-  white: "White",
-  black: "Black",
-};
+export const THEME_OPTIONS: readonly ThemeId[] = NIGHT_AVAILABLE
+  ? ["paper", "bright", "night"]
+  : ["paper", "bright"];
 
-export const PAGE_BACKGROUND_OPTIONS: {
-  id: PageBackgroundId;
-  label: string;
-  /** Swatch: page + chat split preview */
-  page: string;
-  chat: string;
-}[] = (Object.keys(THEME) as PageBackgroundId[]).map((id) => ({
-  id,
-  label: LABELS[id],
-  page: THEME[id].page,
-  chat: THEME[id].chat,
-}));
-
-export function applyPageBackground(id: PageBackgroundId): void {
-  const t = THEME[id] ?? THEME.default;
-  document.documentElement.style.setProperty("--app-page-bg", t.page);
-  document.documentElement.style.setProperty("--app-chat-panel-bg", t.chat);
+function isThemeId(value: unknown): value is ThemeId {
+  return value === "paper" || value === "bright" || value === "night";
 }
 
-export function readPageBackground(): PageBackgroundId {
+/** The variant to show for a parsed storage value. The inline script in index.html mirrors this. */
+export function resolveTheme(stored: unknown): ThemeId {
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return "paper";
+  const record = stored as Record<string, unknown>;
+  let id: ThemeId | undefined = isThemeId(record.theme) ? record.theme : undefined;
+  const legacy = record.pageBackground;
+  if (!id && typeof legacy === "string" && Object.prototype.hasOwnProperty.call(LEGACY_THEME_MAP, legacy)) {
+    id = LEGACY_THEME_MAP[legacy];
+  }
+  if (!id || (id === "night" && !NIGHT_AVAILABLE)) return "paper";
+  return id;
+}
+
+export function readTheme(): ThemeId {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return "default";
-    const j = JSON.parse(raw) as { pageBackground?: string };
-    const id = j.pageBackground as PageBackgroundId | undefined;
-    if (id && id in THEME) return id;
+    return resolveTheme(raw ? JSON.parse(raw) : null);
   } catch {
-    /* ignore */
+    return "paper";
   }
-  return "default";
 }
 
-export function writePageBackground(id: PageBackgroundId): void {
+export function writeTheme(id: ThemeId): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ pageBackground: id }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: id }));
   } catch {
-    /* ignore */
+    /* storage unavailable: the choice lasts for this page only */
   }
+}
+
+export function applyTheme(id: ThemeId): void {
+  const root = document.documentElement;
+  if (id === "paper") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", id);
 }

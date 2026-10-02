@@ -25,7 +25,6 @@ const PENDING = new Set<string>([
   "components/Sidebar.css",
   "feedback/FeedbackModal.css",
   "practice/Practice.css",
-  "profile/profileSettings.ts",
 ]);
 
 const EXCLUDED = new Set(["styles/tokens.css", "Home.css", "Home.tsx"]);

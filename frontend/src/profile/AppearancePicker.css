@@ -1,0 +1,49 @@
+/* Appearance tiles. Each preview pins its own variant through data-theme, so it needs no colors of its own. */
+.theme-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s2);
+}
+.theme-tile-preview {
+  display: grid;
+  grid-template-columns: 28% 1fr 34%;
+  height: 64px;
+  border-radius: var(--r1);
+  overflow: hidden;
+  background: var(--desk);
+  box-shadow: var(--sh-raised);
+}
+.theme-tile-side {
+  background: var(--parch);
+  border-right: 1px solid var(--rule);
+}
+.theme-tile-page {
+  margin: 10px 8px;
+  background: var(--sheet);
+  border-radius: var(--r-paper);
+  box-shadow: var(--sh-raised);
+}
+.theme-tile-chat {
+  position: relative;
+  background: var(--paper);
+  border-left: 1px solid var(--rule);
+}
+.theme-tile-line {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 12px;
+  height: 4px;
+  border-left: 2px solid var(--teal-line);
+  background: var(--rule-2);
+}
+.theme-tile-dot {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--teal-fill);
+}
