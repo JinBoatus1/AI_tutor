@@ -103,5 +103,6 @@ describe("outline legend", () => {
     expect(rowCheck).toBe('"✓"');
     expect(resolveInBothOrders(legend, "content", sheets, { pseudo: "::after" })).toEqual([rowCheck, rowCheck]);
     expect(resolveInBothOrders(legend, "background", sheets)).toEqual(["transparent", "transparent"]);
+    expect(resolveInBothOrders(legend, "display", sheets)).toEqual(["inline-grid", "inline-grid"]);
   });
 });
