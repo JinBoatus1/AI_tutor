@@ -415,7 +415,7 @@
 }
 
 .signin-toggle-link:hover {
-  color: var(--teal-press);
+  color: var(--teal);
   text-decoration: underline;
 }
 
@@ -433,7 +433,7 @@
 }
 
 .signin-back-link:hover {
-  color: var(--teal-press);
+  color: var(--teal);
   text-decoration: underline;
 }
 
