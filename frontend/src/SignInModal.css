@@ -351,6 +351,11 @@
   background: var(--sheet);
 }
 
+/* The border and ring above are the focus indicator; this beats the global :focus-visible outline. */
+.signin-input:focus-visible {
+  outline: none;
+}
+
 .signin-input::placeholder {
   color: var(--ink-3);
 }
