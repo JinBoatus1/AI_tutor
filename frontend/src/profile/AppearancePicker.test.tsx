@@ -42,6 +42,13 @@ describe("AppearancePicker", () => {
     }
   });
 
+  it("keeps the tiles inside the card on phones", () => {
+    const { container } = renderPicker();
+    expect(
+      resolveInBothOrders(container.querySelector(".profile-bg-grid")!, "grid-template-columns", loadAppStyleSheets(), { width: 390 }),
+    ).toEqual(["repeat(2, minmax(0, 1fr))", "repeat(2, minmax(0, 1fr))"]);
+  });
+
   it("offers Paper, Bright and Night as radios and checks the saved one", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: "bright" }));
     renderPicker();
