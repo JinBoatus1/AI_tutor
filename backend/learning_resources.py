@@ -2,6 +2,7 @@
 
 import base64
 import json
+import math
 import re
 import tempfile
 import threading
@@ -649,6 +650,131 @@ def extract_pdf_pages_text(pdf_bytes: bytes, start_page: int, end_page: int, max
             break
     doc.close()
     return text.strip()
+
+
+# A longer section is only scanned this many pages (around the viewed page when there
+# is one), so a huge range in an uploaded book cannot stall a chat.
+_EXCERPT_SCAN_PAGES = 60
+
+_EXCERPT_STOPWORDS = frozenset(
+    "the and for are was were what which when where who whom why how this that these those "
+    "with from into onto about does did done can could should would will shall may might must "
+    "has have had not but you your our their its than then there here also just only now "
+    "all any some more most very much many each other same such out over again still really "
+    "say says said see look get got find use used using know need help understand like want "
+    "work works way make made let think write written "
+    "please explain tell show give mean means meaning page pages section book".split()
+)
+
+
+def _question_terms(question: str) -> set:
+    words = re.findall(r"[a-z][a-z0-9\-]{2,}", (question or "").lower())
+    return {w for w in words if w not in _EXCERPT_STOPWORDS}
+
+
+def select_section_text(
+    pdf_bytes: bytes,
+    start_book: int,
+    end_book: int,
+    *,
+    offset: int,
+    question: str = "",
+    focus_book: Optional[int] = None,
+    budget: int = 12000,
+) -> str:
+    """Textbook text for a section (printed pages start_book..end_book), at most `budget` chars.
+
+    A section that fits comes back exactly as extract_pdf_pages_text gives it: every page,
+    in order. Cutting a longer one at the budget would keep only its first few pages, so it
+    is excerpted instead: the page the student is viewing (`focus_book`, a printed page
+    number) and its neighbours, then the pages that best match the question, each labelled
+    with its printed page number, in page order. Without a viewed page inside the section,
+    the excerpt starts at the section's first page.
+    """
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        first = max(start_book, 1 - offset)
+        last = min(end_book, len(doc) - offset)
+        if last < first:
+            return ""
+        focus = focus_book if focus_book is not None and first <= focus_book <= last else None
+        lo, hi = first, last
+        if hi - lo + 1 > _EXCERPT_SCAN_PAGES:
+            anchor = focus if focus is not None else first
+            lo = max(first, anchor - _EXCERPT_SCAN_PAGES // 2)
+            hi = min(last, lo + _EXCERPT_SCAN_PAGES - 1)
+            lo = max(first, hi - _EXCERPT_SCAN_PAGES + 1)
+        texts = {b: doc[b + offset - 1].get_text() for b in range(lo, hi + 1)}
+    finally:
+        doc.close()
+
+    if (lo, hi) == (first, last):
+        whole = "".join(texts[b] + "\n\n" for b in range(lo, hi + 1)).strip()
+        if len(whole) <= budget:
+            return whole
+
+    anchor = focus if focus is not None else lo
+    must = [b for b in ([anchor, anchor + 1, anchor - 1] if focus is not None else [anchor]) if lo <= b <= hi]
+    lowered = {b: t.lower() for b, t in texts.items()}
+    weights = {}
+    for term in _question_terms(question):
+        df = sum(1 for t in lowered.values() if term in t)
+        # A word on most pages says nothing about which page is meant.
+        if 0 < df <= len(texts) / 2:
+            weights[term] = math.log((len(texts) + 1) / (df + 1)) + 1.0
+
+    def score(b: int) -> float:
+        return sum(w for term, w in weights.items() if term in lowered[b])
+
+    others = [b for b in texts if b not in must]
+    matching = sorted((b for b in others if score(b) > 0), key=lambda b: (-score(b), abs(b - anchor), b))
+    nearby = [b for b in others if score(b) == 0]
+
+    if focus is not None:
+        header = (
+            f"(Excerpt: this section, pp. {start_book}-{end_book}, is too long to include in full. "
+            "Below are the page the student is viewing, its neighbours, and the pages that best match the question.)\n\n"
+        )
+    else:
+        header = (
+            f"(Excerpt: this section, pp. {start_book}-{end_book}, is too long to include in full. "
+            "Below are its opening page and the pages that best match the question.)\n\n"
+        )
+    gap = "[…]\n\n"
+    room = budget - len(header)
+    chosen: Dict[int, str] = {}
+
+    def take(b: int) -> bool:
+        nonlocal room
+        block = f"[book p. {b}]\n{texts[b].strip()}\n\n"
+        if len(block) + len(gap) <= room:
+            chosen[b] = block
+            room -= len(block) + len(gap)
+            return True
+        if not chosen:
+            # The first page asked for always goes in, cut to fit.
+            chosen[b] = block[: max(0, room - len(gap))]
+            room -= len(chosen[b]) + len(gap)
+            return True
+        return False
+
+    for b in must + matching:
+        take(b)
+    # The rest go in ring by ring outward from the anchor. A page that does not fit ends
+    # the fill after its ring, so a long page is never skipped for shorter, farther ones.
+    for distance in sorted({abs(b - anchor) for b in nearby}):
+        ring = [b for b in nearby if abs(b - anchor) == distance]
+        if not all([take(b) for b in sorted(ring)]):
+            break
+
+    parts = [header]
+    prev = None
+    for b in sorted(chosen):
+        if prev is not None and b != prev + 1:
+            parts.append(gap)
+        parts.append(chosen[b])
+        prev = b
+    return "".join(parts).strip()[:budget]
 
 
 # ================================
