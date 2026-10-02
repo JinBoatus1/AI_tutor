@@ -153,10 +153,6 @@ const PSEUDO_ELEMENT = /::|:(?:before|after|first-line|first-letter)(?![\w-])/i;
 const withStateAttributes = (selector: string) =>
   selector.replace(STATE_PSEUDO_CLASS, (_, state: ElementState) => `[${STATE_ATTRIBUTE[state]}]`);
 
-/**
- * el.matches(), with states as attributes. jsdom cannot parse :has() inside :not(), so each
- * :has(descendant) becomes an attribute set on the elements that have such a descendant.
- */
 /** The selector without its trailing `pseudo` (double- or legacy single-colon), or null if it has none. */
 function withoutPseudo(selector: string, pseudo: string): string | null {
   const trailing = new RegExp(`::?${pseudo.replace(/^::?/, "")}$`, "i").exec(selector);
@@ -164,6 +160,10 @@ function withoutPseudo(selector: string, pseudo: string): string | null {
   return selector.slice(0, trailing.index).trim() || "*";
 }
 
+/**
+ * el.matches(), with states as attributes. jsdom cannot parse :has() inside :not(), so each
+ * :has(descendant) becomes an attribute set on the elements that have such a descendant.
+ */
 function matches(el: Element, selector: string, file: string): boolean {
   const undo: (() => void)[] = [];
   let marks = 0;
