@@ -22,7 +22,8 @@
 /* ---- header / masthead ---- */
 .gr-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
 .gr-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
-.gr-course { font-family: var(--serif); font-size: 34px; font-weight: 500; line-height: 1.05; color: var(--ink); background: none; -webkit-text-fill-color: currentColor; }
+/* margin-bottom: the 10px base gave every h1 through a global App.css rule the theme rewrite dropped */
+.gr-course { font-family: var(--serif); font-size: 34px; font-weight: 500; line-height: 1.05; margin-bottom: 10px; color: var(--ink); background: none; -webkit-text-fill-color: currentColor; }
 .gr-term { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; color: var(--ink-3); margin-top: 7px; }
 .gr-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
 

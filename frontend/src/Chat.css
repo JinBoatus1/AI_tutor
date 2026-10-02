@@ -1327,17 +1327,25 @@
   height: 18px;
 }
 
+/* Padding, size and the disabled look are what base rendered: a global input[type="text"]
+   rule in App.css set them until the theme rewrite dropped it. 16px also keeps iOS Safari
+   from zooming in on focus. */
 .chat-input-text {
   flex: 1 1 0%;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 16px 20px;
   border: none;
   outline: none;
   background: transparent;
   font-family: var(--sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.35;
   color: var(--ink-body);
+}
+
+/* The shell's :focus-within ring is the focus indicator; this beats the global :focus-visible outline. */
+.chat-input-text:focus-visible {
+  outline: none;
 }
 
 .chat-input-text::placeholder {
@@ -1540,8 +1548,8 @@
 }
 
 .chat-input-text:disabled {
-  opacity: 0.75;
-  cursor: wait;
+  opacity: 0.6;
+  cursor: not-allowed;
   background: var(--track);
 }
 
