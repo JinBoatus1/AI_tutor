@@ -286,3 +286,8 @@ export function resetServerTextbookSessionForLogout(): void {
     /* ignore */
   }
 }
+
+/** Short label of a textbook (e.g. "FOCS", "Signals") for headers; null when the id is unknown. */
+export function textbookLinkLabel(bookId: string): string | null {
+  return readTextbookOptionList().find((o) => o.id === bookId)?.linkLabel ?? null;
+}

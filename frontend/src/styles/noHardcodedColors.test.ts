@@ -13,7 +13,6 @@ const PENDING = new Set<string>([
   "Chat.css",
   "ChatHistory.css",
   "Grades.css",
-  "LearningModel.tsx",
   "SignInModal.css",
   "SignInModal.tsx",
   "UserProfile.css",
@@ -21,7 +20,6 @@ const PENDING = new Set<string>([
   "components/GooeyNav.css",
   "components/OnboardingTour.css",
   "feedback/FeedbackModal.css",
-  "practice/Practice.css",
 ]);
 
 const EXCLUDED = new Set(["styles/tokens.css", "Home.css", "Home.tsx"]);
