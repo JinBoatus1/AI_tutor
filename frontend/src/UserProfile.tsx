@@ -365,7 +365,7 @@ export default function UserProfile() {
               </div>
             </div>
             {textbookError ? (
-              <p className="profile-muted" style={{ color: "#c62828", marginTop: "0.5rem" }}>
+              <p className="profile-muted profile-error">
                 {textbookError}
               </p>
             ) : null}

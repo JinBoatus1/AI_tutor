@@ -1,4 +1,4 @@
-/* Profile Page — matches SignInModal editorial design language */
+/* Profile page on the Paper & Ink tokens (spec §5.7): sheet cards on the paper canvas. */
 
 .profile-page {
   width: 100%;
@@ -16,39 +16,39 @@
 
 .profile-page-title {
   margin: 0 0 8px;
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 2rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.02em;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .profile-page-subtitle {
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.88rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   line-height: 1.55;
 }
 
 /* ── Cards ── */
 .profile-card {
-  background: #fff;
-  border: 1px solid #eef0f4;
+  background: var(--sheet);
+  border: 1px solid var(--rule-2);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 18px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--sh-raised);
 }
 
 .profile-card-title {
   margin: 0 0 18px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--ink-2);
 }
 
 /* ── Account section ── */
@@ -69,7 +69,7 @@
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #eef0f4;
+  border: 2px solid var(--rule-2);
   flex-shrink: 0;
 }
 
@@ -77,9 +77,9 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(170deg, #0c1222 0%, #0a1a2e 45%, #0c2828 100%);
-  color: #5eead4;
-  font-family: 'DM Serif Display', Georgia, serif;
+  background: var(--track);
+  color: var(--ink-2);
+  font-family: var(--serif);
   font-size: 1.35rem;
   font-weight: 400;
   display: flex;
@@ -94,26 +94,31 @@
 
 .profile-display-name {
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 1.05rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .profile-email {
   margin: 3px 0 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.84rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   word-break: break-all;
 }
 
 .profile-muted {
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.88rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   line-height: 1.55;
+}
+
+.profile-error {
+  color: var(--danger);
+  margin-top: 0.5rem;
 }
 
 /* ── Buttons — matching SignInModal provider button style ── */
@@ -123,20 +128,20 @@
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  border: 1px solid #eef0f4;
+  border: 1px solid var(--rule-2);
   border-radius: 12px;
-  background: #fff;
-  font-family: 'DM Sans', sans-serif;
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.88rem;
   font-weight: 500;
-  color: #1e293b;
+  color: var(--ink);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-google-btn:hover {
-  border-color: #dce0e8;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: var(--teal-edge);
+  box-shadow: var(--sh-raised);
   transform: translateY(-1px);
 }
 
@@ -144,27 +149,27 @@
   align-self: flex-start;
   padding: 9px 18px;
   border-radius: 10px;
-  border: 1px solid #eef0f4;
-  background: #fafbfc;
-  font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.84rem;
   font-weight: 500;
-  color: #475569;
+  color: var(--ink-2);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .profile-signout-btn:hover {
-  background: #f1f5f9;
-  border-color: #dce0e8;
+  background: var(--sheet);
+  border-color: var(--teal-edge);
 }
 
 /* ── Textbook section ── */
 .profile-setting-desc {
   margin: 0 0 16px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.84rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   line-height: 1.55;
 }
 
@@ -179,19 +184,19 @@
 .profile-textbook-delete-btn {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid #fecaca;
-  background: #fff;
-  font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--danger);
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.84rem;
   font-weight: 500;
-  color: #dc2626;
+  color: var(--danger);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .profile-textbook-delete-btn:hover:not(:disabled) {
-  background: #fef2f2;
-  border-color: #f87171;
+  background: var(--danger-tint);
+  border-color: var(--danger);
 }
 
 .profile-textbook-delete-btn:disabled {
@@ -200,7 +205,7 @@
 }
 
 .profile-textbook-delete-hint {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.78rem;
   line-height: 1.45;
   max-width: 100%;
@@ -217,19 +222,19 @@
 .profile-textbook-sync-btn {
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid #eef0f4;
-  background: #fafbfc;
-  font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--rule-2);
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.84rem;
   font-weight: 500;
-  color: #475569;
+  color: var(--ink-2);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .profile-textbook-sync-btn:hover:not(:disabled) {
-  background: #f1f5f9;
-  border-color: #dce0e8;
+  background: var(--track);
+  border-color: var(--teal-edge);
 }
 
 .profile-textbook-sync-btn:disabled {
@@ -238,7 +243,7 @@
 }
 
 .profile-textbook-sync-hint {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.78rem;
   line-height: 1.45;
   max-width: 100%;
@@ -248,19 +253,19 @@
   margin-top: 6px;
   padding: 8px 16px;
   border-radius: 10px;
-  border: 1px solid #fdba74;
-  background: #fff;
-  font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--warning);
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.8rem;
   font-weight: 500;
-  color: #9a3412;
+  color: var(--warning);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .profile-textbook-reset-local-btn:hover:not(:disabled) {
-  background: #fff7ed;
-  border-color: #fb923c;
+  background: var(--warning-tint);
+  border-color: var(--warning);
 }
 
 .profile-textbook-reset-local-btn:disabled {
@@ -299,19 +304,19 @@
 .profile-file-choose-btn {
   padding: 8px 18px;
   border-radius: 10px;
-  border: 1.5px dashed rgba(94, 234, 212, 0.35);
-  background: rgba(94, 234, 212, 0.03);
-  font-family: 'DM Sans', sans-serif;
+  border: 1.5px dashed var(--rule-input);
+  background: var(--paper);
+  font-family: var(--sans);
   font-size: 0.84rem;
   font-weight: 500;
-  color: #0d9488;
+  color: var(--teal);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .profile-file-choose-btn:hover:not(:disabled) {
-  background: rgba(94, 234, 212, 0.06);
-  border-color: rgba(94, 234, 212, 0.5);
+  background: var(--teal-tint);
+  border-color: var(--teal);
 }
 
 .profile-file-choose-btn:disabled {
@@ -320,9 +325,9 @@
 }
 
 .profile-file-status {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.84rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   max-width: min(100%, 14rem);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -343,38 +348,31 @@
   gap: 7px;
   padding: 12px 16px;
   min-width: 5.5rem;
-  border: 1.5px solid #eef0f4;
+  border: 1.5px solid var(--rule-2);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--sheet);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .profile-bg-swatch:hover {
-  border-color: #dce0e8;
-  background: #fff;
+  border-color: var(--teal-edge);
+  background: var(--sheet);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--sh-raised);
 }
 
 .profile-bg-swatch--active {
-  border-color: rgba(20, 184, 166, 0.4);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
-}
-
-.profile-bg-swatch-dot {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-color: var(--teal);
+  background: var(--sheet);
+  box-shadow: 0 0 0 3px var(--teal-tint);
 }
 
 .profile-bg-swatch-label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.72rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--ink-2);
 }
 
 /* ── System language ── */
@@ -392,46 +390,46 @@
   gap: 4px;
   padding: 14px 10px;
   border-radius: 12px;
-  border: 1.5px solid #eef0f4;
-  background: #fafbfc;
+  border: 1.5px solid var(--rule-2);
+  background: var(--sheet);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .profile-locale-option:hover {
-  border-color: #99f6e4;
-  background: #f0fdfa;
+  border-color: var(--teal-edge);
+  background: var(--teal-tint);
 }
 
 .profile-locale-option--active {
-  border-color: #0d9488;
-  background: #ecfdf5;
-  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.15);
+  border-color: var(--teal);
+  background: var(--teal-tint);
+  box-shadow: 0 0 0 1px var(--teal);
 }
 
 .profile-locale-option-label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .profile-locale-option-code {
-  font-family: 'DM Mono', ui-monospace, monospace;
+  font-family: var(--mono);
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: var(--ink-3);
 }
 
 .profile-locale-apply-all {
   width: 100%;
   padding: 11px 16px;
   border-radius: 10px;
-  border: 1px solid #0d9488;
-  background: #0d9488;
-  color: #fff;
-  font-family: 'DM Sans', sans-serif;
+  border: 1px solid var(--teal-fill);
+  background: var(--teal-fill);
+  color: var(--on-teal);
+  font-family: var(--sans);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -439,16 +437,16 @@
 }
 
 .profile-locale-apply-all:hover {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: var(--teal-press);
+  border-color: var(--teal-press);
 }
 
 .profile-locale-notice {
   margin: 10px 0 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.82rem;
   font-weight: 600;
-  color: #0f766e;
+  color: var(--success);
 }
 
 @media (max-width: 480px) {
