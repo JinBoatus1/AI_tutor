@@ -22,6 +22,7 @@ import {
   trySyncLearnedToServer,
 } from "./utils/learningBarLocalStorage";
 import { useLocale } from "./i18n/LocaleContext";
+import { currentOutlinePath, type CurrentSection, type OutlineNodeRef } from "./utils/currentSection";
 import { ONBOARDING_EXPAND_PATHS_EVENT } from "./onboarding/onboardingStorage";
 
 type FocsNode = Record<string, unknown>;
@@ -45,6 +46,8 @@ export type LearningBarPanelProps = {
   embedHeaderEnd?: ReactNode;
   /** Learning Mode: click a row with page numbers → open PDF pages in the textbook panel. */
   onOutlineSectionPreview?: (detail: OutlineSectionPreviewDetail) => void;
+  /** Learning Mode: the section the textbook panel shows, marked with the ribbon (spec D10). */
+  currentSection?: CurrentSection | null;
 };
 
 function firstSectionToken(title: string): string | null {
@@ -142,6 +145,22 @@ function sortSectionTokens(tokens: string[]): string[] {
   });
 }
 
+/** Every outline node in display order, with the path FocsTreeBranch gives it. */
+function outlineNodeRefs(tree: FocsNode): OutlineNodeRef[] {
+  const out: OutlineNodeRef[] = [];
+  function walk(path: string, title: string, node: FocsNode) {
+    const kids = childEntries(node);
+    out.push({ path, title, range: bookPageRangeFromNode(node), hasKids: kids.length > 0 });
+    for (const [childTitle, childNode] of kids) {
+      walk(`${path}/${childTitle}`, childTitle, childNode);
+    }
+  }
+  for (const [title, node] of childEntries(tree)) {
+    walk(title, title, node);
+  }
+  return out;
+}
+
 function collectExpandablePaths(tree: FocsNode): string[] {
   const out: string[] = [];
   function walk(path: string, node: FocsNode) {
@@ -158,7 +177,7 @@ function collectExpandablePaths(tree: FocsNode): string[] {
   return out;
 }
 
-function FocsTreeBranch({
+export function FocsTreeBranch({
   title,
   node,
   learnedSet,
@@ -167,6 +186,7 @@ function FocsTreeBranch({
   onToggleExpand,
   path,
   onOpenPages,
+  currentPath,
 }: {
   title: string;
   node: FocsNode;
@@ -176,6 +196,8 @@ function FocsTreeBranch({
   onToggleExpand: (path: string) => void;
   path: string;
   onOpenPages?: (detail: OutlineSectionPreviewDetail) => void;
+  /** Path of the node to mark as on screen (currentOutlinePath), or null. */
+  currentPath: string | null;
 }) {
   const { t } = useLocale();
   const token = sectionTokenForNode(title, path);
@@ -186,6 +208,7 @@ function FocsTreeBranch({
   const isOpen = expanded[path] !== false;
   const learned = learnedSet.has(token);
   const splitLearnAndTitle = Boolean(onOpenPages);
+  const isCurrent = path === currentPath;
 
   const toggleLearned = () =>
     onToggleToken(token, hasKids ? node : undefined, hasKids ? path : undefined);
@@ -220,7 +243,7 @@ function FocsTreeBranch({
 
   return (
     <li className="focs-node">
-      <div className="focs-node__row focs-node__row--toggle">
+      <div className={`focs-node__row focs-node__row--toggle${isCurrent ? " focs-node__row--current" : ""}`}>
         {hasKids ? (
           <button
             type="button"
@@ -252,6 +275,7 @@ function FocsTreeBranch({
           }`}
           onClick={titleClick}
           title={titleBtnTitle}
+          aria-current={isCurrent ? "true" : undefined}
         >
           {title}
           {rangeStr ? <span className="focs-node__range">{rangeStr}</span> : null}
@@ -270,6 +294,7 @@ function FocsTreeBranch({
               onToggleExpand={onToggleExpand}
               path={path + "/" + k}
               onOpenPages={onOpenPages}
+              currentPath={currentPath}
             />
           ))}
         </ul>
@@ -283,6 +308,7 @@ export default function LearningBarPanel({
   studentId: studentIdProp,
   embedHeaderEnd,
   onOutlineSectionPreview,
+  currentSection,
 }: LearningBarPanelProps) {
   const { t, locale } = useLocale();
   const { token } = useAuth();
@@ -473,6 +499,10 @@ export default function LearningBarPanel({
 
   const rootEntries = useMemo(() => childEntries(outlineTree), [outlineTree]);
   const expandablePaths = useMemo(() => collectExpandablePaths(outlineTree), [outlineTree]);
+  const currentPath = useMemo(
+    () => currentOutlinePath(outlineNodeRefs(outlineTree), currentSection, selectedTextbookId),
+    [outlineTree, currentSection, selectedTextbookId],
+  );
 
   useEffect(() => {
     setExpanded({});
@@ -648,6 +678,7 @@ export default function LearningBarPanel({
               onToggleExpand={onToggleExpand}
               path={k}
               onOpenPages={variant === "embed" ? onOutlineSectionPreview : undefined}
+              currentPath={currentPath}
             />
           ))}
         </ul>

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import type { OutlineSectionPreviewDetail } from "../LearningBarPanel";
+import { sameSection, type CurrentSection } from "../utils/currentSection";
 
 /**
  * Bridges the global Sidebar (which shows conversation History) with Learning Mode,
@@ -29,6 +30,9 @@ interface Bridge {
   newChat: () => void;
   previewSection: (d: OutlineSectionPreviewDetail) => void;
   takePending: () => Pending;
+  /** The section the textbook panel shows, for the sidebar's ribbon (spec D10). */
+  currentSection: CurrentSection | null;
+  publishSection: (s: CurrentSection | null) => void;
 }
 
 const Ctx = createContext<Bridge | null>(null);
@@ -38,6 +42,11 @@ export function SessionBridgeProvider({ children }: { children: ReactNode }) {
   const [refreshTrigger, setRefresh] = useState(0);
   const handlersRef = useRef<Handlers | null>(null);
   const pendingRef = useRef<Pending>(null);
+  const [currentSection, setCurrentSection] = useState<CurrentSection | null>(null);
+  // An equal value keeps the old object, so consumers don't re-render (the value object is rebuilt each render).
+  const publishSection = useCallback((s: CurrentSection | null) => {
+    setCurrentSection((prev) => (sameSection(prev, s) ? prev : s));
+  }, []);
 
   const publishActive = useCallback((id: string | null) => setActive(id), []);
   const publishRefresh = useCallback((n: number) => setRefresh(n), []);
@@ -72,7 +81,7 @@ export function SessionBridgeProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider
-      value={{ activeSessionId, refreshTrigger, publishActive, publishRefresh, attach, select, newChat, previewSection, takePending }}
+      value={{ activeSessionId, refreshTrigger, publishActive, publishRefresh, attach, select, newChat, previewSection, takePending, currentSection, publishSection }}
     >
       {children}
     </Ctx.Provider>

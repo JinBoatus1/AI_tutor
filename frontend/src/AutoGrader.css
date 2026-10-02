@@ -5,7 +5,7 @@
   display: flex;
   justify-content: center;
   padding: 18px 14px 32px;
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--sans);
 }
 
 .autograder-page-inner {
@@ -23,9 +23,10 @@
 
 .autograder-hero-title {
   margin: 0;
+  font-family: var(--serif);
   font-size: 1.85rem;
-  font-weight: 800;
-  color: #0f766e;
+  font-weight: 600;
+  color: var(--ink);
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -33,15 +34,15 @@
 .autograder-hero-sub {
   max-width: 680px;
   margin: 8px auto 0;
-  color: #475569;
+  color: var(--ink-2);
   line-height: 1.5;
 }
 
 .autograder-card {
-  background: #fff;
+  background: var(--sheet);
   border-radius: 8px;
-  border: 1px solid rgba(45, 212, 191, 0.22);
-  box-shadow: 0 4px 24px -6px rgba(15, 118, 110, 0.12), 0 12px 40px -16px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--rule-2);
+  box-shadow: var(--sh-raised);
   padding: 20px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -55,8 +56,14 @@
   gap: 10px;
   padding: 14px;
   border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+}
+
+/* The two file pickers act as the drop zones (spec §5.6). */
+.autograder-panel:not(:last-of-type) {
+  border-style: dashed;
+  border-color: var(--rule-input);
 }
 
 .autograder-panel:last-of-type,
@@ -70,7 +77,7 @@
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
-  color: #475569;
+  color: var(--ink-2);
 }
 
 .autograder-file-row {
@@ -96,9 +103,9 @@
   flex-shrink: 0;
   padding: 9px 16px;
   border-radius: 8px;
-  border: 1px solid #99f6e4;
-  background: #ecfdf5;
-  color: #0f766e;
+  border: 1px solid var(--teal-edge);
+  background: transparent;
+  color: var(--teal);
   font-size: 0.88rem;
   font-weight: 700;
   font-family: inherit;
@@ -107,16 +114,16 @@
 }
 
 .autograder-file-choose-btn:hover {
-  border-color: #5eead4;
-  background: #ccfbf1;
-  color: #115e59;
+  border-color: var(--teal);
+  background: var(--teal-tint);
+  color: var(--teal);
 }
 
 .autograder-file-choose-btn:focus-visible,
 .autograder-paper-tab:focus-visible,
 .autograder-submit:focus-visible,
 .autograder-textarea:focus-visible {
-  outline: 2px solid #2dd4bf;
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -125,13 +132,13 @@
   min-width: 0;
   max-width: 100%;
   font-size: 0.84rem;
-  color: #64748b;
+  color: var(--ink-3);
   line-height: 1.4;
   word-break: break-word;
 }
 
 .autograder-file-status--picked {
-  color: #0f766e;
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -140,8 +147,8 @@
   overflow: auto;
   margin: 0;
   padding: 8px 8px 8px 28px;
-  border-top: 1px solid #e2e8f0;
-  color: #334155;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-2);
   font-size: 0.8rem;
   line-height: 1.55;
 }
@@ -154,18 +161,23 @@
   width: 100%;
   min-height: 112px;
   resize: vertical;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--rule-input);
   border-radius: 8px;
   padding: 11px 12px;
   font: inherit;
   font-size: 0.9rem;
   line-height: 1.45;
-  color: #0f172a;
-  background: #fff;
+  color: var(--ink);
+  background: var(--sheet);
+}
+
+.autograder-textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint);
 }
 
 .autograder-textarea::placeholder {
-  color: #94a3b8;
+  color: var(--ink-3);
 }
 
 .autograder-submit {
@@ -176,16 +188,17 @@
   font-size: 0.95rem;
   font-weight: 800;
   font-family: inherit;
-  color: #fff;
+  color: var(--on-teal);
   cursor: pointer;
-  background: #0f766e;
-  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.25);
+  background: var(--teal-fill);
+  box-shadow: var(--sh-raised);
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
 }
 
 .autograder-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(15, 118, 110, 0.32);
+  background: var(--teal-press);
+  box-shadow: var(--sh-raised);
 }
 
 .autograder-submit:disabled {
@@ -199,18 +212,18 @@
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.86rem;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--danger);
+  background: var(--danger-tint);
+  border: 1px solid var(--danger);
 }
 
 .autograder-result {
   width: 100%;
   padding: 18px;
   border-radius: 8px;
-  background: #f0fdfa;
-  border: 1px solid rgba(45, 212, 191, 0.35);
-  box-shadow: 0 4px 20px -8px rgba(15, 118, 110, 0.15);
+  background: var(--paper);
+  border: 1px solid var(--rule-2);
+  box-shadow: var(--sh-raised);
 }
 
 .autograder-result-header {
@@ -223,9 +236,10 @@
 
 .autograder-result h3 {
   margin: 0 0 3px;
+  font-family: var(--serif);
   font-size: 1.05rem;
-  font-weight: 800;
-  color: #0f766e;
+  font-weight: 600;
+  color: var(--ink);
   letter-spacing: 0;
 }
 
@@ -233,9 +247,9 @@
   flex-shrink: 0;
   padding: 4px 8px;
   border-radius: 8px;
-  background: #fff;
-  border: 1px solid #99f6e4;
-  color: #115e59;
+  background: var(--track);
+  border: 1px solid var(--rule-2);
+  color: var(--ink-2);
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -243,7 +257,7 @@
 .autograder-result-meta {
   margin: 0;
   font-size: 0.82rem;
-  color: #475569;
+  color: var(--ink-2);
   line-height: 1.5;
 }
 
@@ -262,10 +276,10 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--rule-input);
   border-radius: 8px;
-  background: #fff;
-  color: #334155;
+  background: var(--sheet);
+  color: var(--ink-2);
   font: inherit;
   font-size: 0.8rem;
   text-align: left;
@@ -281,15 +295,15 @@
 
 .autograder-paper-tab strong {
   flex-shrink: 0;
-  color: #0f766e;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 .autograder-paper-tab--selected {
-  border-color: #14b8a6;
-  background: #ccfbf1;
-  color: #115e59;
-  box-shadow: inset 0 0 0 1px #14b8a6;
+  border-color: var(--teal);
+  background: var(--teal-tint);
+  color: var(--teal);
+  box-shadow: inset 0 0 0 1px var(--teal);
 }
 
 .autograder-paper-heading {
@@ -298,12 +312,12 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 0 8px;
-  border-top: 1px solid rgba(45, 212, 191, 0.35);
+  border-top: 1px solid var(--rule);
 }
 
 .autograder-paper-heading h4 {
   margin: 3px 0 0;
-  color: #0f172a;
+  color: var(--ink);
   font-size: 1rem;
   overflow-wrap: anywhere;
   letter-spacing: 0;
@@ -312,8 +326,8 @@
 .autograder-paper-id {
   max-width: 45%;
   overflow: hidden;
-  color: #64748b;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--ink-3);
+  font-family: var(--mono);
   font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -334,10 +348,10 @@
   gap: 8px;
   padding: 12px;
   border-radius: 8px;
-  background: #fff;
-  border: 1px solid #d1fae5;
+  background: var(--sheet);
+  border: 1px solid var(--rule-2);
   font-size: 0.88rem;
-  color: #334155;
+  color: var(--ink-2);
 }
 
 .autograder-score-main {
@@ -349,11 +363,11 @@
 
 .autograder-question-label {
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ink);
 }
 
 .autograder-score-item > .autograder-score-main strong {
-  color: #0f766e;
+  color: var(--ink);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -368,77 +382,77 @@
 .autograder-score-badges span {
   padding: 3px 7px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--rule-2);
+  background: var(--track);
+  color: var(--ink-2);
   font-size: 0.7rem;
   font-weight: 700;
 }
 
 .autograder-score-badges .autograder-confidence--high {
-  border-color: #86efac;
-  background: #f0fdf4;
-  color: #166534;
+  border-color: var(--success);
+  background: var(--success-tint);
+  color: var(--success);
 }
 
 .autograder-score-badges .autograder-confidence--medium {
-  border-color: #fcd34d;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--warning);
+  background: var(--warning-tint);
+  color: var(--warning);
 }
 
 .autograder-score-badges .autograder-confidence--low {
-  border-color: #fca5a5;
-  background: #fef2f2;
-  color: #991b1b;
+  border-color: var(--danger);
+  background: var(--danger-tint);
+  color: var(--danger);
 }
 
 .autograder-feedback-summary,
 .autograder-suggestion {
   margin: 0;
-  color: #475569;
+  color: var(--ink-2);
   line-height: 1.5;
   white-space: pre-wrap;
 }
 
 .autograder-suggestion {
   padding: 8px 9px;
-  border-left: 3px solid #38bdf8;
-  background: #f0f9ff;
-  color: #0c4a6e;
+  border-left: 3px solid var(--teal-line);
+  background: var(--paper);
+  color: var(--ink-body);
 }
 
 .autograder-feedback-block {
   padding-top: 7px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--rule);
 }
 
 .autograder-feedback-block h5 {
   margin: 0 0 4px;
-  color: #166534;
+  color: var(--success);
   font-size: 0.76rem;
   letter-spacing: 0;
 }
 
 .autograder-feedback-block--deduction h5 {
-  color: #b91c1c;
+  color: var(--danger);
 }
 
 .autograder-feedback-block ul,
 .autograder-answer-details ul {
   margin: 0;
   padding-left: 18px;
-  color: #475569;
+  color: var(--ink-2);
   line-height: 1.45;
 }
 
 .autograder-answer-details {
-  color: #475569;
+  color: var(--ink-2);
 }
 
 .autograder-answer-details summary {
   cursor: pointer;
-  color: #0f766e;
+  color: var(--teal);
   font-weight: 700;
 }
 
@@ -451,10 +465,10 @@
 .autograder-total-score {
   margin: 14px 0 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(45, 212, 191, 0.35);
+  border-top: 1px solid var(--rule);
   font-size: 0.95rem;
   font-weight: 800;
-  color: #115e59;
+  color: var(--ink);
 }
 
 @media (max-width: 720px) {

@@ -1,0 +1,168 @@
+/* Paper & Ink design tokens: the only file allowed to define colors.
+   Spec: docs/superpowers/specs/2026-10-01-paper-ink-theme-design.md §4.
+   Shared scales sit on :root. Each [data-theme] block is complete, so any element can pin
+   a variant (the Appearance previews do). Night is defined here but enabled only in PR2. */
+
+:root {
+  --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --math: "STIX Two Math", "Cambria Math", "Latin Modern Math", serif;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-ui: 13px;
+  --fs-base: 14px;
+  --fs-read: 16px;
+  --fs-lead: 18px;
+  --fs-title: 26px;
+  --fs-display: 40px;
+  --fs-hero: 64px;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s16: 64px;
+
+  --r-paper: 2px;
+  --r1: 6px;
+  --r2: 10px;
+  --r3: 16px;
+  --pill: 999px;
+}
+
+/* Paper: the default look, mockup A's values. */
+:root,
+[data-theme="paper"] {
+  --desk: #e9e3d7;
+  --desk-hi: #efeae0;
+  --parch: #f4efe6;
+  --paper: #faf7f1;
+  --sheet: #fffdf8;
+  --track: #ebe4d7;
+  --rule: #e3dbcc;
+  --rule-2: #d9cfbe;
+  --rule-input: #918777;
+  --ink: #1e1a15;
+  --ink-body: #2a251e;
+  --ink-2: #4a4338;
+  --ink-3: #6a6154;
+  --ink-4: #8a8070;
+  --teal: #0f5e57;
+  --teal-fill: #0f5e57;
+  --on-teal: #fffdf8;
+  --teal-press: #0b4a45;
+  --teal-line: #1a7268;
+  --teal-edge: #5f948b;
+  --teal-tint: #e5ebe5;
+  --ribbon: #b4432b;
+  --ribbon-fold: #8c3220;
+  --danger: #a3283a;
+  --danger-tint: #f7e4e4;
+  --success: #2e6b3c;
+  --success-tint: #e4efe2;
+  --warning: #7f5208;
+  --warning-tint: #f5ead2;
+  --focus: var(--teal);
+  --scrim: rgba(30, 26, 21, 0.45);
+  --selection: var(--teal-tint);
+  --page-image-filter: none;
+  --sh-raised: 0 0 0 1px rgba(74, 56, 26, 0.08), 0 1px 2px rgba(74, 56, 26, 0.08);
+  --sh-float: 0 0 0 1px rgba(74, 56, 26, 0.09), 0 2px 4px rgba(74, 56, 26, 0.06),
+    0 14px 32px -10px rgba(74, 56, 26, 0.3);
+  --sh-sheet: 0 0 0 1px rgba(74, 56, 26, 0.07), 0 1px 1px rgba(74, 56, 26, 0.06),
+    0 4px 8px -2px rgba(74, 56, 26, 0.08), 0 16px 32px -12px rgba(74, 56, 26, 0.18),
+    0 40px 80px -32px rgba(74, 56, 26, 0.3);
+}
+
+/* Bright: whiter, less warm surfaces; the same ink and teal. */
+[data-theme="bright"] {
+  --desk: #ecebe8;
+  --desk-hi: #f1f0ed;
+  --parch: #f6f5f2;
+  --paper: #fcfbfa;
+  --sheet: #ffffff;
+  --track: #ecebe7;
+  --rule: #e5e3de;
+  --rule-2: #d9d6cf;
+  --rule-input: #8c887f;
+  --ink: #1e1a15;
+  --ink-body: #2a251e;
+  --ink-2: #4a4338;
+  --ink-3: #68625a;
+  --ink-4: #8a8479;
+  --teal: #0f5e57;
+  --teal-fill: #0f5e57;
+  --on-teal: #ffffff;
+  --teal-press: #0b4a45;
+  --teal-line: #1a7268;
+  --teal-edge: #5f948b;
+  --teal-tint: #e6efec;
+  --ribbon: #b4432b;
+  --ribbon-fold: #8c3220;
+  --danger: #a3283a;
+  --danger-tint: #f8e6e7;
+  --success: #2e6b3c;
+  --success-tint: #e5f0e6;
+  --warning: #7f5208;
+  --warning-tint: #f6edd8;
+  --focus: var(--teal);
+  --scrim: rgba(30, 26, 21, 0.4);
+  --selection: var(--teal-tint);
+  --page-image-filter: none;
+  --sh-raised: 0 0 0 1px rgba(40, 36, 30, 0.072), 0 1px 2px rgba(40, 36, 30, 0.072);
+  --sh-float: 0 0 0 1px rgba(40, 36, 30, 0.081), 0 2px 4px rgba(40, 36, 30, 0.054),
+    0 14px 32px -10px rgba(40, 36, 30, 0.27);
+  --sh-sheet: 0 0 0 1px rgba(40, 36, 30, 0.063), 0 1px 1px rgba(40, 36, 30, 0.054),
+    0 4px 8px -2px rgba(40, 36, 30, 0.072), 0 16px 32px -12px rgba(40, 36, 30, 0.162),
+    0 40px 80px -32px rgba(40, 36, 30, 0.27);
+}
+
+/* Night: a real dark theme. Defined now, switched on in PR2 (NIGHT_AVAILABLE). */
+[data-theme="night"] {
+  --desk: #141210;
+  --desk-hi: #191713;
+  --parch: #1c1916;
+  --paper: #201d19;
+  --sheet: #2a2621;
+  --track: #171512;
+  --rule: #2e2a24;
+  --rule-2: #3a352e;
+  --rule-input: #857b6d;
+  --ink: #efe9de;
+  --ink-body: #e4ddd0;
+  --ink-2: #c4bbab;
+  --ink-3: #a69d8e;
+  --ink-4: #7e7568;
+  --teal: #6bbcae;
+  --teal-fill: #21766b;
+  --on-teal: #f6f2ea;
+  --teal-press: #1c665d;
+  --teal-line: #4fa596;
+  --teal-edge: #4f9488;
+  --teal-tint: #1d2f2b;
+  --ribbon: #d9694f;
+  --ribbon-fold: #a84a35;
+  --danger: #f0909b;
+  --danger-tint: #3a2125;
+  --success: #86c595;
+  --success-tint: #1e3324;
+  --warning: #e2b763;
+  --warning-tint: #382d16;
+  --focus: var(--teal);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --selection: #2c4741;
+  --page-image-filter: brightness(0.86) sepia(0.06);
+  --sh-raised: 0 0 0 1px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.32);
+  --sh-float: 0 0 0 1px rgba(0, 0, 0, 0.36), 0 2px 4px rgba(0, 0, 0, 0.24),
+    0 14px 32px -10px rgba(0, 0, 0, 0.6);
+  --sh-sheet: 0 0 0 1px rgba(0, 0, 0, 0.28), 0 1px 1px rgba(0, 0, 0, 0.24),
+    0 4px 8px -2px rgba(0, 0, 0, 0.32), 0 16px 32px -12px rgba(0, 0, 0, 0.6),
+    0 40px 80px -32px rgba(0, 0, 0, 0.6);
+}

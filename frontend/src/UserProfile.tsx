@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "./apiBase";
 import { useAuth } from "./context/AuthContext";
-import { useProfileSettings } from "./context/ProfileSettingsContext";
 import { useLocale } from "./i18n/LocaleContext";
 import { APP_LOCALES, LOCALE_NATIVE_LABELS, type AppLocale } from "./i18n/types";
-import type { MessageKey } from "./i18n/messages";
-import { PAGE_BACKGROUND_OPTIONS, type PageBackgroundId } from "./profile/profileSettings";
+import AppearancePicker from "./profile/AppearancePicker";
 import {
   clearAllUploadedTextbooksFromBrowser,
   fetchTextbookOptionsFromServer,
@@ -23,7 +21,6 @@ import "./UserProfile.css";
 
 export default function UserProfile() {
   const { user, loading, logout, setShowSignIn, token } = useAuth();
-  const { pageBackground, setPageBackground } = useProfileSettings();
   const { locale, applyLocale, t } = useLocale();
   const [localeNotice, setLocaleNotice] = useState<string | null>(null);
   const [textbookOptions, setTextbookOptions] = useState(() => readTextbookOptionList());
@@ -368,7 +365,7 @@ export default function UserProfile() {
               </div>
             </div>
             {textbookError ? (
-              <p className="profile-muted" style={{ color: "#c62828", marginTop: "0.5rem" }}>
+              <p className="profile-muted profile-error">
                 {textbookError}
               </p>
             ) : null}
@@ -381,28 +378,7 @@ export default function UserProfile() {
           {t("profile.appearance")}
         </h2>
         <p className="profile-setting-desc">{t("profile.appearanceDesc")}</p>
-        <div className="profile-bg-grid" role="radiogroup" aria-label={t("profile.appearanceGroup")}>
-          {PAGE_BACKGROUND_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              role="radio"
-              aria-checked={pageBackground === opt.id}
-              className={`profile-bg-swatch ${pageBackground === opt.id ? "profile-bg-swatch--active" : ""}`}
-              onClick={() => setPageBackground(opt.id as PageBackgroundId)}
-              title={`${t(`theme.${opt.id}` as MessageKey)}: ${t("theme.titleSuffix")}`}
-            >
-              <span
-                className="profile-bg-swatch-dot"
-                style={{
-                  background: `linear-gradient(135deg, ${opt.page} 45%, ${opt.chat} 45%)`,
-                }}
-                aria-hidden
-              />
-              <span className="profile-bg-swatch-label">{t(`theme.${opt.id}` as MessageKey)}</span>
-            </button>
-          ))}
-        </div>
+        <AppearancePicker />
       </section>
     </div>
   );

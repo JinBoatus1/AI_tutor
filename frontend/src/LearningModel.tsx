@@ -8,6 +8,7 @@ import {
   outlineToCurriculum,
   readSelectedTextbookId,
   reconcileSelectedTextbookWithCatalog,
+  textbookLinkLabel,
 } from "./learningTextbooks";
 import MarkdownMessage from "./MarkdownMessage";
 import { getOrCreateStudentId } from "./utils/studentId";
@@ -119,6 +120,22 @@ function buildChatApiHistory(msgs: { sender: string; text: string }[]) {
   });
 }
 
+/* Header icons for the textbook bar (spec §5.3). */
+const FlagIcon = (
+  <svg className="left-panel-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 21V4" />
+    <path d="M5 4h11l-2 4 2 4H5" />
+  </svg>
+);
+const EyeOffIcon = (
+  <svg className="left-panel-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 3l18 18" />
+    <path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-3.2 4.3" />
+    <path d="M6.6 6.6C4.4 8 2.8 10.2 2 12c1 2.5 5 7 10 7a9.8 9.8 0 0 0 4.4-1" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+  </svg>
+);
+
 export default function LearningModel() {
   const location = useLocation();
   const { t, chatLanguageSuffix } = useLocale();
@@ -176,6 +193,22 @@ export default function LearningModel() {
     endBook: number;
     sectionHint?: string;
   } | null>(null);
+  // Tell the sidebar outline which section is on screen (spec D10). Depend on the stable
+  // publishSection, never on `bridge`, whose identity changes every provider render.
+  const { publishSection } = bridge;
+  useEffect(() => {
+    publishSection(
+      dataMatchedTopic
+        ? {
+            bookId: dataMatchedTopic.bookId,
+            title: dataMatchedTopic.name,
+            startBook: dataMatchedTopic.startBook,
+            endBook: dataMatchedTopic.endBook,
+          }
+        : null,
+    );
+  }, [dataMatchedTopic, publishSection]);
+  useEffect(() => () => publishSection(null), [publishSection]);
   // Client-side trigger for Practice mode (eng-review #2/#3): captured synchronously
   // from the outline click, NOT from the server-set dataMatchedTopic.
   const [activeSectionTitle, setActiveSectionTitle] = useState<string | null>(null);
@@ -1299,17 +1332,23 @@ export default function LearningModel() {
                 role="group"
                 aria-label={t("learning.currentSection")}
               >
-                <span className="left-panel-topic-bar-title">
-                  {t("learning.textbook")} {dataMatchedTopic.name}
-                </span>
-                <span className="left-panel-topic-bar-sep" aria-hidden="true">
-                  ·
-                </span>
-                <span className="left-panel-topic-bar-pages">
-                  {t("learning.pages", {
-                    start: String(dataMatchedTopic.startBook),
-                    end: String(dataMatchedTopic.endBook),
-                  })}
+                <span className="left-panel-topic-bar-label">{t("learning.textbook")}</span>
+                <span className="left-panel-topic-bar-title">{dataMatchedTopic.name}</span>
+                <span className="left-panel-topic-bar-meta">
+                  {textbookLinkLabel(dataMatchedTopic.bookId) ? (
+                    <>
+                      <span className="left-panel-topic-bar-book">{textbookLinkLabel(dataMatchedTopic.bookId)}</span>
+                      <span className="left-panel-topic-bar-sep" aria-hidden="true">
+                        ·
+                      </span>
+                    </>
+                  ) : null}
+                  <span className="left-panel-topic-bar-pages">
+                    {t("learning.pages", {
+                      start: String(dataMatchedTopic.startBook),
+                      end: String(dataMatchedTopic.endBook),
+                    })}
+                  </span>
                 </span>
               </div>
               <div className="left-panel-topic-bar-actions">
@@ -1319,6 +1358,7 @@ export default function LearningModel() {
                   onClick={() => openFeedback({ type: "content" })}
                   title={t("feedback.reportProblemTitle")}
                 >
+                  {FlagIcon}
                   {t("feedback.reportProblem")}
                 </button>
                 {activeSectionNote ? (
@@ -1334,6 +1374,7 @@ export default function LearningModel() {
                   onClick={() => setLeftPanelOpen(false)}
                   title={t("learning.hideSidebar")}
                 >
+                  {EyeOffIcon}
                   {t("learning.hide")}
                 </button>
               </div>
@@ -1347,6 +1388,7 @@ export default function LearningModel() {
               onClick={() => setLeftPanelOpen(false)}
               title={t("learning.hideSidebar")}
             >
+              {EyeOffIcon}
               {t("learning.hide")}
             </button>
           </div>
@@ -1364,15 +1406,7 @@ export default function LearningModel() {
                   <button
                     type="button"
                     onClick={() => setPracticeViewNote(false)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#0f766e",
-                      textDecoration: "underline",
-                      cursor: "pointer",
-                      padding: "6px 0",
-                      fontSize: "0.8rem",
-                    }}
+                    className="section-note-back-link"
                   >
                     ← Back to practice
                   </button>
@@ -1417,15 +1451,7 @@ export default function LearningModel() {
                   <button
                     type="button"
                     onClick={() => setGuideViewNote(false)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#0f766e",
-                      textDecoration: "underline",
-                      cursor: "pointer",
-                      padding: "6px 0",
-                      fontSize: "0.8rem",
-                    }}
+                    className="section-note-back-link"
                   >
                     ← Back to walkthrough
                   </button>
@@ -1523,11 +1549,14 @@ export default function LearningModel() {
           </div>
         )}
 
-        {/* Reset button */}
-        <div className="reset-box" data-onboarding="new-session">
-          <button type="button" onClick={reset} disabled={isAwaitingReply}>
-            {t("chat.newQuestion")}
-          </button>
+        {/* LAYOUT CHANGE (spec §5.4): title row; the tour still spotlights .reset-box. */}
+        <div className="chat-panel-titlebar">
+          <h2 className="chat-panel-title">{t("chat.tutorTitle")}</h2>
+          <div className="reset-box" data-onboarding="new-session">
+            <button type="button" onClick={reset} disabled={isAwaitingReply}>
+              {t("chat.newQuestion")}
+            </button>
+          </div>
         </div>
 
         {isAwaitingReply && (

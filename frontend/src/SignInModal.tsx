@@ -103,11 +103,11 @@ export default function SignInModal() {
         {/* Decorative brand panel */}
         <div className="signin-brand">
           <svg className="signin-brand-deco" viewBox="0 0 220 480" fill="none" aria-hidden>
-            <circle cx="170" cy="60" r="130" fill="rgba(255,255,255,0.03)" />
-            <circle cx="40" cy="380" r="100" fill="rgba(255,255,255,0.02)" />
-            <circle cx="190" cy="300" r="50" fill="rgba(94,234,212,0.05)" />
-            <line x1="0" y1="160" x2="220" y2="175" stroke="rgba(94,234,212,0.06)" strokeWidth="0.5" />
-            <line x1="0" y1="240" x2="220" y2="225" stroke="rgba(94,234,212,0.04)" strokeWidth="0.5" />
+            <circle cx="170" cy="60" r="130" fill="currentColor" fillOpacity="0.05" />
+            <circle cx="40" cy="380" r="100" fill="currentColor" fillOpacity="0.035" />
+            <circle cx="190" cy="300" r="50" fill="currentColor" fillOpacity="0.08" />
+            <line x1="0" y1="160" x2="220" y2="175" stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.5" />
+            <line x1="0" y1="240" x2="220" y2="225" stroke="currentColor" strokeOpacity="0.07" strokeWidth="0.5" />
           </svg>
           <div className="signin-brand-inner">
             <div className="signin-brand-icon">

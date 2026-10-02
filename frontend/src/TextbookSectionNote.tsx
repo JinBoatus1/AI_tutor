@@ -41,6 +41,10 @@ export function SectionNoteButton({ open, onToggle, panelId }: SectionNoteButton
       aria-controls={panelId}
       title={t("note.buttonTitle")}
     >
+      <svg className="left-panel-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M4 20h4L19 9l-4-4L4 16z" />
+        <path d="M13.5 6.5l4 4" />
+      </svg>
       {t("note.button")}
     </button>
   );

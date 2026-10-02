@@ -342,7 +342,12 @@ export default function Sidebar() {
           </button>
           <div className="sb-section-body">
             <div className="sb-progress-embed" data-onboarding="learning-progress" ref={progressEmbedRef}>
-              <LearningBarPanel variant="embed" studentId={studentId} onOutlineSectionPreview={previewSection} />
+              <LearningBarPanel
+                variant="embed"
+                studentId={studentId}
+                onOutlineSectionPreview={previewSection}
+                currentSection={bridge.currentSection}
+              />
               <div
                 className="sb-progress-resize"
                 role="separator"
@@ -422,10 +427,14 @@ export default function Sidebar() {
             </button>
           </div>
         ) : (
-          <button className="sb-signin" onClick={() => setShowSignIn(true)}>
-            <span className="sb-link-ic">{I.profile}</span>
-            <span className="sb-link-label">{t("sidebar.signIn")}</span>
-          </button>
+          <>
+            {/* LAYOUT CHANGE (spec §5.2): the old top banner's message lives here now. */}
+            <p className="sb-signin-prompt">{t("sidebar.signInPrompt")}</p>
+            <button className="sb-signin" onClick={() => setShowSignIn(true)}>
+              <span className="sb-link-ic">{I.profile}</span>
+              <span className="sb-link-label">{t("sidebar.signIn")}</span>
+            </button>
+          </>
         )}
       </div>
     </aside>

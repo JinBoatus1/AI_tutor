@@ -46,17 +46,11 @@ const EN = {
   "profile.errCatalogLoad":
     "Could not load your textbook list from the server (network or sign-in). Your local list was not changed.",
   "profile.appearance": "Appearance",
-  "profile.appearanceDesc":
-    "Page background and Learning Mode chat panel — each preset updates both so text stays easy to read.",
-  "profile.appearanceGroup": "Page and chat panel colors",
+  "profile.appearanceDesc": "Choose how AI Tutor looks. Every option keeps text easy to read.",
+  "profile.appearanceGroup": "Theme",
 
-  "theme.default": "Default",
-  "theme.mint": "Mint",
-  "theme.dark": "Dark",
-  "theme.warm": "Warm",
-  "theme.white": "White",
-  "theme.black": "Black",
-  "theme.titleSuffix": "page + chat panel",
+  "theme.paper": "Paper",
+  "theme.bright": "Bright",
 
   "sidebar.workspace": "Workspace",
   "sidebar.study": "Study",
@@ -67,6 +61,7 @@ const EN = {
   "sidebar.learningProgress": "Learning Progress",
   "sidebar.history": "History",
   "sidebar.signIn": "Sign in",
+  "sidebar.signInPrompt": "Sign in to save chats & track progress",
   "sidebar.signOut": "Sign out",
   "sidebar.signInHistory": "Sign in to keep your chat history.",
   "sidebar.guest": "Guest",
@@ -214,7 +209,7 @@ const EN = {
   "learning.zoomOut": "Zoom out",
   "learning.zoomReset": "Reset zoom to 100%",
   "learning.dragToPan": "Drag to pan the page",
-  "learning.textbook": "Textbook:",
+  "learning.textbook": "Textbook",
   "learning.pages": "Pages {start}–{end}",
   "learning.currentSection": "Current textbook section",
   "learning.hideSidebar": "Hide textbook sidebar",
@@ -342,6 +337,7 @@ const EN = {
 
   "chat.placeholder": "Ask a math question…",
   "chat.newQuestion": "Start a new session",
+  "chat.tutorTitle": "Tutor",
 
   "ask.whatIs": 'What is "{term}"? Explain using this section and give a short example.',
   "ask.followUp": "Please give another example or help me understand more deeply.",
@@ -441,16 +437,11 @@ const ZH: Record<MessageKey, string> = {
   "profile.errDeleteFailed": "删除失败。",
   "profile.errCatalogLoad": "无法从服务器加载教材列表（网络或登录问题），本地列表未更改。",
   "profile.appearance": "外观",
-  "profile.appearanceDesc": "页面背景与学习模式聊天面板 — 每个预设会同时更新两者，保证文字易读。",
-  "profile.appearanceGroup": "页面与聊天面板颜色",
+  "profile.appearanceDesc": "选择 AI Tutor 的外观。每个选项都保证文字清晰易读。",
+  "profile.appearanceGroup": "主题",
 
-  "theme.default": "默认",
-  "theme.mint": "薄荷",
-  "theme.dark": "深色",
-  "theme.warm": "暖色",
-  "theme.white": "白色",
-  "theme.black": "黑色",
-  "theme.titleSuffix": "页面 + 聊天面板",
+  "theme.paper": "纸",
+  "theme.bright": "亮白",
 
   "sidebar.workspace": "工作区",
   "sidebar.study": "学习",
@@ -461,6 +452,7 @@ const ZH: Record<MessageKey, string> = {
   "sidebar.learningProgress": "学习进度",
   "sidebar.history": "对话历史",
   "sidebar.signIn": "登录",
+  "sidebar.signInPrompt": "登录后可保存对话、同步学习进度",
   "sidebar.signOut": "退出",
   "sidebar.signInHistory": "登录以保存对话历史。",
   "sidebar.guest": "访客",
@@ -605,7 +597,7 @@ const ZH: Record<MessageKey, string> = {
   "learning.zoomOut": "缩小",
   "learning.zoomReset": "重置为 100%",
   "learning.dragToPan": "按住拖动可平移书页",
-  "learning.textbook": "教材：",
+  "learning.textbook": "教材",
   "learning.pages": "第 {start}–{end} 页",
   "learning.currentSection": "当前教材章节",
   "learning.hideSidebar": "隐藏教材侧栏",
@@ -726,6 +718,7 @@ const ZH: Record<MessageKey, string> = {
 
   "chat.placeholder": "输入数学问题…",
   "chat.newQuestion": "开始新会话",
+  "chat.tutorTitle": "导师",
 
   "ask.whatIs": "什么是「{term}」？请用本节内容解释并给一个简短示例。",
   "ask.followUp": "请再举一个例子或帮我加深理解。",
@@ -827,17 +820,11 @@ const ES: Record<MessageKey, string> = {
   "profile.errCatalogLoad":
     "No se pudo cargar la lista del servidor (red o inicio de sesión). La lista local no cambió.",
   "profile.appearance": "Apariencia",
-  "profile.appearanceDesc":
-    "Fondo de página y panel de chat del Modo de aprendizaje — cada preset actualiza ambos para mantener el texto legible.",
-  "profile.appearanceGroup": "Colores de página y panel de chat",
+  "profile.appearanceDesc": "Elige el aspecto de AI Tutor. Todas las opciones mantienen el texto fácil de leer.",
+  "profile.appearanceGroup": "Tema",
 
-  "theme.default": "Predeterminado",
-  "theme.mint": "Menta",
-  "theme.dark": "Oscuro",
-  "theme.warm": "Cálido",
-  "theme.white": "Blanco",
-  "theme.black": "Negro",
-  "theme.titleSuffix": "página + panel de chat",
+  "theme.paper": "Papel",
+  "theme.bright": "Claro",
 
   "sidebar.workspace": "Espacio de trabajo",
   "sidebar.study": "Estudio",
@@ -848,6 +835,7 @@ const ES: Record<MessageKey, string> = {
   "sidebar.learningProgress": "Progreso de aprendizaje",
   "sidebar.history": "Historial",
   "sidebar.signIn": "Iniciar sesión",
+  "sidebar.signInPrompt": "Inicia sesión para guardar tus chats y tu progreso",
   "sidebar.signOut": "Cerrar sesión",
   "sidebar.signInHistory": "Inicia sesión para guardar tu historial de chat.",
   "sidebar.guest": "Invitado",
@@ -995,7 +983,7 @@ const ES: Record<MessageKey, string> = {
   "learning.zoomOut": "Alejar",
   "learning.zoomReset": "Restablecer zoom al 100%",
   "learning.dragToPan": "Arrastra para mover la página",
-  "learning.textbook": "Libro:",
+  "learning.textbook": "Libro",
   "learning.pages": "Páginas {start}–{end}",
   "learning.currentSection": "Sección actual del libro",
   "learning.hideSidebar": "Ocultar panel del libro",
@@ -1123,6 +1111,7 @@ const ES: Record<MessageKey, string> = {
 
   "chat.placeholder": "Haz una pregunta de matemáticas…",
   "chat.newQuestion": "Iniciar una sesión nueva",
+  "chat.tutorTitle": "Tutor",
 
   "ask.whatIs": '¿Qué es "{term}"? Explica con esta sección y da un ejemplo breve.',
   "ask.followUp": "Da otro ejemplo o ayúdame a entender mejor.",

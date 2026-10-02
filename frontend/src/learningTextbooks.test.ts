@@ -9,6 +9,7 @@ import {
   fetchTextbookOptionsFromServer,
   reconcileSelectedTextbookWithCatalog,
   resetServerTextbookSessionForLogout,
+  textbookLinkLabel,
 } from "./learningTextbooks";
 import { BOOKS, builtinBookOptions } from "./books/registry";
 import type { BookDef } from "./books/registry";
@@ -185,5 +186,15 @@ describe("a second builtin book (fixture, not shipped)", () => {
     writeSelectedTextbookId("tb");
     resetServerTextbookSessionForLogout();
     expect(readSelectedTextbookId()).toBe("tb");
+  });
+});
+
+describe("textbookLinkLabel", () => {
+  it("returns the short label of a known book", () => {
+    expect(textbookLinkLabel("focs")).toBe("FOCS");
+  });
+
+  it("returns null for an unknown book", () => {
+    expect(textbookLinkLabel("no-such-book")).toBeNull();
   });
 });

@@ -7,41 +7,31 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  applyPageBackground,
-  readPageBackground,
-  writePageBackground,
-  type PageBackgroundId,
-} from "../profile/profileSettings";
+import { applyTheme, readTheme, writeTheme, type ThemeId } from "../profile/profileSettings";
 
 type ProfileSettingsContextValue = {
-  pageBackground: PageBackgroundId;
-  setPageBackground: (id: PageBackgroundId) => void;
+  theme: ThemeId;
+  setTheme: (id: ThemeId) => void;
 };
 
 const ProfileSettingsContext = createContext<ProfileSettingsContextValue | null>(null);
 
 export function ProfileSettingsProvider({ children }: { children: ReactNode }) {
-  const [pageBackground, setPageBackgroundState] = useState<PageBackgroundId>(() => readPageBackground());
+  const [theme, setThemeState] = useState<ThemeId>(() => readTheme());
 
   useLayoutEffect(() => {
-    applyPageBackground(pageBackground);
-  }, [pageBackground]);
+    applyTheme(theme);
+  }, [theme]);
 
-  const setPageBackground = useCallback((id: PageBackgroundId) => {
-    setPageBackgroundState(id);
-    writePageBackground(id);
-    applyPageBackground(id);
+  const setTheme = useCallback((id: ThemeId) => {
+    setThemeState(id);
+    writeTheme(id);
+    applyTheme(id);
   }, []);
 
-  const value = useMemo(
-    () => ({ pageBackground, setPageBackground }),
-    [pageBackground, setPageBackground]
-  );
+  const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 
-  return (
-    <ProfileSettingsContext.Provider value={value}>{children}</ProfileSettingsContext.Provider>
-  );
+  return <ProfileSettingsContext.Provider value={value}>{children}</ProfileSettingsContext.Provider>;
 }
 
 export function useProfileSettings(): ProfileSettingsContextValue {
