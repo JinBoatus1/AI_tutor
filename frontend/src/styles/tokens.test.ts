@@ -79,6 +79,12 @@ describe("tokens.css", () => {
     expect(Object.keys(VARIANTS.night).sort()).toEqual(names);
   });
 
+  it("never inverts scanned pages, in any variant (spec §4.6)", () => {
+    for (const [variant, vars] of Object.entries(VARIANTS)) {
+      expect(`${variant}: ${vars["--page-image-filter"]}`).not.toMatch(/invert\(/);
+    }
+  });
+
   it("makes Paper the :root default", () => {
     expect(css).toMatch(/:root,\s*\[data-theme="paper"\]\s*\{/);
   });
