@@ -71,6 +71,14 @@ describe("resolveStyle", () => {
     expect(document.querySelector("[data-cascade-has-0]")).toBeNull();
   });
 
+  it("lets an inline style beat rules, and an !important rule beat the inline style", () => {
+    const el = field();
+    el.setAttribute("style", "width: 9px; height: 9px");
+    const sheet = parseStyleSheet("#x, .box .field { width: 1px; } .field { height: 2px !important; }");
+    expect(resolveStyle(el, "width", [sheet])).toBe("9px");
+    expect(resolveStyle(el, "height", [sheet])).toBe("2px");
+  });
+
   it("skips pseudo-element rules", () => {
     const sheet = parseStyleSheet(".field::placeholder { width: 9px; }");
     expect(resolveStyle(field(), "width", [sheet])).toBeUndefined();
