@@ -1,6 +1,12 @@
 /* Home — neo-brutalist scrapbook study desk (teal/navy + DM fonts). Scoped under .home-scrap. */
 
 .home-scrap {
+  /* Night must not reach Home, which keeps its own look (spec D2). The global
+     selection, focus-ring and scrollbar rules read these instead of the theme's. */
+  color-scheme: light;
+  --selection: #e5ebe5;
+  --focus: #0f5e57;
+  --rule-2: #d9cfbe;
   --ink: #0c1222;
   --ink-2: #1b2540;
   --ink-line: rgba(12, 18, 34, 0.14);
