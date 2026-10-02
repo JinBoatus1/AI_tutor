@@ -7,6 +7,7 @@ export type CurrentSection = {
 };
 
 export type OutlineNodeRef = {
+  path: string;
   title: string;
   range: { start: number; end: number } | null;
   hasKids: boolean;
@@ -22,18 +23,25 @@ export function sameSection(a: CurrentSection | null, b: CurrentSection | null):
   return a.bookId === b.bookId && a.title === b.title && a.startBook === b.startBook && a.endBook === b.endBook;
 }
 
-/** Same book, and the same title or (for a leaf) the same page range. A chapter never matches on range alone. */
-export function isCurrentSection(
-  node: OutlineNodeRef,
+/**
+ * The one outline node to mark (the ribbon has one place, spec §4.5): in the selected book,
+ * the first node whose title matches, else the only leaf with the same page range. Sibling
+ * sections can share a page (FOCS 1.2 and 1.3 are both p. 8), so a range never picks between
+ * two leaves, and a chapter never matches on range alone.
+ */
+export function currentOutlinePath(
+  nodes: Iterable<OutlineNodeRef>,
   current: CurrentSection | null | undefined,
   selectedBookId: string,
-): boolean {
-  if (!current || current.bookId !== selectedBookId) return false;
-  if (normalizeSectionTitle(node.title) === normalizeSectionTitle(current.title)) return true;
-  return (
-    !node.hasKids &&
-    node.range !== null &&
-    node.range.start === current.startBook &&
-    node.range.end === current.endBook
-  );
+): string | null {
+  if (!current || current.bookId !== selectedBookId) return null;
+  const title = normalizeSectionTitle(current.title);
+  const sameRange: string[] = [];
+  for (const node of nodes) {
+    if (normalizeSectionTitle(node.title) === title) return node.path;
+    if (!node.hasKids && node.range?.start === current.startBook && node.range.end === current.endBook) {
+      sameRange.push(node.path);
+    }
+  }
+  return sameRange.length === 1 ? sameRange[0] : null;
 }

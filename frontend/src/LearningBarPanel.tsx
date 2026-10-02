@@ -22,7 +22,7 @@ import {
   trySyncLearnedToServer,
 } from "./utils/learningBarLocalStorage";
 import { useLocale } from "./i18n/LocaleContext";
-import { isCurrentSection, type CurrentSection } from "./utils/currentSection";
+import { currentOutlinePath, type CurrentSection, type OutlineNodeRef } from "./utils/currentSection";
 import { ONBOARDING_EXPAND_PATHS_EVENT } from "./onboarding/onboardingStorage";
 
 type FocsNode = Record<string, unknown>;
@@ -145,6 +145,22 @@ function sortSectionTokens(tokens: string[]): string[] {
   });
 }
 
+/** Every outline node in display order, with the path FocsTreeBranch gives it. */
+function outlineNodeRefs(tree: FocsNode): OutlineNodeRef[] {
+  const out: OutlineNodeRef[] = [];
+  function walk(path: string, title: string, node: FocsNode) {
+    const kids = childEntries(node);
+    out.push({ path, title, range: bookPageRangeFromNode(node), hasKids: kids.length > 0 });
+    for (const [childTitle, childNode] of kids) {
+      walk(`${path}/${childTitle}`, childTitle, childNode);
+    }
+  }
+  for (const [title, node] of childEntries(tree)) {
+    walk(title, title, node);
+  }
+  return out;
+}
+
 function collectExpandablePaths(tree: FocsNode): string[] {
   const out: string[] = [];
   function walk(path: string, node: FocsNode) {
@@ -170,8 +186,7 @@ export function FocsTreeBranch({
   onToggleExpand,
   path,
   onOpenPages,
-  currentSection,
-  selectedBookId,
+  currentPath,
 }: {
   title: string;
   node: FocsNode;
@@ -181,8 +196,8 @@ export function FocsTreeBranch({
   onToggleExpand: (path: string) => void;
   path: string;
   onOpenPages?: (detail: OutlineSectionPreviewDetail) => void;
-  currentSection: CurrentSection | null;
-  selectedBookId: string;
+  /** Path of the node to mark as on screen (currentOutlinePath), or null. */
+  currentPath: string | null;
 }) {
   const { t } = useLocale();
   const token = sectionTokenForNode(title, path);
@@ -193,7 +208,7 @@ export function FocsTreeBranch({
   const isOpen = expanded[path] !== false;
   const learned = learnedSet.has(token);
   const splitLearnAndTitle = Boolean(onOpenPages);
-  const isCurrent = isCurrentSection({ title, range: bookRange, hasKids }, currentSection, selectedBookId);
+  const isCurrent = path === currentPath;
 
   const toggleLearned = () =>
     onToggleToken(token, hasKids ? node : undefined, hasKids ? path : undefined);
@@ -279,8 +294,7 @@ export function FocsTreeBranch({
               onToggleExpand={onToggleExpand}
               path={path + "/" + k}
               onOpenPages={onOpenPages}
-              currentSection={currentSection}
-              selectedBookId={selectedBookId}
+              currentPath={currentPath}
             />
           ))}
         </ul>
@@ -485,6 +499,10 @@ export default function LearningBarPanel({
 
   const rootEntries = useMemo(() => childEntries(outlineTree), [outlineTree]);
   const expandablePaths = useMemo(() => collectExpandablePaths(outlineTree), [outlineTree]);
+  const currentPath = useMemo(
+    () => currentOutlinePath(outlineNodeRefs(outlineTree), currentSection, selectedTextbookId),
+    [outlineTree, currentSection, selectedTextbookId],
+  );
 
   useEffect(() => {
     setExpanded({});
@@ -660,8 +678,7 @@ export default function LearningBarPanel({
               onToggleExpand={onToggleExpand}
               path={k}
               onOpenPages={variant === "embed" ? onOutlineSectionPreview : undefined}
-              currentSection={currentSection ?? null}
-              selectedBookId={selectedTextbookId}
+              currentPath={currentPath}
             />
           ))}
         </ul>
