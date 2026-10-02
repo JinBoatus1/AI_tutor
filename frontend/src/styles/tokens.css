@@ -40,6 +40,7 @@
 /* Paper: the default look, mockup A's values. */
 :root,
 [data-theme="paper"] {
+  color-scheme: light;
   --desk: #e9e3d7;
   --desk-hi: #efeae0;
   --parch: #f4efe6;
@@ -82,7 +83,11 @@
 }
 
 /* Bright: whiter, less warm surfaces; the same ink and teal. */
+/* :root[…] outranks the Paper :root block on <html> in any order; the bare selector
+   serves the Appearance previews, which pin a variant on a span. */
+:root[data-theme="bright"],
 [data-theme="bright"] {
+  color-scheme: light;
   --desk: #ecebe8;
   --desk-hi: #f1f0ed;
   --parch: #f6f5f2;
@@ -124,8 +129,10 @@
     0 40px 80px -32px rgba(40, 36, 30, 0.27);
 }
 
-/* Night: a real dark theme. Defined now, switched on in PR2 (NIGHT_AVAILABLE). */
+/* Night: a real dark theme. As with Bright, the doubled selector makes block order irrelevant. */
+:root[data-theme="night"],
 [data-theme="night"] {
+  color-scheme: dark;
   --desk: #141210;
   --desk-hi: #191713;
   --parch: #1c1916;

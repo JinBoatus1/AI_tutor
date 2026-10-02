@@ -21,8 +21,8 @@ function block(selector: RegExp): Vars {
 
 const VARIANTS: Record<string, Vars> = {
   paper: block(/\[data-theme="paper"\]/),
-  bright: block(/^\[data-theme="bright"\]$/),
-  night: block(/^\[data-theme="night"\]$/),
+  bright: block(/(^|,\s*)\[data-theme="bright"\]$/),
+  night: block(/(^|,\s*)\[data-theme="night"\]$/),
 };
 
 function resolve(vars: Vars, name: string, depth = 0): string {
@@ -79,7 +79,23 @@ describe("tokens.css", () => {
     expect(Object.keys(VARIANTS.night).sort()).toEqual(names);
   });
 
+  it("never inverts scanned pages, in any variant (spec §4.6)", () => {
+    for (const [variant, vars] of Object.entries(VARIANTS)) {
+      expect(`${variant}: ${vars["--page-image-filter"]}`).not.toMatch(/invert\(/);
+    }
+  });
+
   it("makes Paper the :root default", () => {
     expect(css).toMatch(/:root,\s*\[data-theme="paper"\]\s*\{/);
+  });
+
+  it.each([
+    [/\[data-theme="paper"\]/, "light"],
+    [/(^|,\s*)\[data-theme="bright"\]$/, "light"],
+    [/(^|,\s*)\[data-theme="night"\]$/, "dark"],
+  ])("tells the browser the scheme of %s, for native controls and scrollbars", (selector, scheme) => {
+    const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = [...clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => selector.test(m[1].trim()));
+    expect(/color-scheme:\s*(\w+);/.exec(rule?.[2] ?? "")?.[1]).toBe(scheme);
   });
 });

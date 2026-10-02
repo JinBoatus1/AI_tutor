@@ -1,7 +1,7 @@
 // A small CSS cascade for tests. jsdom's getComputedStyle ignores specificity, and the CSS
 // tests that read source text cannot see a rule losing to another file's rule, so this
-// resolves which declaration an element gets: importance, then specificity, then source
-// order. It knows style rules, @media on max-width (px) and prefers-reduced-motion,
+// resolves which declaration an element gets: importance, then the inline style attribute,
+// then specificity, then source order. It knows style rules, @media on max-width (px) and prefers-reduced-motion,
 // @supports (assumed true), and the :hover / :focus / :focus-visible / :focus-within /
 // :active states. Rules for pseudo-elements are skipped; a selector or media query it
 // cannot evaluate throws instead of being ignored.
@@ -260,8 +260,9 @@ function beats(declaration: Declaration, s: Specificity, order: number, winner: 
 }
 
 /**
- * The declared value `property` gets on `el` from `sheets` (later sheets are later source),
- * or undefined when no rule sets it and the element inherits or takes the initial value.
+ * The declared value `property` gets on `el` from `sheets` (later sheets are later source) and
+ * its style attribute, or undefined when nothing sets it and the element inherits or takes the
+ * initial value. An inline style beats every normal rule; an !important rule beats it.
  */
 export function resolveStyle(
   el: Element,
@@ -284,6 +285,8 @@ export function resolveStyle(
         }
       }
     }
+    const inline = parseDeclarations(el.getAttribute("style") ?? "").get(property);
+    if (inline && (inline.important || !winner?.declaration.important)) return inline.value;
     return winner?.declaration.value;
   });
 }

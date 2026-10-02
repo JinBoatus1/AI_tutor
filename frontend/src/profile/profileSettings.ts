@@ -1,8 +1,8 @@
 /** Appearance: which Paper & Ink variant the app uses (spec §4.4). Stored only in this browser. */
 export type ThemeId = "paper" | "bright" | "night";
 
-/** Night ships in PR2. While false, it is neither offered nor applied. Keep index.html in sync. */
-export const NIGHT_AVAILABLE = false;
+/** Night shipped in PR2. The switch stays so index.html's copy can be checked against this one. */
+export const NIGHT_AVAILABLE = true;
 
 export const STORAGE_KEY = "ai_tutor_profile_settings";
 

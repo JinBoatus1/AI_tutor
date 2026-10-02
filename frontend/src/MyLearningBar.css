@@ -63,7 +63,8 @@
 }
 
 .my-learning-bar-book-link:hover {
-  color: var(--teal-press);
+  color: var(--teal);
+  text-decoration-thickness: 2px;
 }
 
 .my-learning-bar-book-link:focus-visible {

@@ -69,7 +69,17 @@ describe("applyTheme", () => {
   });
 });
 
-it("offers Night only once it ships", () => {
-  expect(THEME_OPTIONS.includes("night")).toBe(NIGHT_AVAILABLE);
-  expect(THEME_OPTIONS.slice(0, 2)).toEqual(["paper", "bright"]);
+describe("Night (PR2)", () => {
+  it("is offered after Paper and Bright", () => {
+    expect(NIGHT_AVAILABLE).toBe(true);
+    expect(THEME_OPTIONS).toEqual(["paper", "bright", "night"]);
+  });
+
+  it("applies a saved Night choice", () => {
+    expect(resolveTheme({ theme: "night" })).toBe("night");
+  });
+
+  it.each(["dark", "black"])("lands legacy %s users in Night", (legacy) => {
+    expect(resolveTheme({ pageBackground: legacy })).toBe("night");
+  });
 });

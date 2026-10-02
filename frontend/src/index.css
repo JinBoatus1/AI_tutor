@@ -22,6 +22,12 @@ body {
     outline-offset: 2px;
 }
 
+/* KaTeX paints a formula it cannot parse with an inline color:#cc0000, unreadable in Night.
+   !important is the only way past an inline style. */
+.katex-error {
+    color: var(--danger) !important;
+}
+
 * {
     scrollbar-color: var(--rule-2) transparent;
 }

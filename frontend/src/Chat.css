@@ -394,7 +394,7 @@
 }
 
 .section-note-entry-toggle:hover {
-  color: var(--teal-press);
+  color: var(--teal);
   text-decoration: underline;
 }
 
@@ -1029,7 +1029,9 @@
 }
 
 .markdown-message a:hover {
-  color: var(--teal-press);
+  color: var(--teal);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 .markdown-message .katex-display {
   margin: 0.6em 0;
@@ -1263,6 +1265,7 @@
   object-fit: contain;
   border-radius: 8px;
   box-shadow: var(--sh-float);
+  filter: var(--page-image-filter);
 }
 
 .hidden-file-input {

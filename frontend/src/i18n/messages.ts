@@ -51,6 +51,7 @@ const EN = {
 
   "theme.paper": "Paper",
   "theme.bright": "Bright",
+  "theme.night": "Night",
 
   "sidebar.workspace": "Workspace",
   "sidebar.study": "Study",
@@ -442,6 +443,7 @@ const ZH: Record<MessageKey, string> = {
 
   "theme.paper": "纸",
   "theme.bright": "亮白",
+  "theme.night": "夜读",
 
   "sidebar.workspace": "工作区",
   "sidebar.study": "学习",
@@ -825,6 +827,7 @@ const ES: Record<MessageKey, string> = {
 
   "theme.paper": "Papel",
   "theme.bright": "Claro",
+  "theme.night": "Noche",
 
   "sidebar.workspace": "Espacio de trabajo",
   "sidebar.study": "Estudio",
