@@ -48,4 +48,12 @@ describe("index.html theme script", () => {
     }
     expect(runScript(stored)).toBe(expected);
   });
+
+  it.each([
+    ['{"theme":"night"}', "night"],
+    ['{"pageBackground":"dark"}', "night"],
+    ['{"pageBackground":"black"}', "night"],
+  ])("applies Night before first paint for %s", (stored, expected) => {
+    expect(runScript(stored)).toBe(expected);
+  });
 });

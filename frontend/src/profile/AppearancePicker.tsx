@@ -1,8 +1,15 @@
 import type { MessageKey } from "../i18n/messages";
 import { useLocale } from "../i18n/LocaleContext";
 import { useProfileSettings } from "../context/ProfileSettingsContext";
-import { THEME_OPTIONS } from "./profileSettings";
+import { THEME_OPTIONS, type ThemeId } from "./profileSettings";
 import "./AppearancePicker.css";
+
+/** Each variant's label. A missing entry is a type error, which a template-literal cast would hide. */
+const THEME_LABELS: Record<ThemeId, MessageKey> = {
+  paper: "theme.paper",
+  bright: "theme.bright",
+  night: "theme.night",
+};
 
 /** The Appearance card body: one preview tile per available Paper & Ink variant (spec §5.7). */
 export default function AppearancePicker() {
@@ -27,7 +34,7 @@ export default function AppearancePicker() {
               <span className="theme-tile-dot" />
             </span>
           </span>
-          <span className="profile-bg-swatch-label">{t(`theme.${id}` as MessageKey)}</span>
+          <span className="profile-bg-swatch-label">{t(THEME_LABELS[id])}</span>
         </button>
       ))}
     </div>

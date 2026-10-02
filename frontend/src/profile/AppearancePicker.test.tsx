@@ -42,11 +42,11 @@ describe("AppearancePicker", () => {
     }
   });
 
-  it("offers Paper and Bright as radios and checks the saved one", () => {
+  it("offers Paper, Bright and Night as radios and checks the saved one", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: "bright" }));
     renderPicker();
     const radios = screen.getAllByRole("radio");
-    expect(radios.map((r) => r.textContent)).toEqual(["Paper", "Bright"]);
+    expect(radios.map((r) => r.textContent)).toEqual(["Paper", "Bright", "Night"]);
     expect(screen.getByRole("radio", { name: "Bright" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeInTheDocument();
   });
@@ -60,9 +60,16 @@ describe("AppearancePicker", () => {
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 
+  it("applies and stores Night", () => {
+    renderPicker();
+    fireEvent.click(screen.getByRole("radio", { name: "Night" }));
+    expect(document.documentElement.getAttribute("data-theme")).toBe("night");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('{"theme":"night"}');
+  });
+
   it("pins each preview to its own variant", () => {
     const { container } = renderPicker();
     const previews = [...container.querySelectorAll(".theme-tile-preview")];
-    expect(previews.map((p) => p.getAttribute("data-theme"))).toEqual(["paper", "bright"]);
+    expect(previews.map((p) => p.getAttribute("data-theme"))).toEqual(["paper", "bright", "night"]);
   });
 });

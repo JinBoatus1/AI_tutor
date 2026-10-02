@@ -8,7 +8,7 @@
       /* Apply the saved Appearance variant before first paint (spec §4.4).
          Mirrors resolveTheme() in src/profile/profileSettings.ts; indexHtmlThemeScript.test.ts keeps them in sync. */
       (function () {
-        var NIGHT_AVAILABLE = false;
+        var NIGHT_AVAILABLE = true;
         var LEGACY = {"default":"paper","warm":"paper","mint":"paper","white":"bright","dark":"night","black":"night"};
         try {
           var raw = localStorage.getItem("ai_tutor_profile_settings");
