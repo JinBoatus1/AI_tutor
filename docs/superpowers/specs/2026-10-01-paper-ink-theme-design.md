@@ -1,7 +1,7 @@
 # Paper & Ink Theme: Design Spec
 
 **Date:** 2026-10-01
-**Status:** Approved by the user on 2026-10-02, after the section-by-section approval in conversation on 2026-10-01. While the plan was written it was amended with D10, the chat title row, the `learning.textbook` copy and `AppearancePicker`.
+**Status:** Approved by the user on 2026-10-02, after the section-by-section approval in conversation on 2026-10-01. While the plan was written it was amended with D10, the chat title row, the `learning.textbook` copy and `AppearancePicker`. After the final code review (2026-10-02) it was amended in §5.2 (one current node per book; Sign in on phones), §5.7 (tile width) and §5.9.
 **Branch:** `feat/paper-ink-theme`, from `function` at `956eda9`.
 **Design source:** mockup A, "Paper & Ink", chosen by the team from three directions. The mockup files stay outside the repo because one embeds a page of a copyrighted textbook. Every value this spec needs from them is copied into §4.
 
@@ -201,10 +201,10 @@ Each section names the restyle. Structure stays as it is unless a change is mark
   - A learned section shows an ink check; an unlearned one shows a hollow `--ink-4` circle. The click toggles exactly as today.
   - The current section is a `--sheet` card with the `--ribbon` bookmark, and its title button gets `aria-current="true"`.
     - **Which section is current:** the section the textbook panel shows. LearningModel publishes `{ bookId, title, startBook, endBook }` from `dataMatchedTopic` through `SessionBridge`, or `null` when nothing is shown or Learning Mode unmounts.
-    - **How a node matches:** a node is current when the outline's selected book equals `bookId` and either:
-      - its title equals `title`, compared after trimming, collapsing whitespace and lowercasing; or
-      - it is a leaf whose page range equals `startBook`–`endBook`.
-    - A chapter that only shares a start page never matches.
+    - **Which node is marked:** exactly one, resolved once over the whole outline when its selected book equals `bookId`:
+      - the first node whose title equals `title`, compared after trimming, collapsing whitespace and lowercasing; otherwise
+      - the only leaf whose page range equals `startBook`–`endBook`. Sibling sections can share a page (FOCS 1.2 and 1.3 are both p. 8), so a range two leaves share marks nothing.
+    - A chapter never matches on its page range alone.
     - Publishing an equal value is a no-op, so the bridge cannot loop on re-renders.
     - Chapters containing the current section are not auto-expanded (§9).
   - The Learned / Not learned legend stays.
@@ -212,8 +212,9 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 - **Footer:**
   - Feedback; then, when signed out, the new one-line prompt (§6) in `--ink-3` above the Sign in button, now outlined in `--teal-edge` with `--teal` text.
   - When signed in, the avatar and name as today.
+  - **Phones (768px and below):** the stacked layout clips the sidebar to a small box, as on base, which hides the footer. A guest's Sign in button floats in the empty strip to the right of that box, as an outlined pill on `--sheet`, so phones keep the sign-in control the old banner gave them.
 - **Collapsed rail and Tour button:** restyled; the Tour button is outlined.
-- **Layout change:** the sign-in prompt line in the footer.
+- **Layout changes:** the sign-in prompt line in the footer, and the floating Sign in button on phones.
 
 ### 5.3 Textbook panel (`App.css`, `Chat.css` panel rules, `LearningModel.tsx`)
 
@@ -265,6 +266,7 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 - Each settings section is a `--sheet` card on `--paper`.
 - The Appearance card shows one preview tile per available variant: two in PR1, three in PR2.
   - Each tile is a small sidebar, page and chat sketch scoped with its own `data-theme`, so it needs no hard-coded colors.
+  - A tile is 9.5rem wide, capped at its column, and the sketch stretches across it.
   - The tiles form a radiogroup, keep the existing ARIA and keyboard behavior, and use the new copy (§6).
 - The textbook error message's inline `#c62828` becomes the `.profile-error` class in `--danger`.
 
@@ -276,7 +278,7 @@ Each section names the restyle. Structure stays as it is unless a change is mark
 
 ### 5.9 Mobile
 
-The existing breakpoints and responsive behavior stay. Only paint properties change. The floating pager also fits phone widths.
+The existing breakpoints and responsive behavior stay. Only paint properties change, except the guest Sign in button, which floats on phones (§5.2). The floating pager also fits phone widths.
 
 ## 6. Copy changes (en / zh / es)
 
@@ -400,6 +402,7 @@ The first implementation plan covers PR1 only. PR2 gets its own short plan once 
   - the composer's page chip.
 - Possibly a "follow system" theme option once Night has proven itself.
 - Auto-expanding the outline chapter that contains the current section.
+- A phone layout pass. Below 769px the sidebar is a clipped 72px box that hides navigation, and the chat column gets very narrow when the textbook is open. Both are the same on base.
 
 ## 10. Risks
 
