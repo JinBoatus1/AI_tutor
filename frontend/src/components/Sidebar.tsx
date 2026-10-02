@@ -342,7 +342,12 @@ export default function Sidebar() {
           </button>
           <div className="sb-section-body">
             <div className="sb-progress-embed" data-onboarding="learning-progress" ref={progressEmbedRef}>
-              <LearningBarPanel variant="embed" studentId={studentId} onOutlineSectionPreview={previewSection} />
+              <LearningBarPanel
+                variant="embed"
+                studentId={studentId}
+                onOutlineSectionPreview={previewSection}
+                currentSection={bridge.currentSection}
+              />
               <div
                 className="sb-progress-resize"
                 role="separator"

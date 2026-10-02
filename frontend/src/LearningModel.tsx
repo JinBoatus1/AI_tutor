@@ -176,6 +176,22 @@ export default function LearningModel() {
     endBook: number;
     sectionHint?: string;
   } | null>(null);
+  // Tell the sidebar outline which section is on screen (spec D10). Depend on the stable
+  // publishSection, never on `bridge`, whose identity changes every provider render.
+  const { publishSection } = bridge;
+  useEffect(() => {
+    publishSection(
+      dataMatchedTopic
+        ? {
+            bookId: dataMatchedTopic.bookId,
+            title: dataMatchedTopic.name,
+            startBook: dataMatchedTopic.startBook,
+            endBook: dataMatchedTopic.endBook,
+          }
+        : null,
+    );
+  }, [dataMatchedTopic, publishSection]);
+  useEffect(() => () => publishSection(null), [publishSection]);
   // Client-side trigger for Practice mode (eng-review #2/#3): captured synchronously
   // from the outline click, NOT from the server-set dataMatchedTopic.
   const [activeSectionTitle, setActiveSectionTitle] = useState<string | null>(null);
