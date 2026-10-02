@@ -18,10 +18,11 @@ function card(): Element[] {
 }
 
 describe("Auto Grader", () => {
+  // A transparent outline, not none: forced-colors mode repaints it, so focus stays visible in High Contrast.
   it("shows one focus ring on the criteria textarea, its own", () => {
     card();
     const area = document.querySelector(".autograder-textarea")!;
-    expect(both(area, "outline", { states: ["focus-visible"] })).toEqual(["none", "none"]);
+    expect(both(area, "outline", { states: ["focus-visible"] })).toEqual(["2px solid transparent", "2px solid transparent"]);
     expect(both(area, "box-shadow", { states: ["focus-visible"] })).toEqual([RING, RING]);
   });
 

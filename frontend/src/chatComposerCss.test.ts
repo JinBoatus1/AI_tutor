@@ -36,7 +36,8 @@ describe("chat composer", () => {
 
   it("shows one focus ring, the shell's, however the input is focused", () => {
     const input = composer();
-    expect(both(input, "outline", { states: ["focus-visible"] })).toEqual(["none", "none"]);
+    // Transparent, not none: forced-colors mode repaints it, so focus stays visible in High Contrast.
+    expect(both(input, "outline", { states: ["focus-visible"] })).toEqual(["2px solid transparent", "2px solid transparent"]);
     expect(both(input.parentElement!, "box-shadow", { states: ["focus-within"] })).toEqual([
       "0 0 0 3px var(--teal-tint)",
       "0 0 0 3px var(--teal-tint)",

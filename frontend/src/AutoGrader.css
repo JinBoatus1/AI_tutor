@@ -176,9 +176,10 @@
   box-shadow: 0 0 0 3px var(--teal-tint);
 }
 
-/* The border and ring above are the focus indicator; this beats the global :focus-visible outline. */
+/* A transparent outline, not none: the ring above is the visible focus in normal mode, and
+   forced-colors mode (where box-shadow is dropped) repaints the outline. Beats the global one. */
 .autograder-textarea:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
 }
 
 .autograder-textarea::placeholder {
