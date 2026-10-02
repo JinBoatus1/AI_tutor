@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { MessageKey } from "../i18n/messages";
 import type { CurrentSection } from "../utils/currentSection";
@@ -65,5 +65,18 @@ describe("Sidebar", () => {
     state.currentSection = { bookId: "focs", title: "1.1 Modeling Epidemics", startBook: 7, endBook: 7 };
     renderSidebar();
     expect(state.outlineProps[state.outlineProps.length - 1]?.currentSection).toEqual(state.currentSection);
+  });
+
+  it("shows the sign-in prompt above Sign in when signed out", () => {
+    renderSidebar();
+    const prompt = screen.getByText("Sign in to save chats & track progress");
+    expect(prompt).toHaveClass("sb-signin-prompt");
+    expect(prompt.nextElementSibling).toHaveClass("sb-signin");
+  });
+
+  it("hides the prompt when signed in", () => {
+    state.user = { displayName: "Student", email: "s@example.com", photoURL: null, isAnonymous: false };
+    renderSidebar();
+    expect(screen.queryByText("Sign in to save chats & track progress")).toBeNull();
   });
 });

@@ -9,20 +9,17 @@ const SRC = fileURLToPath(new URL("..", import.meta.url));
 
 /** Files that still hold legacy colors. Each migration task removes its files; Task 9 empties this. */
 const PENDING = new Set<string>([
-  "App.css",
   "AutoGrader.css",
   "Chat.css",
   "ChatHistory.css",
   "Grades.css",
   "LearningModel.tsx",
-  "MyLearningBar.css",
   "SignInModal.css",
   "SignInModal.tsx",
   "UserProfile.css",
   "UserProfile.tsx",
   "components/GooeyNav.css",
   "components/OnboardingTour.css",
-  "components/Sidebar.css",
   "feedback/FeedbackModal.css",
   "practice/Practice.css",
 ]);

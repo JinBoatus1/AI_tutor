@@ -39,18 +39,19 @@
 }
 
 .my-learning-bar-title {
+  font-family: var(--serif);
   font-size: clamp(1.35rem, 3vw, 1.85rem);
-  font-weight: 800;
-  color: #0f766e;
+  font-weight: 600;
+  color: var(--ink);
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.25;
 }
 
 .my-learning-bar-book-link {
   font: inherit;
-  font-weight: 800;
-  color: #0d9488;
+  font-weight: 600;
+  color: var(--teal);
   background: none;
   border: none;
   padding: 0 2px;
@@ -62,11 +63,11 @@
 }
 
 .my-learning-bar-book-link:hover {
-  color: #115e59;
+  color: var(--teal-press);
 }
 
 .my-learning-bar-book-link:focus-visible {
-  outline: 2px solid #0d9488;
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -79,10 +80,10 @@
   min-width: 220px;
   max-width: min(100%, 280px);
   padding: 6px 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--sheet);
+  border: 1px solid var(--rule-2);
   border-radius: 10px;
-  box-shadow: 0 10px 30px -8px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--sh-float);
 }
 
 .my-learning-bar-book-popover-hint {
@@ -91,7 +92,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ink-3);
 }
 
 .my-learning-bar-book-option {
@@ -105,7 +106,7 @@
   background: transparent;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--ink-2);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
@@ -113,28 +114,28 @@
 }
 
 .my-learning-bar-book-option:hover {
-  background: #f1f5f9;
+  background: var(--track);
 }
 
 .my-learning-bar-book-option--active {
-  background: #f0fdfa;
-  color: #0f766e;
+  background: var(--teal-tint);
+  color: var(--teal);
 }
 
 .my-learning-bar-book-check {
-  color: #0d9488;
+  color: var(--teal);
   font-weight: 700;
 }
 
 .my-learning-bar-meta {
   font-size: 0.88rem;
-  color: #64748b;
+  color: var(--ink-3);
   margin: 0 0 12px;
   line-height: 1.45;
 }
 
 .my-learning-bar-saving {
-  color: #0f766e;
+  color: var(--ink-2);
   font-weight: 600;
 }
 
@@ -144,6 +145,7 @@
   gap: 16px;
   font-size: 0.82rem;
   margin-bottom: 14px;
+  color: var(--ink-2);
 }
 
 .my-learning-bar-legend span {
@@ -160,21 +162,21 @@
 }
 
 .my-learning-bar-dot--learned {
-  background: #0d9488;
-  box-shadow: 0 0 0 2px #99f6e4;
+  background: var(--ink-2);
+  box-shadow: 0 0 0 2px var(--track);
 }
 
 .my-learning-bar-dot--not {
-  background: #e2e8f0;
-  box-shadow: 0 0 0 2px #cbd5e1;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink-4);
 }
 
 .my-learning-bar-tree {
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--sheet);
+  border: 1px solid var(--rule-2);
   border-radius: 14px;
   padding: 14px 16px 18px;
-  box-shadow: 0 4px 24px rgba(15, 118, 110, 0.06);
+  box-shadow: var(--sh-raised);
 }
 
 .my-learning-bar-expand-row {
@@ -183,15 +185,15 @@
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--rule);
 }
 
 .my-learning-bar-expand-btn {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid #99f6e4;
-  background: #f0fdfa;
-  color: #0f766e;
+  border: 1px solid var(--teal-edge);
+  background: transparent;
+  color: var(--teal);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -199,33 +201,18 @@
 }
 
 .my-learning-bar-expand-btn:hover {
-  background: #ccfbf1;
+  background: var(--teal-tint);
 }
 
 .my-learning-bar-status {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--ink-3);
   padding: 12px;
   text-align: center;
 }
 
 .my-learning-bar-status--error {
-  color: #b91c1c;
-}
-
-.my-learning-bar-retry {
-  margin-top: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid #99f6e4;
-  background: #f0fdfa;
-  color: #0f766e;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.my-learning-bar-retry:hover {
-  background: #ccfbf1;
+  color: var(--danger);
 }
 
 .focs-node {
@@ -238,7 +225,7 @@
   margin: 0;
   padding: 0 0 0 14px;
   list-style: none;
-  border-left: 1px solid #e2e8f0;
+  border-left: 1px solid var(--rule);
 }
 
 .focs-node__row {
@@ -252,7 +239,31 @@
 }
 
 .focs-node__row--toggle:hover {
-  background: #f0fdfa;
+  background: var(--track);
+}
+
+/* The section on screen (spec D10): a raised sheet with the bookmark ribbon. */
+.focs-node__row--current,
+.focs-node__row--current.focs-node__row--toggle:hover {
+  position: relative;
+  background: var(--sheet);
+  box-shadow: var(--sh-raised);
+}
+
+.focs-node__row--current::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -3px;
+  width: 8px;
+  height: 18px;
+  background: var(--ribbon);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+}
+
+.focs-node__row--current .focs-node__label {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .focs-node__chevron {
@@ -263,8 +274,8 @@
   align-items: center;
   justify-content: center;
   border: none;
-  background: #f1f5f9;
-  color: #475569;
+  background: transparent;
+  color: var(--ink-3);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.65rem;
@@ -273,7 +284,7 @@
 }
 
 .focs-node__chevron:hover {
-  background: #e2e8f0;
+  background: var(--track);
 }
 
 .focs-node__chevron--spacer {
@@ -281,32 +292,42 @@
   pointer-events: none;
 }
 
+/* Learned toggle: a hollow circle when not learned, an ink check when learned. */
 .focs-node__learn-dot {
   flex-shrink: 0;
   width: 14px;
   height: 14px;
   margin-top: 3px;
   border-radius: 50%;
-  border: 2px solid #94a3b8;
+  border: 2px solid var(--ink-4);
   padding: 0;
   cursor: pointer;
   background: transparent;
   box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
 }
 
 .focs-node__learn-dot--on {
-  border-color: #0d9488;
-  background: #14b8a6;
+  border-color: transparent;
+  background: transparent;
+}
+
+.focs-node__learn-dot--on::after {
+  content: "✓";
+  color: var(--ink-2);
+  font: 700 12px/1 var(--sans);
 }
 
 .focs-node__learn-dot--off:hover {
-  border-color: #64748b;
-  background: #f8fafc;
+  border-color: var(--ink-3);
+  background: var(--sheet);
 }
 
 .focs-node__label {
   flex: 1;
   min-width: 0;
+  font-family: var(--serif);
   font-size: 0.88rem;
   line-height: 1.4;
   text-align: left;
@@ -316,14 +337,20 @@
   padding: 2px 0;
 }
 
-.focs-node__label--learned {
-  color: #0f766e;
+/* Chapters (top-level rows) read as headings. */
+.focs-node > .focs-node > .focs-node__row .focs-node__label {
+  color: var(--ink);
   font-weight: 600;
 }
 
-.focs-node__label--not {
-  color: #475569;
+.focs-node__label--learned {
+  color: var(--ink-2);
   font-weight: 500;
+}
+
+.focs-node__label--not {
+  color: var(--ink-2);
+  font-weight: 400;
 }
 
 .focs-node__label--toggle {
@@ -337,13 +364,15 @@
 }
 
 .focs-node__range {
+  font-family: var(--mono);
   font-weight: 400;
-  color: #94a3b8;
+  color: var(--ink-3);
   font-size: 0.82em;
   margin-left: 4px;
 }
 
-/* Embedded in Learning Mode (width comes from parent .learning-bar-column) */
+/* Embedded in the sidebar (width comes from the parent). The sidebar is light parchment now,
+   so the embed only tightens spacing and lets the tree sit directly on the parchment. */
 .learning-bar-embed {
   flex: 1;
   min-width: 0;
@@ -352,8 +381,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: transparent; /* blend into the navy sidebar, not an ivory cutout */
-  color: #cdd6e4;
+  background: transparent;
+  color: var(--ink-2);
 }
 
 .learning-bar-embed-scroll {
@@ -390,7 +419,10 @@
 
 .learning-bar-embed .my-learning-bar-tree {
   padding: 10px 10px 12px;
-  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.05);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 .learning-bar-embed .focs-node__label {
@@ -411,47 +443,8 @@
   font-size: 0.75rem;
 }
 
-/* The embed lives INSIDE the navy sidebar, so it must read as part of the nav,
-   not an ivory block carved out of it. Dark/transparent panel, light text, teal
-   accents — the same language as the sidebar nav items. (Scoped to
-   .learning-bar-embed; the standalone /learning-bar page keeps its light look.) */
-.learning-bar-embed .my-learning-bar-title {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-weight: 400;
-  color: #eaf3ef;
-}
-.learning-bar-embed .my-learning-bar-book-link { color: #5eead4; }
-.learning-bar-embed .my-learning-bar-book-link:hover { color: #99f6e4; }
-.learning-bar-embed .my-learning-bar-meta { color: #8c98aa; }
-.learning-bar-embed .my-learning-bar-legend { color: #aab4c4; }
-.learning-bar-embed .my-learning-bar-tree {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  box-shadow: none;
-}
-.learning-bar-embed .my-learning-bar-expand-row { border-bottom-color: rgba(255, 255, 255, 0.1); }
-.learning-bar-embed .my-learning-bar-expand-btn {
-  border-color: rgba(94, 234, 212, 0.28);
-  background: rgba(94, 234, 212, 0.08);
-  color: #5eead4;
-}
-.learning-bar-embed .my-learning-bar-expand-btn:hover { background: rgba(94, 234, 212, 0.16); }
-.learning-bar-embed .focs-node__row--toggle:hover { background: rgba(255, 255, 255, 0.05); }
-.learning-bar-embed .focs-node__chevron {
-  background: rgba(255, 255, 255, 0.08);
-  color: #aab4c4;
-}
-.learning-bar-embed .focs-node__chevron:hover { background: rgba(255, 255, 255, 0.14); }
-.learning-bar-embed .focs-node__children { border-left-color: rgba(255, 255, 255, 0.12); padding-left: 10px; }
-.learning-bar-embed .focs-node__label--learned { color: #5eead4; }
-.learning-bar-embed .focs-node__label--not { color: #aab4c4; }
-.learning-bar-embed .focs-node__learn-dot { border-color: #5b6b82; margin-top: 0; }
-.learning-bar-embed .focs-node__learn-dot--on { border-color: #5eead4; background: #14b8a6; }
-.learning-bar-embed .focs-node__range {
-  font-family: 'DM Mono', ui-monospace, monospace;
-  color: #7c8aa0;
-}
+.learning-bar-embed .focs-node__children { padding-left: 10px; }
+.learning-bar-embed .focs-node__learn-dot { margin-top: 0; }
 
 /* The sidebar embed is tight on space and gets cramped when open. Drop the
    verbose instructions (the Learning Mode welcome already explains the dot +
