@@ -922,15 +922,6 @@
   line-height: 16px;
   color: var(--ink-2);
 }
-.markdown-message h1 {
-  font-size: 1.4rem;
-}
-.markdown-message h2 {
-  font-size: 1.24rem;
-}
-.markdown-message h3 {
-  font-size: 1.12rem;
-}
 .markdown-message p {
   margin: 0.4em 0;
   white-space: pre-wrap;

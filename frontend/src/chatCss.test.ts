@@ -17,4 +17,8 @@ describe("chat panel", () => {
     expect(css).toMatch(/\.msg-ai \.markdown-message:not\(\.markdown-message--user\)\s*\{[^}]*border-left:\s*2px solid var\(--teal-line\)/);
     expect(css).toMatch(/\.msg-ai \.markdown-message:not\(\.markdown-message--user\)\s*\{[^}]*font-family:\s*var\(--serif\)/);
   });
+  it("keeps tutor-answer headings as small labels (no per-level size overrides them)", () => {
+    const perLevel = [...css.matchAll(/(?<=\})\s*\.markdown-message h([1-6])\s*\{([^}]*)\}/g)].filter((m) => /font-size/.test(m[2]));
+    expect(perLevel.map((m) => `h${m[1]}`)).toEqual([]);
+  });
 });
