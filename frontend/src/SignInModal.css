@@ -1,12 +1,11 @@
-/* Sign-In Modal — Premium Split-Panel Design */
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+/* Sign-in modal on the Paper & Ink tokens (spec §5.8): a parchment brand panel and a sheet form. */
 
 /* ── Overlay ── */
 .signin-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(8, 12, 24, 0.55);
+  background: var(--scrim);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   display: flex;
@@ -24,16 +23,13 @@
 .signin-modal {
   position: relative;
   display: flex;
-  background: #fff;
+  background: var(--sheet);
   border-radius: 20px;
   width: 600px;
   max-width: 95vw;
   max-height: 92vh;
   overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 40px 120px -20px rgba(0, 0, 0, 0.45),
-    0 0 60px rgba(13, 148, 136, 0.06);
+  box-shadow: var(--sh-float);
   animation: signin-modal-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -53,7 +49,8 @@
   position: relative;
   width: 210px;
   flex-shrink: 0;
-  background: linear-gradient(170deg, #0c1222 0%, #0a1a2e 45%, #0c2828 100%);
+  background: var(--parch);
+  border-right: 1px solid var(--rule);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,6 +59,7 @@
 
 .signin-brand-deco {
   position: absolute;
+  color: var(--teal-line);
   inset: 0;
   width: 100%;
   height: 100%;
@@ -83,27 +81,27 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: rgba(94, 234, 212, 0.08);
-  border: 1px solid rgba(94, 234, 212, 0.12);
+  background: var(--teal-fill);
+  border: 1px solid var(--teal-fill);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5eead4;
+  color: var(--on-teal);
 }
 
 .signin-brand-title {
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 1.5rem;
-  font-weight: 400;
-  color: #f1f5f9;
+  font-weight: 500;
+  color: var(--ink);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
 .signin-brand-tagline {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.78rem;
-  color: rgba(148, 163, 184, 0.7);
+  color: var(--ink-2);
   margin: 0;
   line-height: 1.5;
   max-width: 160px;
@@ -126,7 +124,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #c4cdd8;
+  color: var(--ink-3);
   padding: 6px;
   border-radius: 8px;
   transition: color 0.2s, background 0.2s, transform 0.2s;
@@ -136,8 +134,8 @@
 }
 
 .signin-close:hover {
-  color: #475569;
-  background: #f1f5f9;
+  color: var(--ink);
+  background: var(--track);
   transform: rotate(90deg);
 }
 
@@ -147,30 +145,30 @@
 }
 
 .signin-title {
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: var(--serif);
   font-size: 1.6rem;
-  font-weight: 400;
-  color: #0f172a;
+  font-weight: 500;
+  color: var(--ink);
   margin: 0 0 6px;
   letter-spacing: -0.02em;
 }
 
 .signin-subtitle {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--ink-3);
   margin: 0;
   font-weight: 400;
 }
 
 /* ── Error ── */
 .signin-error {
-  background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
-  color: #dc2626;
-  border: 1px solid #fecaca;
+  background: var(--danger-tint);
+  color: var(--danger);
+  border: 1px solid var(--danger);
   border-radius: 10px;
   padding: 11px 16px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.82rem;
   margin-bottom: 20px;
   text-align: center;
@@ -195,13 +193,13 @@
   gap: 14px;
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #eef0f4;
+  border: 1px solid var(--rule-2);
   border-radius: 12px;
-  background: #fff;
-  font-family: 'DM Sans', sans-serif;
+  background: var(--sheet);
+  font-family: var(--sans);
   font-size: 0.88rem;
   font-weight: 500;
-  color: #1e293b;
+  color: var(--ink);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   animation: signin-btn-in 0.35s ease-out both;
@@ -224,14 +222,14 @@
 }
 
 .signin-provider-btn:hover:not(:disabled) {
-  border-color: #dce0e8;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: var(--teal-edge);
+  box-shadow: var(--sh-raised);
   transform: translateY(-1px);
 }
 
 .signin-provider-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
 }
 
 .signin-provider-btn:disabled {
@@ -256,40 +254,40 @@
 }
 
 .signin-provider-icon--google {
-  background: #eef4ff;
-  border: 1px solid #dbeafe;
+  background: var(--sheet);
+  border: 1px solid var(--rule-2);
 }
 
 .signin-provider-icon--email {
-  background: #f0fdfa;
-  border: 1px solid #ccfbf1;
-  color: #0d9488;
+  background: var(--teal-tint);
+  border: 1px solid var(--teal-edge);
+  color: var(--teal);
 }
 
 .signin-provider-icon--anon {
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
-  color: #94a3b8;
+  background: var(--track);
+  border: 1px solid var(--rule-2);
+  color: var(--ink-3);
 }
 
 /* Provider-specific hover accents */
 .signin-provider--google:hover:not(:disabled) {
-  border-color: #bfdbfe;
-  background: #fafcff;
+  border-color: var(--teal-edge);
+  background: var(--sheet);
 }
 
 .signin-provider--email:hover:not(:disabled) {
-  border-color: #99f6e4;
-  background: #f7fffe;
+  border-color: var(--teal-edge);
+  background: var(--sheet);
 }
 
 .signin-provider--anonymous {
-  color: #64748b;
+  color: var(--ink-2);
 }
 
 .signin-provider--anonymous:hover:not(:disabled) {
-  border-color: #e2e8f0;
-  background: #fafbfc;
+  border-color: var(--rule-input);
+  background: var(--sheet);
 }
 
 /* ── Divider ── */
@@ -307,13 +305,13 @@
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+  background: var(--rule);
 }
 
 .signin-divider span {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.72rem;
-  color: #b0b8c4;
+  color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 500;
@@ -336,25 +334,25 @@
 .signin-input {
   width: 100%;
   padding: 13px 16px;
-  border: 1.5px solid #eef0f4;
+  border: 1.5px solid var(--rule-input);
   border-radius: 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--sans);
   font-size: 0.88rem;
-  color: #1e293b;
-  background: #fafbfc;
+  color: var(--ink);
+  background: var(--sheet);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   box-sizing: border-box;
 }
 
 .signin-input:focus {
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.08);
-  background: #fff;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint);
+  background: var(--sheet);
 }
 
 .signin-input::placeholder {
-  color: #b0b8c4;
+  color: var(--ink-3);
 }
 
 /* ── Submit button ── */
@@ -363,9 +361,9 @@
   padding: 13px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 50%, #0d9488 100%);
-  color: #fff;
-  font-family: 'DM Sans', sans-serif;
+  background: var(--teal-fill);
+  color: var(--on-teal);
+  font-family: var(--sans);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -378,14 +376,15 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  background: none;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
 .signin-submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px -4px rgba(13, 148, 136, 0.4);
+  background: var(--teal-press);
+  box-shadow: var(--sh-raised);
 }
 
 .signin-submit-btn:hover:not(:disabled)::after {
@@ -405,8 +404,8 @@
 .signin-toggle-link {
   background: none;
   border: none;
-  color: #0d9488;
-  font-family: 'DM Sans', sans-serif;
+  color: var(--teal);
+  font-family: var(--sans);
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -416,15 +415,15 @@
 }
 
 .signin-toggle-link:hover {
-  color: #0f766e;
+  color: var(--teal-press);
   text-decoration: underline;
 }
 
 .signin-back-link {
   background: none;
   border: none;
-  color: #94a3b8;
-  font-family: 'DM Sans', sans-serif;
+  color: var(--teal);
+  font-family: var(--sans);
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
@@ -434,7 +433,7 @@
 }
 
 .signin-back-link:hover {
-  color: #475569;
+  color: var(--teal-press);
   text-decoration: underline;
 }
 

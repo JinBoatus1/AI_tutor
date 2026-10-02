@@ -1,4 +1,4 @@
-/* In-app feedback dialog. It follows SignInModal's look; the text and teal colours meet WCAG AA. */
+/* In-app feedback dialog on the Paper & Ink tokens (spec §5.8): a raised sheet over the warm scrim. */
 .feedback-overlay {
   position: fixed;
   inset: 0;
@@ -8,7 +8,7 @@
   justify-content: center;
   padding: 16px;
   box-sizing: border-box;
-  background: rgba(8, 12, 24, 0.55);
+  background: var(--scrim);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
 }
@@ -22,10 +22,10 @@
   box-sizing: border-box;
   padding: 32px 32px 28px;
   border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 40px 120px -20px rgba(0, 0, 0, 0.45);
-  font-family: "DM Sans", sans-serif;
-  color: #0f172a;
+  background: var(--sheet);
+  box-shadow: var(--sh-float);
+  font-family: var(--sans);
+  color: var(--ink);
 }
 
 .feedback-close {
@@ -37,17 +37,17 @@
   border: none;
   border-radius: 8px;
   background: none;
-  color: #64748b;
+  color: var(--ink-3);
   cursor: pointer;
 }
-.feedback-close:hover:not(:disabled) { color: #0f172a; background: #f1f5f9; }
+.feedback-close:hover:not(:disabled) { color: var(--ink); background: var(--track); }
 .feedback-close:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .feedback-title {
   margin: 0 0 20px;
-  font-family: "DM Serif Display", Georgia, serif;
+  font-family: var(--serif);
   font-size: 1.6rem;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 
@@ -57,7 +57,7 @@
   padding: 0;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--ink-2);
 }
 
 .feedback-types {
@@ -74,41 +74,41 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--rule-2);
   border-radius: 12px;
   font-size: 0.88rem;
   cursor: pointer;
 }
-.feedback-type:has(input:checked) { border-color: #0f766e; background: #f0fdfa; }
-.feedback-type input { margin: 0; accent-color: #0f766e; }
+.feedback-type:has(input:checked) { border-color: var(--teal); background: var(--teal-tint); }
+.feedback-type input { margin: 0; accent-color: var(--teal); }
 
 .feedback-textarea {
   display: block;
   width: 100%;
   box-sizing: border-box;
   padding: 12px 14px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--rule-input);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--sheet);
   font: inherit;
   font-size: 0.9rem;
-  color: #1e293b;
+  color: var(--ink);
   resize: vertical;
 }
 .feedback-textarea:focus {
   outline: none;
-  border-color: #0f766e;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
-  background: #fff;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px var(--teal-tint);
+  background: var(--sheet);
 }
-.feedback-textarea::placeholder { color: #64748b; }
+.feedback-textarea::placeholder { color: var(--ink-3); }
 
-.feedback-count { margin: 6px 0 14px; text-align: right; font-size: 0.78rem; color: #5b6672; }
+.feedback-count { margin: 6px 0 14px; text-align: right; font-size: 0.78rem; color: var(--ink-3); }
 
-.feedback-contact { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: #1e293b; cursor: pointer; }
-.feedback-contact input { margin: 0; accent-color: #0f766e; }
+.feedback-contact { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--ink); cursor: pointer; }
+.feedback-contact input { margin: 0; accent-color: var(--teal); }
 
-.feedback-attached { margin: 10px 0 18px; font-size: 0.8rem; line-height: 1.45; color: #5b6672; }
+.feedback-attached { margin: 10px 0 18px; font-size: 0.8rem; line-height: 1.45; color: var(--ink-3); }
 
 .feedback-error {
   display: flex;
@@ -117,18 +117,18 @@
   gap: 10px;
   margin: 0 0 16px;
   padding: 11px 14px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--danger);
   border-radius: 10px;
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--danger-tint);
+  color: var(--danger);
   font-size: 0.85rem;
 }
 .feedback-error-signin {
   padding: 5px 12px;
-  border: 1px solid #b91c1c;
+  border: 1px solid var(--danger);
   border-radius: 8px;
-  background: #fff;
-  color: #b91c1c;
+  background: var(--sheet);
+  color: var(--danger);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -142,26 +142,26 @@
   justify-content: center;
   gap: 8px;
   padding: 11px 20px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--rule-2);
   border-radius: 12px;
-  background: #fff;
-  color: #334155;
+  background: var(--sheet);
+  color: var(--ink-2);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
 }
 .feedback-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.feedback-btn--primary { border-color: #0f766e; background: #0f766e; color: #fff; }
-.feedback-btn--primary:hover:not(:disabled) { border-color: #115e59; background: #115e59; }
+.feedback-btn--primary { border-color: var(--teal-fill); background: var(--teal-fill); color: var(--on-teal); }
+.feedback-btn--primary:hover:not(:disabled) { border-color: var(--teal-press); background: var(--teal-press); }
 
-.feedback-sent p { margin: 0 0 20px; font-size: 1rem; color: #166534; }
+.feedback-sent p { margin: 0 0 20px; font-size: 1rem; color: var(--success); }
 
 .feedback-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, var(--on-teal) 50%, transparent);
+  border-top-color: var(--on-teal);
   border-radius: 50%;
   animation: feedback-spin 0.8s linear infinite;
 }

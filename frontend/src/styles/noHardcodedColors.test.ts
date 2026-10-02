@@ -10,11 +10,7 @@ const SRC = fileURLToPath(new URL("..", import.meta.url));
 /** Files that still hold legacy colors. Each migration task removes its files; Task 9 empties this. */
 const PENDING = new Set<string>([
   "ChatHistory.css",
-  "SignInModal.css",
-  "SignInModal.tsx",
   "components/GooeyNav.css",
-  "components/OnboardingTour.css",
-  "feedback/FeedbackModal.css",
 ]);
 
 const EXCLUDED = new Set(["styles/tokens.css", "Home.css", "Home.tsx"]);
