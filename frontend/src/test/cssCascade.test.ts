@@ -84,6 +84,13 @@ describe("resolveStyle", () => {
     expect(resolveStyle(field(), "width", [sheet])).toBeUndefined();
   });
 
+  it("resolves a pseudo-element's own rules when asked for one", () => {
+    const sheet = parseStyleSheet('.box .field::after { content: "a"; } .field:after { content: "b"; } .field::before { content: "c"; }');
+    expect(resolveStyle(field(), "content", [sheet], { pseudo: "::after" })).toBe('"a"');
+    expect(resolveStyle(field(), "content", [sheet], { pseudo: "::before" })).toBe('"c"');
+    expect(resolveStyle(field(), "content", [sheet])).toBeUndefined();
+  });
+
   it("evaluates every selector and media query in the app's stylesheets", () => {
     const probe = field();
     expect(() => {

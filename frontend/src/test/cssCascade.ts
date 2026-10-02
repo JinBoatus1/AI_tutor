@@ -3,8 +3,8 @@
 // resolves which declaration an element gets: importance, then the inline style attribute,
 // then specificity, then source order. It knows style rules, @media on max-width (px) and prefers-reduced-motion,
 // @supports (assumed true), and the :hover / :focus / :focus-visible / :focus-within /
-// :active states. Rules for pseudo-elements are skipped; a selector or media query it
-// cannot evaluate throws instead of being ignored.
+// :active states. Pseudo-element rules count only when env.pseudo asks for one; a selector
+// or media query it cannot evaluate throws instead of being ignored.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +13,7 @@ type Declaration = { value: string; important: boolean };
 type StyleRule = { selectors: string[]; declarations: Map<string, Declaration>; media: string | null };
 export type StyleSheet = { file: string; rules: StyleRule[] };
 export type ElementState = "hover" | "focus" | "focus-visible" | "focus-within" | "active";
-export type CascadeEnv = { width?: number; reducedMotion?: boolean; states?: ElementState[] };
+export type CascadeEnv = { width?: number; reducedMotion?: boolean; states?: ElementState[]; pseudo?: "::before" | "::after" };
 type Specificity = [number, number, number];
 
 // fileURLToPath on the string: under jsdom the global URL is not Node's.
@@ -157,6 +157,13 @@ const withStateAttributes = (selector: string) =>
  * el.matches(), with states as attributes. jsdom cannot parse :has() inside :not(), so each
  * :has(descendant) becomes an attribute set on the elements that have such a descendant.
  */
+/** The selector without its trailing `pseudo` (double- or legacy single-colon), or null if it has none. */
+function withoutPseudo(selector: string, pseudo: string): string | null {
+  const trailing = new RegExp(`::?${pseudo.replace(/^::?/, "")}$`, "i").exec(selector);
+  if (!trailing) return null;
+  return selector.slice(0, trailing.index).trim() || "*";
+}
+
 function matches(el: Element, selector: string, file: string): boolean {
   const undo: (() => void)[] = [];
   let marks = 0;
@@ -279,13 +286,14 @@ export function resolveStyle(
         const declaration = rule.declarations.get(property);
         if (!declaration || (rule.media && !mediaMatches(rule.media, env))) continue;
         for (const selector of rule.selectors) {
-          if (PSEUDO_ELEMENT.test(selector) || !matches(el, selector, sheet.file)) continue;
+          const target = env.pseudo ? withoutPseudo(selector, env.pseudo) : selector;
+          if (target === null || PSEUDO_ELEMENT.test(target) || !matches(el, target, sheet.file)) continue;
           const s = specificity(selector);
           if (!winner || beats(declaration, s, order, winner)) winner = { declaration, specificity: s, order };
         }
       }
     }
-    const inline = parseDeclarations(el.getAttribute("style") ?? "").get(property);
+    const inline = env.pseudo ? undefined : parseDeclarations(el.getAttribute("style") ?? "").get(property);
     if (inline && (inline.important || !winner?.declaration.important)) return inline.value;
     return winner?.declaration.value;
   });
