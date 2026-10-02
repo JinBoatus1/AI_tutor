@@ -1,7 +1,7 @@
 /* Paper & Ink design tokens: the only file allowed to define colors.
    Spec: docs/superpowers/specs/2026-10-01-paper-ink-theme-design.md §4.
    Shared scales sit on :root. Each [data-theme] block is complete, so any element can pin
-   a variant (the Appearance previews do). Night is defined here but enabled only in PR2. */
+   a variant (the Appearance previews do). Night shipped in PR2. */
 
 :root {
   --serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
@@ -164,7 +164,7 @@
   --warning-tint: #382d16;
   --focus: var(--teal);
   --scrim: rgba(0, 0, 0, 0.6);
-  --selection: #2c4741;
+  --selection: #233a35;
   --page-image-filter: brightness(0.86) sepia(0.06);
   --sh-raised: 0 0 0 1px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.32);
   --sh-float: 0 0 0 1px rgba(0, 0, 0, 0.36), 0 2px 4px rgba(0, 0, 0, 0.24),

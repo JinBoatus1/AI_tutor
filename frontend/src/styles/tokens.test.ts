@@ -58,6 +58,12 @@ const PAIRS: { fg: string; bgs: string[]; min: number }[] = [
   { fg: "--danger", bgs: ["--sheet", "--paper", "--danger-tint"], min: 4.5 },
   { fg: "--success", bgs: ["--sheet", "--paper", "--success-tint"], min: 4.5 },
   { fg: "--warning", bgs: ["--sheet", "--paper", "--warning-tint"], min: 4.5 },
+  // Selected text stays readable on --selection.
+  ...["--ink", "--ink-body", "--ink-2", "--ink-3", "--teal", "--danger", "--success", "--warning"].map((fg) => ({
+    fg,
+    bgs: ["--selection"],
+    min: 4.5,
+  })),
 ];
 
 describe("tokens.css", () => {
