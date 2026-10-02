@@ -337,6 +337,7 @@ const EN = {
 
   "chat.placeholder": "Ask a math question…",
   "chat.newQuestion": "Start a new session",
+  "chat.tutorTitle": "Tutor",
 
   "ask.whatIs": 'What is "{term}"? Explain using this section and give a short example.',
   "ask.followUp": "Please give another example or help me understand more deeply.",
@@ -717,6 +718,7 @@ const ZH: Record<MessageKey, string> = {
 
   "chat.placeholder": "输入数学问题…",
   "chat.newQuestion": "开始新会话",
+  "chat.tutorTitle": "导师",
 
   "ask.whatIs": "什么是「{term}」？请用本节内容解释并给一个简短示例。",
   "ask.followUp": "请再举一个例子或帮我加深理解。",
@@ -1109,6 +1111,7 @@ const ES: Record<MessageKey, string> = {
 
   "chat.placeholder": "Haz una pregunta de matemáticas…",
   "chat.newQuestion": "Iniciar una sesión nueva",
+  "chat.tutorTitle": "Tutor",
 
   "ask.whatIs": '¿Qué es "{term}"? Explica con esta sección y da un ejemplo breve.',
   "ask.followUp": "Da otro ejemplo o ayúdame a entender mejor.",

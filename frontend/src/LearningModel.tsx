@@ -1549,11 +1549,14 @@ export default function LearningModel() {
           </div>
         )}
 
-        {/* Reset button */}
-        <div className="reset-box" data-onboarding="new-session">
-          <button type="button" onClick={reset} disabled={isAwaitingReply}>
-            {t("chat.newQuestion")}
-          </button>
+        {/* LAYOUT CHANGE (spec §5.4): title row; the tour still spotlights .reset-box. */}
+        <div className="chat-panel-titlebar">
+          <h2 className="chat-panel-title">{t("chat.tutorTitle")}</h2>
+          <div className="reset-box" data-onboarding="new-session">
+            <button type="button" onClick={reset} disabled={isAwaitingReply}>
+              {t("chat.newQuestion")}
+            </button>
+          </div>
         </div>
 
         {isAwaitingReply && (
