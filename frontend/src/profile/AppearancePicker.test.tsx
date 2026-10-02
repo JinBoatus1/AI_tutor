@@ -16,6 +16,7 @@ vi.mock("../i18n/LocaleContext", async () => {
 import AppearancePicker from "./AppearancePicker";
 import { ProfileSettingsProvider } from "../context/ProfileSettingsContext";
 import { STORAGE_KEY } from "./profileSettings";
+import { loadAppStyleSheets, resolveInBothOrders } from "../test/cssCascade";
 
 function renderPicker() {
   return render(
@@ -32,6 +33,15 @@ afterEach(() => {
 });
 
 describe("AppearancePicker", () => {
+  it("stretches each preview across a 9.5rem tile, whichever stylesheet loads last", () => {
+    renderPicker();
+    const sheets = loadAppStyleSheets();
+    for (const tile of screen.getAllByRole("radio")) {
+      expect(resolveInBothOrders(tile, "align-items", sheets)).toEqual(["stretch", "stretch"]);
+      expect(resolveInBothOrders(tile, "width", sheets)).toEqual(["9.5rem", "9.5rem"]);
+    }
+  });
+
   it("offers Paper and Bright as radios and checks the saved one", () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme: "bright" }));
     renderPicker();

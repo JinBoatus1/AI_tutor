@@ -1,9 +1,13 @@
 /* Appearance tiles. Each preview pins its own variant through data-theme, so it needs no colors of its own. */
-.theme-tile {
+/* Doubled class: UserProfile.css loads later and its .profile-bg-swatch centers a 5.5rem swatch,
+   which shrank the empty preview grid to a sliver. */
+.profile-bg-swatch.theme-tile {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--s2);
+  width: 9.5rem;
+  max-width: 100%;
 }
 .theme-tile-preview {
   display: grid;
