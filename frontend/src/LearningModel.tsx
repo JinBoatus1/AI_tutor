@@ -29,6 +29,7 @@ import { getPracticeSet } from "./data/focsPracticeSets";
 import { GuidePanel } from "./guide/GuidePanel";
 import { isInductionGuideSection } from "./guide/chapterOfSection";
 import { getSectionNoteWithNewVocab, sectionTokenFromTitle, type BookAnchor } from "./utils/sectionNotes";
+import { pageIndexAfterReply, replyIsAboutSection, viewingBookPage } from "./utils/sectionPages";
 import { sectionTokensPreorder } from "./utils/focsSectionOrder";
 import { tryGetBook } from "./books/registry";
 import { useLocale } from "./i18n/LocaleContext";
@@ -674,6 +675,9 @@ export default function LearningModel() {
             session_id: sessionId,
             textbook_id: textbookId,
             section_hint: sectionHint,
+            viewing_page: sectionHint
+              ? viewingBookPage(dataMatchedTopic?.startBook, referenceSectionPages?.length ?? 0, sectionPageIndex)
+              : undefined,
           }),
           signal: controller.signal,
         });
@@ -719,10 +723,10 @@ export default function LearningModel() {
           setMatchedSection(null);
         }
         if (data.reference_section_pages_b64?.length) {
-          setReferenceSectionPages(
-            data.reference_section_pages_b64.map((b64) => `data:image/png;base64,${b64}`)
-          );
-          setSectionPageIndex(0);
+          const pages = data.reference_section_pages_b64;
+          const stay = replyIsAboutSection(dataMatchedTopic, textbookId, data.matched_topic);
+          setReferenceSectionPages(pages.map((b64) => `data:image/png;base64,${b64}`));
+          setSectionPageIndex((i) => pageIndexAfterReply(stay, i, pages.length));
           setReferencePageSnippets(null);
           setReferencePageImage(null);
         } else if (data.reference_page_snippets_b64?.length) {
@@ -765,6 +769,8 @@ export default function LearningModel() {
       chatLanguageSuffix,
       t,
       dataMatchedTopic,
+      referenceSectionPages,
+      sectionPageIndex,
     ]
   );
 
@@ -891,6 +897,9 @@ export default function LearningModel() {
           session_id: sessionId,
           textbook_id: textbookId,
           section_hint: sectionHint,
+          viewing_page: sectionHint
+            ? viewingBookPage(dataMatchedTopic?.startBook, referenceSectionPages?.length ?? 0, sectionPageIndex)
+            : undefined,
         }),
         signal: controller.signal,
       });
@@ -928,10 +937,10 @@ export default function LearningModel() {
         setMatchedSection(null);
       }
       if (data.reference_section_pages_b64?.length) {
-        setReferenceSectionPages(
-          data.reference_section_pages_b64.map((b64) => `data:image/png;base64,${b64}`)
-        );
-        setSectionPageIndex(0);
+        const pages = data.reference_section_pages_b64;
+        const stay = replyIsAboutSection(dataMatchedTopic, textbookId, data.matched_topic);
+        setReferenceSectionPages(pages.map((b64) => `data:image/png;base64,${b64}`));
+        setSectionPageIndex((i) => pageIndexAfterReply(stay, i, pages.length));
         setReferencePageSnippets(null);
         setReferencePageImage(null);
       } else if (data.reference_page_snippets_b64?.length) {
