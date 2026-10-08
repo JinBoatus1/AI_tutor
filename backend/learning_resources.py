@@ -8,7 +8,7 @@ import tempfile
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 import builtin_books as bb
 import user_textbook_store as uts
@@ -359,7 +359,8 @@ def extract_section_from_message(message: str) -> Optional[str]:
     m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
     # A lettered section (Lathi's "B.4") counts only if the active book has it, so books
     # without lettered chapters read every message exactly as before.
-    for lm in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)\b", s):
+    # (?!\d), not \b: a CJK character counts as a word character, so "B.4是什么" has no \b after the 4.
+    for lm in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)(?!\d)", s):
         if m and m.start(1) < lm.start():
             break
         label = f"{lm.group(1).upper()}.{lm.group(2)}"
@@ -663,6 +664,8 @@ def extract_pdf_pages_text(pdf_bytes: bytes, start_page: int, end_page: int, max
 # A longer section is only scanned this many pages (around the viewed page when there
 # is one), so a huge range in an uploaded book cannot stall a chat.
 _EXCERPT_SCAN_PAGES = 60
+# A cut piece shorter than this is not worth its label.
+_EXCERPT_MIN_CUT = 200
 
 _EXCERPT_STOPWORDS = frozenset(
     "the and for are was were what which when where who whom why how this that these those "
@@ -680,6 +683,29 @@ def _question_terms(question: str) -> set:
     return {w for w in words if w not in _EXCERPT_STOPWORDS}
 
 
+def _cut_page(text: str, space: int, keep: str, terms: Iterable[str]) -> str:
+    """At most `space` chars of a page that does not fit, with … where it was cut.
+
+    keep="end" keeps the end (a page before the one being read), "match" keeps the stretch
+    around the first word that matched the question, anything else keeps the start.
+    """
+    if space <= 0:
+        return ""
+    if len(text) <= space:
+        return text
+    space = max(0, space - 2)  # room for the … marks
+    if keep == "end":
+        return "…" + text[len(text) - space :]
+    start = 0
+    if keep == "match":
+        low = text.lower()
+        hits = [low.find(t) for t in terms if t in low]
+        if hits:
+            start = max(0, min(min(hits) - space // 2, len(text) - space))
+    piece = text[start : start + space]
+    return ("…" if start > 0 else "") + piece + ("…" if start + space < len(text) else "")
+
+
 def select_section_text(
     pdf_bytes: bytes,
     start_book: int,
@@ -692,13 +718,20 @@ def select_section_text(
 ) -> str:
     """Textbook text for a section (printed pages start_book..end_book), at most `budget` chars.
 
-    A section that fits comes back exactly as extract_pdf_pages_text gives it: every page,
-    in order. Cutting a longer one at the budget would keep only its first few pages, so it
-    is excerpted instead: the page the student is viewing (`focus_book`, a printed page
-    number) and its neighbours, then the pages that best match the question, each labelled
-    with its printed page number, in page order. Without a viewed page inside the section,
-    the excerpt starts at the section's first page.
+    A section that fits comes back exactly as extract_pdf_pages_text gives it. Cutting a
+    longer one at the budget would keep only its first few pages, so it is excerpted instead,
+    each page labelled with its printed number, in page order: the page the student is
+    viewing (`focus_book`, a printed page number) and its neighbours, then the pages that best
+    match the question, then pages outward from the viewed one. Without a viewed page inside
+    the section, the excerpt starts at the section's first page. The first page that does
+    not fit is cut to the room left: the end of a page before the viewed one, the start of
+    one after it, the stretch around the matching word of a matching page.
     """
+    # A section that fits is sent exactly as before, read the same way as before.
+    whole = extract_pdf_pages_text(pdf_bytes, start_book + offset, end_book + offset)
+    if len(whole) <= budget:
+        return whole
+
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     try:
         first = max(start_book, 1 - offset)
@@ -712,19 +745,21 @@ def select_section_text(
             lo = max(first, anchor - _EXCERPT_SCAN_PAGES // 2)
             hi = min(last, lo + _EXCERPT_SCAN_PAGES - 1)
             lo = max(first, hi - _EXCERPT_SCAN_PAGES + 1)
-        texts = {b: doc[b + offset - 1].get_text() for b in range(lo, hi + 1)}
+        # Pages without text (figures, scans) get no label.
+        texts: Dict[int, str] = {}
+        for b in range(lo, hi + 1):
+            t = doc[b + offset - 1].get_text().strip()
+            if t:
+                texts[b] = t
     finally:
         doc.close()
-
-    if (lo, hi) == (first, last):
-        whole = "".join(texts[b] + "\n\n" for b in range(lo, hi + 1)).strip()
-        if len(whole) <= budget:
-            return whole
+    if not texts:
+        # Only the scanned window lacks text; send what was sent before.
+        return whole[:budget]
 
     anchor = focus if focus is not None else lo
-    must = [b for b in ([anchor, anchor + 1, anchor - 1] if focus is not None else [anchor]) if lo <= b <= hi]
     lowered = {b: t.lower() for b, t in texts.items()}
-    weights = {}
+    weights: Dict[str, float] = {}
     for term in _question_terms(question):
         df = sum(1 for t in lowered.values() if term in t)
         # A word on most pages says nothing about which page is meant.
@@ -734,46 +769,47 @@ def select_section_text(
     def score(b: int) -> float:
         return sum(w for term, w in weights.items() if term in lowered[b])
 
-    others = [b for b in texts if b not in must]
+    # Pages in the order they are wanted, each with the part to keep if it must be cut.
+    if focus is not None:
+        plan = [(focus, "start"), (focus + 1, "start"), (focus - 1, "end")]
+    else:
+        plan = [(lo, "start")]
+    planned = {b for b, _ in plan}
+    others = [b for b in texts if b not in planned]
     matching = sorted((b for b in others if score(b) > 0), key=lambda b: (-score(b), abs(b - anchor), b))
-    nearby = [b for b in others if score(b) == 0]
+    nearby = sorted((b for b in others if score(b) == 0), key=lambda b: (abs(b - anchor), b))
+    plan += [(b, "match") for b in matching]
+    plan += [(b, "end" if b < anchor else "start") for b in nearby]
 
+    span = f"book pp. {start_book}-{end_book}"
     if focus is not None:
         header = (
-            f"(Excerpt: this section, pp. {start_book}-{end_book}, is too long to include in full. "
-            "Below are the page the student is viewing, its neighbours, and the pages that best match the question.)\n\n"
+            f"(Excerpt: this section, {span}, is too long to include in full. "
+            f"The student is viewing book p. {focus}. "
+            "Below are that page, its neighbours, and the pages that best match the question.)\n\n"
         )
     else:
         header = (
-            f"(Excerpt: this section, pp. {start_book}-{end_book}, is too long to include in full. "
-            "Below are its opening page and the pages that best match the question.)\n\n"
+            f"(Excerpt: this section, {span}, is too long to include in full. "
+            "Below are its opening pages and the pages that best match the question.)\n\n"
         )
     gap = "[…]\n\n"
     room = budget - len(header)
     chosen: Dict[int, str] = {}
-
-    def take(b: int) -> bool:
-        nonlocal room
-        block = f"[book p. {b}]\n{texts[b].strip()}\n\n"
-        if len(block) + len(gap) <= room:
-            chosen[b] = block
-            room -= len(block) + len(gap)
-            return True
-        if not chosen:
-            # The first page asked for always goes in, cut to fit.
-            chosen[b] = block[: max(0, room - len(gap))]
-            room -= len(chosen[b]) + len(gap)
-            return True
-        return False
-
-    for b in must + matching:
-        take(b)
-    # The rest go in ring by ring outward from the anchor. A page that does not fit ends
-    # the fill after its ring, so a long page is never skipped for shorter, farther ones.
-    for distance in sorted({abs(b - anchor) for b in nearby}):
-        ring = [b for b in nearby if abs(b - anchor) == distance]
-        if not all([take(b) for b in sorted(ring)]):
-            break
+    for b, keep in plan:
+        if b not in texts or b in chosen:
+            continue
+        label = f"[book p. {b}]\n"
+        cost = len(label) + len(texts[b]) + 2 + len(gap)
+        if cost <= room:
+            chosen[b] = f"{label}{texts[b]}\n\n"
+            room -= cost
+            continue
+        # The first page that does not fit is cut to the room left, which fills the budget.
+        space = room - len(label) - 2 - len(gap)
+        if space >= _EXCERPT_MIN_CUT or not chosen:
+            chosen[b] = f"{label}{_cut_page(texts[b], space, keep, weights)}\n\n"
+        break
 
     parts = [header]
     prev = None

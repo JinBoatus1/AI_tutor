@@ -214,7 +214,8 @@ def _lettered_refs(message: str, lettered: Dict[str, Tuple[str, str]]) -> List[T
     refs: List[Tuple[int, int, str]] = []
     if not lettered:
         return refs
-    for m in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)\b", message or ""):
+    # (?!\d), not \b: "B.4我学过了" has no \b after the 4, since CJK counts as a word character.
+    for m in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)(?!\d)", message or ""):
         hit = lettered.get(f"{m.group(1).upper()}.{m.group(2)}")
         if hit:
             refs.append((m.start(), m.end(), hit[0]))

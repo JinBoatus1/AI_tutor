@@ -76,19 +76,59 @@ def test_pages_that_match_the_question_are_added():
 def test_a_question_in_everyday_words_keeps_to_the_pages_around_the_viewed_one():
     pdf = _long_section(extra={2: "Some say otherwise."})
     text = lr.select_section_text(pdf, 1, 12, offset=0, question="What does this page say?", focus_book=9)
-    assert _labelled_pages(text) == [7, 8, 9, 10]
+    assert _labelled_pages(text) == [7, 8, 9, 10, 11]
 
 
 def test_the_fill_stops_at_a_page_that_does_not_fit_instead_of_skipping_far_ahead():
     pages = [f"marker{i:02d} tiny" for i in range(1, 5)] + [f"marker{i:02d} {FILLER}" for i in range(5, 13)]
     text = lr.select_section_text(_pdf(pages), 1, 12, offset=0, question="", focus_book=9)
-    assert _labelled_pages(text) == [7, 8, 9, 10]
+    assert _labelled_pages(text) == [7, 8, 9, 10, 11]
 
 
 def test_a_word_on_most_pages_does_not_pull_in_distant_ones():
     pdf = _long_section(extra={i: "convolution" for i in range(1, 8)})
     text = lr.select_section_text(pdf, 1, 12, offset=0, question="convolution", focus_book=11)
-    assert _labelled_pages(text) == [9, 10, 11, 12]
+    assert _labelled_pages(text) == [8, 9, 10, 11, 12]
+
+
+def test_the_excerpt_says_which_page_the_student_is_viewing():
+    text = lr.select_section_text(_long_section(), 1, 12, offset=0, question="", focus_book=10)
+    assert "book pp. 1-12" in text
+    assert "The student is viewing book p. 10." in text
+
+
+def test_a_page_that_does_not_fit_is_cut_to_fill_the_budget():
+    text = lr.select_section_text(_long_section(), 1, 12, offset=0, question="", focus_book=1)
+    assert 11000 <= len(text) <= 12000
+
+
+def test_the_previous_page_keeps_its_end_when_cut():
+    dense = [f"marker{i:02d} {FILLER * 2} ENDOF{i:02d}" for i in range(1, 13)]
+    text = lr.select_section_text(_pdf(dense), 1, 12, offset=0, question="", focus_book=9)
+    assert "ENDOF08" in text and "marker08" not in text
+
+
+def test_a_matching_page_that_does_not_fit_keeps_the_matching_part():
+    page = FILLER + " " + FILLER[:900]
+    pages = [f"marker{i:02d} {page}" for i in range(1, 13)]
+    pages[11] = f"marker12 {FILLER[:1500]} eigenfunction {FILLER[:1500]}"
+    text = lr.select_section_text(_pdf(pages), 1, 12, offset=0, question="eigenfunction", focus_book=5)
+    assert "eigenfunction" in text
+
+
+def test_a_long_scanned_section_gives_no_text():
+    doc = pymupdf.open()
+    for _ in range(70):
+        doc.new_page(width=576, height=720)
+    pdf = doc.tobytes()
+    doc.close()
+    assert lr.select_section_text(pdf, 1, 70, offset=0, question="", focus_book=30) == ""
+
+
+def test_a_long_sparse_section_that_fits_is_sent_whole():
+    pdf = _pdf([f"p{i:03d}" for i in range(1, 101)])
+    before = lr.extract_pdf_pages_text(pdf, 1, 100)[:12000]
+    assert lr.select_section_text(pdf, 1, 100, offset=0, question="", focus_book=80) == before
 
 
 def test_excerpt_pages_are_in_page_order_and_within_the_budget():

@@ -24,6 +24,14 @@ def test_a_typed_lettered_section_is_found_in_a_book_that_has_it():
         assert lr.extract_section_from_message("what is in section b.4") == "B.4"
 
 
+def test_a_lettered_section_written_against_chinese_text_is_found():
+    with lr.request_book("lathi", None):
+        assert lr.extract_section_from_message("B.4是什么") == "B.4"
+        assert lr.extract_section_from_message("讲讲B.4吧") == "B.4"
+    t = _lathi_tokens()
+    assert t["B.4"] in _say("B.4我学过了")["learned_sections"]
+
+
 def test_the_section_named_first_wins():
     with lr.request_book("lathi", None):
         assert lr.extract_section_from_message("B.4 and 2.3") == "B.4"
