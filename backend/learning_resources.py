@@ -409,12 +409,32 @@ def load_focs_pdf() -> Optional[bytes]:
     return bb.load_pdf_bytes(DEFAULT_BOOK_ID)
 
 
+_TOPIC_LIST_BUDGET = 12000
+
+
+def _topic_names_for_matcher(topics: List[Dict[str, Any]]) -> List[str]:
+    """按目录顺序取 topic 名，列表总长不超过 _TOPIC_LIST_BUDGET 字符。
+
+    限长度而不是限个数：以前固定取前 120 个，FOCS 共 208 个，第 18 章以后永远匹配不到。
+    两本内置教材都能整本放进去（FOCS 约 5.8k 字符）；超长的上传教材在这里截断。
+    """
+    names: List[str] = []
+    used = 0
+    for t in topics:
+        cost = len(t["name"]) + 3  # "- " + 名字 + 换行
+        if used + cost > _TOPIC_LIST_BUDGET:
+            break
+        names.append(t["name"])
+        used += cost
+    return names
+
+
 def match_topic_with_llm(question: str) -> Optional[Dict[str, Any]]:
     """用 LLM 根据学生问题匹配当前教材 outline.json 中最相关的 topic。若问题与课程完全无关则返回 None。"""
     topics = load_focs_topic_list()
     if not topics:
         return None
-    names = [t["name"] for t in topics[:120]]  # 限制长度
+    names = _topic_names_for_matcher(topics)
     prompt = (
         f"You are matching a student question to a textbook topic, remember to choose the topic by how to solve the question instead of the words\n\n"
         f"Student question: {question}\n\n"
