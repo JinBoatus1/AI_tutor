@@ -165,6 +165,7 @@ class ChatMessage(BaseModel):
     session_id: Optional[str] = None
     textbook_id: Optional[str] = None  # "focs" 或 "user_<id>"（后者需登录且为本人教材）
     section_hint: Optional[str] = None  # 前端当前打开的小节（如 9.1）；有则直接答疑，不再列可选小节
+    viewing_page: Optional[int] = None  # 学生在打开的小节里正在看的书页（印刷页码）；长小节按这一页节选原文
     silent: bool = False  # 不写会话/Memory/进度条；用于仅拉书页的降级请求
 
 
@@ -434,11 +435,18 @@ def _chat_direct_in_section(
         system_content += f"\n\nOpen section: {section_name}."
         _pdf = lr.get_effective_pdf_bytes()
         if _pdf:
-            ctx = lr.extract_pdf_pages_text(_pdf, start_pdf, end_pdf)
+            ctx = lr.select_section_text(
+                _pdf,
+                start_book,
+                end_book,
+                offset=lr.effective_pdf_page_offset(),
+                question=chat_message.message,
+                focus_book=chat_message.viewing_page,
+            )
             if ctx:
                 system_content += (
                     f"\n\n--- Textbook reference ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
-                    f"{ctx[:12000]}\n--- End ---"
+                    f"{ctx}\n--- End ---"
                 )
 
     try:
@@ -450,11 +458,18 @@ def _chat_direct_in_section(
         e = matched_topic["end"] + lr.effective_pdf_page_offset()
         _pdf = lr.get_effective_pdf_bytes()
         if _pdf:
-            mt_ctx = lr.extract_pdf_pages_text(_pdf, s, e)
+            mt_ctx = lr.select_section_text(
+                _pdf,
+                matched_topic["start"],
+                matched_topic["end"],
+                offset=lr.effective_pdf_page_offset(),
+                question=chat_message.message,
+                budget=8000,
+            )
             if mt_ctx:
                 system_content += (
                     f"\n\n--- Also relevant ({matched_topic['name']}, PDF pp. {s}-{e}) ---\n"
-                    f"{mt_ctx[:8000]}\n--- End ---"
+                    f"{mt_ctx}\n--- End ---"
                 )
 
     resp = create_chat_completion(
@@ -672,11 +687,19 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             )
             _pdf = lr.get_effective_pdf_bytes()
             if _pdf:
-                page_context = lr.extract_pdf_pages_text(_pdf, start_pdf, end_pdf)
+                page_context = lr.select_section_text(
+                    _pdf,
+                    start_book,
+                    end_book,
+                    offset=lr.effective_pdf_page_offset(),
+                    question=chat_message.message,
+                    # The viewed page belongs to the section the student has open, not to one named in the message.
+                    focus_book=chat_message.viewing_page if client_section_hint else None,
+                )
                 if page_context:
                     system_content += (
                         f"\n\n--- Reference from textbook ({section_name}, PDF pp. {start_pdf}-{end_pdf}) ---\n"
-                        f"{page_context[:12000]}\n"
+                        f"{page_context}\n"
                         "--- End of reference ---\n\n"
                         "Use the above to explain. Point to the right-hand pages when relevant."
                     )
@@ -692,11 +715,17 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 _pdf = lr.get_effective_pdf_bytes()
                 mt_context = ""
                 if _pdf:
-                    mt_context = lr.extract_pdf_pages_text(_pdf, s, e)
+                    mt_context = lr.select_section_text(
+                        _pdf,
+                        matched_topic["start"],
+                        matched_topic["end"],
+                        offset=lr.effective_pdf_page_offset(),
+                        question=chat_message.message,
+                    )
                 if mt_context:
                     system_content += (
                         f"\n\n--- Reference from textbook (topic: {mt_name}, PDF pages {s}-{e}) ---\n"
-                        f"{mt_context[:12000]}\n"
+                        f"{mt_context}\n"
                         "--- End of reference ---\n\n"
                         "Use the above to answer the question directly."
                     )

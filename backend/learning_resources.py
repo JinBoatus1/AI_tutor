@@ -2,12 +2,13 @@
 
 import base64
 import json
+import math
 import re
 import tempfile
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 import builtin_books as bb
 import user_textbook_store as uts
@@ -356,6 +357,15 @@ def extract_section_from_message(message: str) -> Optional[str]:
         return None
     s = message.strip()
     m = re.search(r"(?:section|subsection)?\s*(\d+\.\d+(?:\.\d+)*)", s, re.IGNORECASE)
+    # A lettered section (Lathi's "B.4") counts only if the active book has it, so books
+    # without lettered chapters read every message exactly as before.
+    # (?!\d), not \b: a CJK character counts as a word character, so "B.4是什么" has no \b after the 4.
+    for lm in re.finditer(r"(?<![A-Za-z0-9])([A-Za-z])\.(\d+(?:\.\d+)*)(?!\d)", s):
+        if m and m.start(1) < lm.start():
+            break
+        label = f"{lm.group(1).upper()}.{lm.group(2)}"
+        if get_section_start_end_name(label):
+            return label
     if m:
         return m.group(1).strip()
     m = re.search(r"\b(\d+\.\d+(?:\.\d+)*)\b", s)
@@ -649,6 +659,166 @@ def extract_pdf_pages_text(pdf_bytes: bytes, start_page: int, end_page: int, max
             break
     doc.close()
     return text.strip()
+
+
+# A longer section is only scanned this many pages (around the viewed page when there
+# is one), so a huge range in an uploaded book cannot stall a chat.
+_EXCERPT_SCAN_PAGES = 60
+# A cut piece shorter than this is not worth its label.
+_EXCERPT_MIN_CUT = 200
+
+_EXCERPT_STOPWORDS = frozenset(
+    "the and for are was were what which when where who whom why how this that these those "
+    "with from into onto about does did done can could should would will shall may might must "
+    "has have had not but you your our their its than then there here also just only now "
+    "all any some more most very much many each other same such out over again still really "
+    "say says said see look get got find use used using know need help understand like want "
+    "work works way make made let think write written "
+    "please explain tell show give mean means meaning page pages section book".split()
+)
+
+
+def _question_terms(question: str) -> set:
+    words = re.findall(r"[a-z][a-z0-9\-]{2,}", (question or "").lower())
+    return {w for w in words if w not in _EXCERPT_STOPWORDS}
+
+
+def _cut_page(text: str, space: int, keep: str, terms: Iterable[str]) -> str:
+    """At most `space` chars of a page that does not fit, with … where it was cut.
+
+    keep="end" keeps the end (a page before the one being read), "match" keeps the stretch
+    around the first word that matched the question, anything else keeps the start.
+    """
+    if space <= 0:
+        return ""
+    if len(text) <= space:
+        return text
+    space = max(0, space - 2)  # room for the … marks
+    if keep == "end":
+        return "…" + text[len(text) - space :]
+    start = 0
+    if keep == "match":
+        low = text.lower()
+        hits = [low.find(t) for t in terms if t in low]
+        if hits:
+            start = max(0, min(min(hits) - space // 2, len(text) - space))
+    piece = text[start : start + space]
+    return ("…" if start > 0 else "") + piece + ("…" if start + space < len(text) else "")
+
+
+def select_section_text(
+    pdf_bytes: bytes,
+    start_book: int,
+    end_book: int,
+    *,
+    offset: int,
+    question: str = "",
+    focus_book: Optional[int] = None,
+    budget: int = 12000,
+) -> str:
+    """Textbook text for a section (printed pages start_book..end_book), at most `budget` chars.
+
+    A section that fits comes back exactly as extract_pdf_pages_text gives it. Cutting a
+    longer one at the budget would keep only its first few pages, so it is excerpted instead,
+    each page labelled with its printed number, in page order: the page the student is
+    viewing (`focus_book`, a printed page number) and its neighbours, then the pages that best
+    match the question, then pages outward from the viewed one. Without a viewed page inside
+    the section, the excerpt starts at the section's first page. The first page that does
+    not fit is cut to the room left: the end of a page before the viewed one, the start of
+    one after it, the stretch around the matching word of a matching page.
+    """
+    # A section that fits is sent exactly as before, read the same way as before.
+    whole = extract_pdf_pages_text(pdf_bytes, start_book + offset, end_book + offset)
+    if len(whole) <= budget:
+        return whole
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        first = max(start_book, 1 - offset)
+        last = min(end_book, len(doc) - offset)
+        if last < first:
+            return ""
+        focus = focus_book if focus_book is not None and first <= focus_book <= last else None
+        lo, hi = first, last
+        if hi - lo + 1 > _EXCERPT_SCAN_PAGES:
+            anchor = focus if focus is not None else first
+            lo = max(first, anchor - _EXCERPT_SCAN_PAGES // 2)
+            hi = min(last, lo + _EXCERPT_SCAN_PAGES - 1)
+            lo = max(first, hi - _EXCERPT_SCAN_PAGES + 1)
+        # Pages without text (figures, scans) get no label.
+        texts: Dict[int, str] = {}
+        for b in range(lo, hi + 1):
+            t = doc[b + offset - 1].get_text().strip()
+            if t:
+                texts[b] = t
+    finally:
+        doc.close()
+    if not texts:
+        # Only the scanned window lacks text; send what was sent before.
+        return whole[:budget]
+
+    anchor = focus if focus is not None else lo
+    lowered = {b: t.lower() for b, t in texts.items()}
+    weights: Dict[str, float] = {}
+    for term in _question_terms(question):
+        df = sum(1 for t in lowered.values() if term in t)
+        # A word on most pages says nothing about which page is meant.
+        if 0 < df <= len(texts) / 2:
+            weights[term] = math.log((len(texts) + 1) / (df + 1)) + 1.0
+
+    def score(b: int) -> float:
+        return sum(w for term, w in weights.items() if term in lowered[b])
+
+    # Pages in the order they are wanted, each with the part to keep if it must be cut.
+    if focus is not None:
+        plan = [(focus, "start"), (focus + 1, "start"), (focus - 1, "end")]
+    else:
+        plan = [(lo, "start")]
+    planned = {b for b, _ in plan}
+    others = [b for b in texts if b not in planned]
+    matching = sorted((b for b in others if score(b) > 0), key=lambda b: (-score(b), abs(b - anchor), b))
+    nearby = sorted((b for b in others if score(b) == 0), key=lambda b: (abs(b - anchor), b))
+    plan += [(b, "match") for b in matching]
+    plan += [(b, "end" if b < anchor else "start") for b in nearby]
+
+    span = f"book pp. {start_book}-{end_book}"
+    if focus is not None:
+        header = (
+            f"(Excerpt: this section, {span}, is too long to include in full. "
+            f"The student is viewing book p. {focus}. "
+            "Below are that page, its neighbours, and the pages that best match the question.)\n\n"
+        )
+    else:
+        header = (
+            f"(Excerpt: this section, {span}, is too long to include in full. "
+            "Below are its opening pages and the pages that best match the question.)\n\n"
+        )
+    gap = "[…]\n\n"
+    room = budget - len(header)
+    chosen: Dict[int, str] = {}
+    for b, keep in plan:
+        if b not in texts or b in chosen:
+            continue
+        label = f"[book p. {b}]\n"
+        cost = len(label) + len(texts[b]) + 2 + len(gap)
+        if cost <= room:
+            chosen[b] = f"{label}{texts[b]}\n\n"
+            room -= cost
+            continue
+        # The first page that does not fit is cut to the room left, which fills the budget.
+        space = room - len(label) - 2 - len(gap)
+        if space >= _EXCERPT_MIN_CUT or not chosen:
+            chosen[b] = f"{label}{_cut_page(texts[b], space, keep, weights)}\n\n"
+        break
+
+    parts = [header]
+    prev = None
+    for b in sorted(chosen):
+        if prev is not None and b != prev + 1:
+            parts.append(gap)
+        parts.append(chosen[b])
+        prev = b
+    return "".join(parts).strip()[:budget]
 
 
 # ================================
