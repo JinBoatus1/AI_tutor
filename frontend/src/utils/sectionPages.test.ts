@@ -14,10 +14,17 @@ describe("replyIsAboutSection", () => {
     expect(replyIsAboutSection(s24, "lathi", reply24)).toBe(true);
   });
 
-  it("is false for another section, range or book", () => {
-    expect(replyIsAboutSection(s24, "lathi", { ...reply24, name: "2.5 Classical Solution" })).toBe(false);
+  it("is false for other pages or another book", () => {
+    expect(replyIsAboutSection(s24, "lathi", { ...reply24, start_book: 196, end_book: 202 })).toBe(false);
     expect(replyIsAboutSection(s24, "lathi", { ...reply24, end_book: 194 })).toBe(false);
     expect(replyIsAboutSection(s24, "focs", reply24)).toBe(false);
+  });
+
+  it("goes by pages, not titles, which can differ in spacing", () => {
+    // FOCS's chapter 5 key ends in a space; /api/textbook_pages strips it, chat replies keep it.
+    const ch5 = { bookId: "focs", name: '5 Induction: Proving "FOR ALL ..."', startBook: 55, endBook: 70 };
+    const reply = { name: '5 Induction: Proving "FOR ALL ..." ', start_book: 55, end_book: 70 };
+    expect(replyIsAboutSection(ch5, "focs", reply)).toBe(true);
   });
 
   it("is false when either side is missing", () => {

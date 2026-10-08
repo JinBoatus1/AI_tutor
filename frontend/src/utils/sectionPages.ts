@@ -11,11 +11,10 @@ export function viewingBookPage(
   return startBook + pageIndex;
 }
 
-type OpenSection = { bookId: string; name: string; startBook: number; endBook: number };
+type OpenSection = { bookId: string; startBook: number; endBook: number };
 
 /** A chat reply's matched_topic; book pages come as start_book/end_book (older replies: startBook, start). */
 type ReplyTopic = {
-  name?: string;
   start_book?: number;
   end_book?: number;
   startBook?: number;
@@ -24,7 +23,11 @@ type ReplyTopic = {
   end?: number;
 };
 
-/** Whether a reply is about the section the question was asked from. */
+/**
+ * Whether a reply shows the same pages as the section the question was asked from. Pages,
+ * not titles: an outline title can differ in spacing between the two (FOCS's chapter 5 key
+ * ends in a space that /api/textbook_pages strips), and the same pages keep the same index.
+ */
 export function replyIsAboutSection(
   askedFrom: OpenSection | null | undefined,
   bookId: string,
@@ -33,12 +36,7 @@ export function replyIsAboutSection(
   if (!askedFrom || !reply) return false;
   const start = reply.start_book ?? reply.startBook ?? reply.start;
   const end = reply.end_book ?? reply.endBook ?? reply.end;
-  return (
-    askedFrom.bookId === bookId &&
-    askedFrom.name === reply.name &&
-    askedFrom.startBook === start &&
-    askedFrom.endBook === end
-  );
+  return askedFrom.bookId === bookId && askedFrom.startBook === start && askedFrom.endBook === end;
 }
 
 /** Where the viewer lands when a reply brings back a section's pages: the same section keeps its page. */
