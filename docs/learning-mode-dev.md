@@ -21,7 +21,10 @@
 ### 2.1 `POST /api/chat`
 
 - 请求体：`message`, `history`, `student_id`, `session_id`, `textbook_id`, `images_b64`, `pdf_b64`, `silent` 等（见 `ChatMessage` 模型）。
-- **简单定义问题**：在 `api_routes.py` 开头若命中 `_is_simple_definition_question`，**早返回**一句式回复，不跑 topic 匹配、章节树、memory、进度条写入等（以仓库当前实现为准）。
+- **定义类问题**：`_is_simple_definition_question` 只命中只问某个术语是什么意思的消息，比如 “what is induction”、“卷积是什么”、“induction?”。
+  - 这类消息照常走 topic 匹配，并带上课本原文，只是换成简短回答的提示：先给书里的定义（一两句），再加一句直观解释或小例子。
+  - 跳过进度条更新，不带之前的对话，也不算 confidence；对话照常保存进会话。
+  - 问“怎么”“为什么”、比较两个概念、“哪里错了”、打招呼、只写小节号，都不算定义类问题，走完整回答。
 - 正常路径下 `matched_topic` 建议同时包含：
   - `start_book` / `end_book`：书本页码（与 `FOCS.json` 树一致）
   - `start_pdf` / `end_pdf` 或兼容字段 `start`/`end`（PDF 物理页，用于渲染）
