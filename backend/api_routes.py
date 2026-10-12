@@ -261,77 +261,80 @@ def _should_compute_confidence(
     return True
 
 
-def _is_simple_definition_question(message: str) -> bool:
-    """
-    Heuristic: short definitional questions should get a one-sentence textbook-style answer.
+# Words that make a "what is ..." question something other than a request for a definition.
+_NOT_A_DEFINITION_EN = re.compile(
+    r"\b(?:prove|show\s+that|derive|calculate|solve|evaluate|compute|examples?|exercise|problems?|homework"
+    r"|difference|differ|compare|versus|vs|wrong|mistake|why|how|explain)\b"
+)
+_NOT_A_DEFINITION_ZH = ("证明", "推导", "计算", "求解", "例", "习题", "题", "区别", "不同", "比较", "为什么", "怎么", "如何", "错")
 
-    Examples:
-    - "what is induction", "wat is induction", "define induction", "definition of induction"
-    - "induction 是什么", "归纳法是什么", "给出…的定义"
+# "what is X", "define X", "meaning of X", "X is what", and the Chinese forms.
+_DEFINITION_PATTERNS = (
+    re.compile(r"^(?:what\s+is|what's|whats|wat\s+is|define|definition\s+of|meaning\s+of):?\s+(?:an?\s+|the\s+)?(?P<term>.+?)\s*[?？]*$"),
+    re.compile(r"^(?P<term>.+?)\s+is\s+what\s*[?？]*$"),
+    re.compile(r"^(?:什么是|啥是)\s*(?P<term>.+?)\s*[?？]*$"),
+    re.compile(r"^(?P<term>.+?)\s*(?:是什么意思|是什么|是啥|什么意思|的意思是什么|的定义是什么|的定义是|的定义|的含义是什么|的含义|指什么)\s*[?？]*$"),
+    re.compile(r"^定义\s*(?P<term>.+?)\s*[?？]*$"),
+    # A bare term asked as a question: "induction?". Without the question mark a single word
+    # is as likely to be "continue" or "thanks" as a term, so it gets the normal answer.
+    re.compile(r"^(?P<term>[a-z][a-z\-]{1,29}|[\u4e00-\u9fff]{1,15})\s*[?？]+$"),
+)
+
+# Words that are never the term being asked about: pronouns, pleasantries, and asks for an answer.
+_NOT_A_TERM = {
+    "it", "this", "that", "these", "those", "he", "she", "they", "up", "going on", "new", "next",
+    "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "yes", "no", "help",
+    "what", "huh", "lol", "really", "sure",
+    "answer", "the answer", "result", "solution",
+    "这", "那", "这个", "那个", "它", "你好", "谢谢", "好的",
+}
+
+
+def _is_simple_definition_question(message: str) -> bool:
+    """Whether the message only asks what a term means ("what is induction", "define
+    convolution", "induction?", or the Chinese equivalents). Those get a short answer drawn
+    from the textbook. Questions that only look short, such as "what is wrong with my proof",
+    a comparison, a greeting, or a section number, get the normal answer.
     """
     if not message or not isinstance(message, str):
         return False
     s = message.strip()
-    if not s:
+    if not s or len(s) > 120:
         return False
-    # Placeholder text when the client sends attachments without a caption.
     low = s.lower()
+    # Placeholder text when the client sends attachments without a caption.
     if low in {"(image)", "(attachments)"} or low.startswith("(pdf:"):
         return False
-    # Too long usually implies a real problem / multi-part request.
-    if len(s) > 120:
+    if _NOT_A_DEFINITION_EN.search(low) or any(k in low for k in _NOT_A_DEFINITION_ZH):
         return False
-
-    # Avoid triggering on tasks that clearly ask for proofs/solutions/examples.
-    non_simple_signals = [
-        "prove",
-        "show that",
-        "derive",
-        "calculate",
-        "solve",
-        "evaluate",
-        "compute",
-        "example",
-        "examples",
-        "exercise",
-        "problem",
-        "homework",
-        "证明",
-        "推导",
-        "计算",
-        "求解",
-        "例",
-        "举例",
-        "习题",
-        "题",
-    ]
-    if any(k in low for k in non_simple_signals):
-        return False
-
-    # Common definitional patterns (English + Chinese). Keep broad but safe.
-    definitional_patterns = [
-        r"^\s*what\s+is\s+.+\??\s*$",
-        r"^\s*wat\s+is\s+.+\??\s*$",
-        r"^\s*define\s+.+\??\s*$",
-        r"^\s*definition\s+of\s+.+\??\s*$",
-        r"^\s*meaning\s+of\s+.+\??\s*$",
-        r".+\s*(?:is\s+what)\s*\??\s*$",
-        r".+\s*是什么\s*\??\s*$",
-        r".+\s*的定义\s*(?:是|是什么)?\s*\??\s*$",
-        r"^\s*定义\s*.+\s*$",
-        r".+\s*含义\s*(?:是|是什么)?\s*\??\s*$",
-        r".+\s*什么意思\s*\??\s*$",
-        r".+\s*指什么\s*\??\s*$",
-    ]
-    if any(re.search(p, low, flags=re.IGNORECASE) for p in definitional_patterns):
-        return True
-
-    # Very short noun-phrase queries like "induction?" or "归纳法？" are often definitions.
-    compact = re.sub(r"[\s\?\!\.\,\;\:\(\)\[\]\{\}\"\']", "", low)
-    if 1 <= len(compact) <= 18 and re.fullmatch(r"[a-z0-9_\-\u4e00-\u9fff]+", compact):
-        return True
-
+    for pattern in _DEFINITION_PATTERNS:
+        m = pattern.match(low)
+        if m:
+            term = m.group("term").strip(" \"'“”‘’")
+            return _is_a_term(term)
     return False
+
+
+def _is_a_term(term: str) -> bool:
+    if not term or len(term) > 40 or len(term.split()) > 5 or term in _NOT_A_TERM:
+        return False
+    # "what is this section about", "what is my grade", "what is the next step", "what is the
+    # answer to 5.3": about the conversation or a problem at hand, which needs the full answer.
+    context_words = {
+        "it", "this", "that", "these", "those", "my", "your", "our", "about", "here",
+        "next", "step", "steps", "answer", "solution", "result", "going",
+    }
+    if set(term.split()) & context_words:
+        return False
+    if term[0] in "这那它":  # Chinese this / that / it
+        return False
+    # Section and chapter numbers ("5.1", "B.4", "chapter 5") are sections, not terms, and a
+    # term that names one is about that section or exercise.
+    if re.fullmatch(r"(?:(?:chapter|ch\.?|section|sec\.?)\s*)?(?:\d+|[a-z])(?:\.\d+)*", term):
+        return False
+    if re.search(r"(?<![a-z0-9])(?:\d+|[a-z])\.\d+", term):
+        return False
+    return bool(re.search(r"[a-z\u4e00-\u9fff]", term))
 
 
 _INTAKE_REPLY_MARKERS = (
@@ -507,24 +510,6 @@ def _chat_direct_in_section(
     return result
 
 
-def _force_one_sentence(answer: str) -> str:
-    """
-    Best-effort postprocess to enforce a single-sentence reply.
-    Keeps the first non-empty line and truncates at the first sentence-ending punctuation if present.
-    """
-    s = (answer or "").strip()
-    if not s:
-        return ""
-    # Collapse newlines to spaces; keep first line priority.
-    s = " ".join(x.strip() for x in s.splitlines() if x.strip())
-    s = re.sub(r"\s+", " ", s).strip()
-    # Truncate at first sentence end if it exists.
-    m = re.search(r"^(.+?[\.!?。！？])\s", s)
-    if m:
-        return m.group(1).strip()
-    return s
-
-
 @router.get("/api/version")
 async def api_version():
     """
@@ -556,33 +541,6 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             tid = bb.DEFAULT_BOOK_ID
         with lr.request_book(tid, user_email):
             return _chat_direct_in_section(chat_message, user_email, client_section_hint, tid)
-
-    # TOP PRIORITY: simple definition questions must be answered in ONE sentence
-    # and must NOT trigger any other chat routing logic (topic match, trees, memory, bars, DB, confidence, etc.).
-    # Skip when the user attached images/PDF — those need the vision path below.
-    if _is_simple_definition_question(chat_message.message) and not has_attachments:
-        tid = (chat_message.textbook_id or bb.DEFAULT_BOOK_ID).strip() or bb.DEFAULT_BOOK_ID
-        if not user_email and tid.startswith("user_"):
-            tid = bb.DEFAULT_BOOK_ID
-        with lr.request_book(tid, user_email):
-            _book_label = lr.active_display_name()
-            system_content = (
-                f"You are an AI math tutor for {_book_label}. "
-                "The student asked a SIMPLE definition/meaning question. "
-                "Reply with EXACTLY ONE sentence, concise textbook-style. "
-                "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
-                "Return ONE sentence only."
-            )
-            resp = create_chat_completion(
-                model="gpt-5.2",
-                messages=[
-                    {"role": "system", "content": system_content},
-                    {"role": "user", "content": chat_message.message},
-                ],
-                temperature=0.0,
-            )
-            raw = resp.choices[0].message.content or ""
-            return {"reply": _force_one_sentence(raw)}
 
     combined_images: List[str] = list(chat_message.images_b64 or [])
     if chat_message.pdf_b64:
@@ -637,10 +595,10 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if is_simple_def:
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
-                "The student asked a SIMPLE definition/meaning question. "
-                "Answer in EXACTLY ONE sentence, textbook-style, grounded in the textbook reference when available. "
-                "Do NOT include bullet points, steps, study plans, examples, or follow-up questions. "
-                "Return ONE sentence only."
+                "The student asked what a term means. Give the textbook's definition in one or two sentences, "
+                "using the reference below when available and the book's notation, then add one sentence of "
+                "intuition or a tiny example. Keep it short: no headings, no step-by-step lists, no study plans, "
+                "and no follow-up questions."
             )
         else:
             system_content = (
@@ -677,7 +635,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         section_hint = client_section_hint or lr.extract_section_from_message(chat_message.message)
         section_info = lr.get_section_start_end_name(section_hint) if section_hint else None
 
-        if section_info and not is_simple_def:
+        if section_info:
             start_book, end_book, section_name = section_info
             start_pdf = start_book + lr.effective_pdf_page_offset()
             end_pdf = end_book + lr.effective_pdf_page_offset()
@@ -703,7 +661,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                         "--- End of reference ---\n\n"
                         "Use the above to explain. Point to the right-hand pages when relevant."
                     )
-        if matched_topic and not is_simple_def:
+        if matched_topic:
             mt_name = matched_topic.get("name") or ""
             open_name = section_info[2] if section_info else ""
             already_has_open_section = bool(
@@ -776,7 +734,8 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         )
 
         result: dict[str, Any] = {"reply": answer}
-        if _should_compute_confidence(
+        # A short definition gets no confidence score, which would cost another model call.
+        if not is_simple_def and _should_compute_confidence(
             chat_message.message,
             answer,
             section_hint=section_hint,
