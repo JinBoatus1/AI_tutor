@@ -12,7 +12,7 @@ For **developers and operators**: APIs, code map, deploy, troubleshooting. User-
 |-------|------|
 | `frontend/src/LearningModel.tsx` | Three-column layout, chat, `/api/chat`, preview, `/api/textbook_pages`, header book pages |
 | `frontend/src/LearningBarPanel.tsx` | Outline tree, progress dots, textbook picker, sync |
-| `backend/api_routes.py` | `/api/chat`, `/api/textbook_pages`, `matched_topic` fields, simple-definition early return, `GET /api/version` |
+| `backend/api_routes.py` | `/api/chat`, `/api/textbook_pages`, `matched_topic` fields, short definition answers, `GET /api/version` |
 
 ---
 
@@ -22,7 +22,11 @@ For **developers and operators**: APIs, code map, deploy, troubleshooting. User-
 
 Body fields include `message`, `history`, `student_id`, `session_id`, `textbook_id`, `images_b64`, `pdf_b64`, `silent` (see `ChatMessage` in `api_routes.py`).
 
-**Simple-definition path:** if `_is_simple_definition_question` matches at the top of the handler, the route **returns early** with a one-sentence reply and skips topic matching, chapter-tree prompts, memory, bar updates, etc. (per current repo implementation).
+**Definition questions:** `_is_simple_definition_question` matches a message that only asks what a term means ("what is induction", "define convolution", "induction?", "卷积是什么"). It ignores the reply-language line the frontend appends. Such a message takes the normal path, with topic matching and the textbook reference, but under a short-answer prompt: the definition in one or two sentences plus one line of intuition or a tiny example.
+- Skipped: the progress-bar update and grade standing, earlier messages, and the confidence score.
+- Kept: memory is written and the exchange is saved to the session like any other.
+- Not matched: "how" and "why" questions, comparisons, requests for more detail, "what is wrong with…", greetings, section numbers, and bare Chinese questions all get the full answer.
+- This applies only when no section is open. With a section open, the request goes to the section path, which always answers in full. A definition reply opens its matching section, so follow-up questions take that path.
 
 **`matched_topic` (normal path):** should expose **book** pages (`start_book` / `end_book`) for UI alignment with the outline, and **PDF** pages (`start_pdf` / `end_pdf` or legacy `start` / `end` as PDF) for rendering.
 
@@ -57,7 +61,7 @@ Deploy probe: e.g. `RENDER_GIT_COMMIT` when running on Render.
 |---------|--------|
 | Pages never load | PDF on server, `/api/textbook_pages`, limits |
 | Header pages vs tree mismatch | Both sides ship `start_book`/`end_book`; cache |
-| Definition answers still long | Deployed `api_routes.py` includes early return; correct host |
+| A definition question got a long answer | Only questions that ask what a term means, with no section open, get the short answer. Check that the deployed `api_routes.py` has the definition classifier, and the request host |
 | Wrong API | `VITE_API_URL` at build time; no stale localhost in prod |
 
 ---

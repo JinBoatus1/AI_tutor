@@ -12,7 +12,7 @@
 |------|------|
 | 前端 `LearningModel.tsx` | 三栏布局、聊天、`/api/chat`、书页预览、`/api/textbook_pages`、顶栏书本页码展示 |
 | 前端 `LearningBarPanel.tsx` | 左侧目录树、进度点、换书、本地/服务端进度同步 |
-| 后端 `api_routes.py` | `/api/chat`、 `/api/textbook_pages`、 `matched_topic`（含 `start_book` / `end_book` 与 PDF 页）、简单定义早返回、`GET /api/version` |
+| 后端 `api_routes.py` | `/api/chat`、 `/api/textbook_pages`、 `matched_topic`（含 `start_book` / `end_book` 与 PDF 页）、定义类问题的简短回答、`GET /api/version` |
 
 ---
 
@@ -21,7 +21,12 @@
 ### 2.1 `POST /api/chat`
 
 - 请求体：`message`, `history`, `student_id`, `session_id`, `textbook_id`, `images_b64`, `pdf_b64`, `silent` 等（见 `ChatMessage` 模型）。
-- **简单定义问题**：在 `api_routes.py` 开头若命中 `_is_simple_definition_question`，**早返回**一句式回复，不跑 topic 匹配、章节树、memory、进度条写入等（以仓库当前实现为准）。
+- **定义类问题**：`_is_simple_definition_question` 只命中只问某个术语是什么意思的消息，比如 “what is induction”、“卷积是什么”、“induction?”。
+  - 判断时会忽略前端在消息末尾加的“回复语言”那句话。
+  - 这类消息照常走 topic 匹配，并带上课本原文，只是换成简短回答的提示：先给定义（一两句），再加一句直观解释或小例子。
+  - 跳过进度条更新和成绩信息，不带之前的对话，也不算 confidence。memory 照常写入，对话照常保存进会话。
+  - 问“怎么”“为什么”、比较两个概念、要求讲详细一点、“哪里错了”、打招呼、只写小节号，以及只有一个中文词加问号的问题，都不算定义类问题，走完整回答。
+  - 只在没打开小节时生效。打开了小节的提问走小节路径，总是完整回答。定义类问题回答后会打开对应小节，所以接下来的追问也走小节路径。
 - 正常路径下 `matched_topic` 建议同时包含：
   - `start_book` / `end_book`：书本页码（与 `FOCS.json` 树一致）
   - `start_pdf` / `end_pdf` 或兼容字段 `start`/`end`（PDF 物理页，用于渲染）
@@ -60,7 +65,7 @@
 |------|--------|
 | 书页加载失败 | 服务器是否有教材 PDF、`/api/textbook_pages` 返回、`MAX_TEXTBOOK_PREVIEW_PAGES` 等 |
 | 顶栏「Pages」与左侧树不一致 | 前后端是否都已包含 `start_book`/`end_book`；CDN/浏览器缓存 |
-| 简单定义仍返回长文 | 线上是否已部署含早返回的 `api_routes.py`；请求是否打到正确 host |
+| 定义类问题的回答很长 | 只有没打开小节、只问某个术语是什么意思的问题才会简短回答。检查线上部署的 `api_routes.py` 是否包含定义类问题的判断，以及请求是否打到正确的 host |
 | 前端连错 API | `VITE_API_URL` 构建值、生产环境是否误用 localhost |
 
 ---
