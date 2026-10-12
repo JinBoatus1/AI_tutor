@@ -261,10 +261,14 @@ def _should_compute_confidence(
     return True
 
 
+# The frontend appends its reply-language line ("ask.replyLang" in frontend/src/i18n/messages.ts)
+# to every message in the Chinese and Spanish UI; the student's own text is classified without it.
+_REPLY_LANGUAGE_HINTS = ("请用简体中文回答。", "Responde en español.")
+
 # Words that make a "what is ..." question something other than a request for a definition.
 _NOT_A_DEFINITION_EN = re.compile(
-    r"\b(?:prove|show\s+that|derive|calculate|solve|evaluate|compute|examples?|exercise|problems?|homework"
-    r"|difference|differ|compare|versus|vs|wrong|mistake|why|how|explain)\b"
+    r"\b(?:prove|proofs?|show\s+that|derive|calculate|solve|evaluate|compute|examples?|exercise|problems?|homework"
+    r"|difference|differ|compare|versus|vs|wrong|mistake|why|how|explain|intuition|idea)\b"
 )
 _NOT_A_DEFINITION_ZH = ("证明", "推导", "计算", "求解", "例", "习题", "题", "区别", "不同", "比较", "为什么", "怎么", "如何", "错")
 
@@ -275,30 +279,57 @@ _DEFINITION_PATTERNS = (
     re.compile(r"^(?:什么是|啥是)\s*(?P<term>.+?)\s*[?？]*$"),
     re.compile(r"^(?P<term>.+?)\s*(?:是什么意思|是什么|是啥|什么意思|的意思是什么|的定义是什么|的定义是|的定义|的含义是什么|的含义|指什么)\s*[?？]*$"),
     re.compile(r"^定义\s*(?P<term>.+?)\s*[?？]*$"),
-    # A bare term asked as a question: "induction?". Without the question mark a single word
-    # is as likely to be "continue" or "thanks" as a term, so it gets the normal answer.
-    re.compile(r"^(?P<term>[a-z][a-z\-]{1,29}|[\u4e00-\u9fff]{1,15})\s*[?？]+$"),
+    # A bare English term asked as a question: "induction?". Without the question mark a single
+    # word is as likely to be "continue" or "thanks" as a term. A bare Chinese question has no
+    # spaces to tell a term from a short sentence, so it gets the normal answer.
+    re.compile(r"^(?P<term>[a-z][a-z\-]{1,29})\s*[?？]+$"),
 )
 
-# Words that are never the term being asked about: pronouns, pleasantries, and asks for an answer.
+# Whole terms that are never the thing being asked about: pronouns, pleasantries, reactions,
+# and asks for an answer.
 _NOT_A_TERM = {
     "it", "this", "that", "these", "those", "he", "she", "they", "up", "going on", "new", "next",
-    "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "yes", "no", "help",
-    "what", "huh", "lol", "really", "sure",
-    "answer", "the answer", "result", "solution",
-    "这", "那", "这个", "那个", "它", "你好", "谢谢", "好的",
+    "hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "yes", "no", "help", "please",
+    "what", "huh", "lol", "really", "sure", "right", "correct", "true", "false", "wait", "again", "more",
+    "answer", "the answer", "result", "solution", "hint",
+    "你好", "谢谢", "好的",
 }
+
+# Words that tie an English term to the conversation or the problem at hand ("what is this
+# section about", "what is my grade", "what is the next step", "what is the hint").
+_CONTEXT_WORDS = {
+    "it", "this", "that", "these", "those", "my", "your", "our", "about", "here", "again",
+    "next", "step", "steps", "answer", "solution", "result", "going", "hint", "hints",
+    "question", "questions", "part", "proof",
+}
+
+# The same for a Chinese term: requests (please, in detail, explain, talk, say), question
+# particles, you and I, "just now", answer, next step, this chapter or section, this / that / it,
+# "chapter N", and "find" as in a homework problem.
+_CONTEXT_CHARS_ZH = (
+    "请", "详细", "解释", "讲", "说", "吗", "呢", "吧", "啊", "啥", "你", "我", "刚才",
+    "答案", "下一步", "本章", "本节", "这", "那", "它", "第", "求",
+)
+
+
+def _without_reply_language_hint(message: str) -> str:
+    s = message.rstrip()
+    for hint in _REPLY_LANGUAGE_HINTS:
+        if s.endswith(hint):
+            return s[: -len(hint)].rstrip()
+    return s
 
 
 def _is_simple_definition_question(message: str) -> bool:
     """Whether the message only asks what a term means ("what is induction", "define
     convolution", "induction?", or the Chinese equivalents). Those get a short answer drawn
     from the textbook. Questions that only look short, such as "what is wrong with my proof",
-    a comparison, a greeting, or a section number, get the normal answer.
+    a comparison, a request for more detail, a greeting, or a section number, get the normal
+    answer.
     """
     if not message or not isinstance(message, str):
         return False
-    s = message.strip()
+    s = _without_reply_language_hint(message).strip()
     if not s or len(s) > 120:
         return False
     low = s.lower()
@@ -316,25 +347,22 @@ def _is_simple_definition_question(message: str) -> bool:
 
 
 def _is_a_term(term: str) -> bool:
-    if not term or len(term) > 40 or len(term.split()) > 5 or term in _NOT_A_TERM:
+    if not term or len(term) > 40 or term in _NOT_A_TERM:
         return False
-    # "what is this section about", "what is my grade", "what is the next step", "what is the
-    # answer to 5.3": about the conversation or a problem at hand, which needs the full answer.
-    context_words = {
-        "it", "this", "that", "these", "those", "my", "your", "our", "about", "here",
-        "next", "step", "steps", "answer", "solution", "result", "going",
-    }
-    if set(term.split()) & context_words:
+    words = re.findall(r"[a-z0-9]+", term)
+    if len(words) > 5 or set(words) & _CONTEXT_WORDS:
         return False
-    if term[0] in "这那它":  # Chinese this / that / it
+    # Digits mean a computation, an exercise or a section ("x^2", "question 3", "5.1",
+    # "chapter 5"), not a term; so does a lone letter ("what is a").
+    if re.search(r"\d", term) or re.fullmatch(r"[a-z]", term):
         return False
-    # Section and chapter numbers ("5.1", "B.4", "chapter 5") are sections, not terms, and a
-    # term that names one is about that section or exercise.
-    if re.fullmatch(r"(?:(?:chapter|ch\.?|section|sec\.?)\s*)?(?:\d+|[a-z])(?:\.\d+)*", term):
-        return False
-    if re.search(r"(?<![a-z0-9])(?:\d+|[a-z])\.\d+", term):
-        return False
-    return bool(re.search(r"[a-z\u4e00-\u9fff]", term))
+    chinese = re.findall(r"[\u4e00-\u9fff]", term)
+    if chinese:
+        if len(chinese) > 10 or any(w in term for w in _CONTEXT_CHARS_ZH):
+            return False
+        # Punctuation and operators mean a problem statement, not a term.
+        return not re.search(r"[，,=+*/^(){}\[\]<>；;：:]", term)
+    return bool(words)
 
 
 _INTAKE_REPLY_MARKERS = (
@@ -595,10 +623,10 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
         if is_simple_def:
             system_content = (
                 f"You are an AI math tutor for {_book_label}. "
-                "The student asked what a term means. Give the textbook's definition in one or two sentences, "
-                "using the reference below when available and the book's notation, then add one sentence of "
-                "intuition or a tiny example. Keep it short: no headings, no step-by-step lists, no study plans, "
-                "and no follow-up questions."
+                "The student asked what a term means. Give its definition in one or two sentences, then one "
+                "sentence of intuition or a tiny example. Take the definition and notation from the textbook "
+                "reference below when there is one; if there is no reference, do not say the book says it. "
+                "Keep it short: no headings, no step-by-step lists, no study plans, and no follow-up questions."
             )
         else:
             system_content = (
@@ -609,7 +637,7 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
                 "never run a pre-study quiz or intake questionnaire, and never output a multi-step 'Study Plan' unless they explicitly ask for one. "
                 "If chat history contains old section menus or intake prompts, ignore them and answer the latest student question directly."
             )
-        # Hidden per-student progress bar from tree structure (skip for one-sentence definition replies).
+        # Hidden per-student progress bar from tree structure (skipped for short definition answers).
         if not chat_message.silent and not is_simple_def:
             try:
                 if user_email:
@@ -707,6 +735,13 @@ async def chat(chat_message: ChatMessage, authorization: Optional[str] = Header(
             system_content += (
                 "\n\nThe student attached a PDF file. Their message may include up to "
                 f"{MAX_USER_PDF_PAGES_RENDER} rendered page images from that PDF in order, after any separate photos."
+            )
+
+        if is_simple_def:
+            # The references above can run to thousands of characters; restate the length limit last.
+            system_content += (
+                "\n\nKeep the answer short: the definition in one or two sentences plus one line of "
+                "intuition or a tiny example."
             )
 
         # 1) Tutor answer（当前轮可带图片，走 vision）

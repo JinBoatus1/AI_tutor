@@ -4,6 +4,8 @@ Other questions that merely look short ("what is wrong with my proof?", "hi") ge
 normal answer. Keyless: every model call is replaced by a fake.
 """
 
+import os
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -27,10 +29,12 @@ import student_bar_store as sbs
     "归纳法是什么",
     "卷积是什么意思",
     "什么是卷积？",
-    "卷积？",
     "Define: well ordering principle",
     "What is h(t)?",
+    "What is P(A|B)?",
     "What is the Laplace transform?",
+    "bijection？",
+    "零状态响应是什么",
 ])
 def test_these_ask_what_a_term_means(message):
     assert api_routes._is_simple_definition_question(message)
@@ -64,9 +68,49 @@ def test_these_ask_what_a_term_means(message):
     "What is going on here?",
     "What?",
     "lol?",
+    # Chinese has no spaces, so a bare question like the next one cannot be told apart from a
+    # short sentence such as "is that right?" or "and then?"; it gets the full answer.
+    "卷积？",
+    "请详细解释归纳法？",
+    "能再详细一点吗？",
+    "什么意思？",
+    "对吗？",
+    "然后呢？",
+    "为啥？",
+    "答案是什么？",
+    "下一步是什么？",
+    "你刚才说的是什么意思",
+    "第5章是什么",
+    "第二章是什么",
+    "定义集合A={1,2,3}，求A的幂集",
+    "what is that, exactly?",
+    "what is it, again?",
+    "what is the hint?",
+    "what is question 3?",
+    "right?",
+    "correct?",
+    "what is the proof of the pigeonhole principle?",
+    "what is the derivative of x^2?",
+    "what is gcd(12, 18)?",
+    "what is the intuition behind convolution?",
 ])
 def test_these_do_not(message):
     assert not api_routes._is_simple_definition_question(message)
+
+
+def test_the_reply_language_line_is_ignored():
+    # The frontend appends ask.replyLang to every message in the Chinese and Spanish UI.
+    assert api_routes._is_simple_definition_question("卷积是什么\n\n请用简体中文回答。")
+    assert api_routes._is_simple_definition_question("What is induction?\n\nResponde en español.")
+    assert not api_routes._is_simple_definition_question("What is wrong with my proof?\n\n请用简体中文回答。")
+
+
+def test_the_backend_knows_every_reply_language_line():
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(repo, "frontend", "src", "i18n", "messages.ts"), encoding="utf-8") as f:
+        lines = re.findall(r'"ask\.replyLang":\s*"([^"]*)"', f.read())
+    assert len(lines) >= 3
+    assert {line for line in lines if line} <= set(api_routes._REPLY_LANGUAGE_HINTS)
 
 
 # --- through /api/chat ---------------------------------------------------------
@@ -145,3 +189,13 @@ def test_a_definition_answer_gets_no_confidence_score(client, model, saved):
     body = client.post("/api/chat", json={"message": "What is induction?", "textbook_id": "focs", "history": history}).json()
     assert "confidence" not in body
     assert not any(m[0]["content"].startswith("You are a strict evaluator") for m in model)
+
+
+def test_a_definition_prompt_ends_with_a_length_reminder(client, model, saved):
+    client.post("/api/chat", json={"message": "What is induction?", "textbook_id": "focs"})
+    assert _tutor_system_prompt(model).rstrip().endswith("plus one line of intuition or a tiny example.")
+
+
+def test_a_definition_prompt_does_not_credit_the_book_without_a_reference(client, model, saved):
+    client.post("/api/chat", json={"message": "What is induction?", "textbook_id": "focs"})
+    assert "do not say the book says it" in _tutor_system_prompt(model)
