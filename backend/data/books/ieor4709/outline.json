@@ -1,0 +1,414 @@
+{
+  "0 Course Introduction": {
+    "_range": {
+      "start": 1,
+      "end": 3
+    }
+  },
+  "1 Overview": {
+    "_range": {
+      "start": 4,
+      "end": 8
+    },
+    "1.1 Time Series, Returns, and Data Visualization": {
+      "start": 4,
+      "end": 8
+    }
+  },
+  "2 Basic Statistics and Review of Probability Results": {
+    "_range": {
+      "start": 9,
+      "end": 11
+    },
+    "2.1 What is Data Analysis?": {
+      "start": 9,
+      "end": 10
+    },
+    "2.2 LLN and Central Limit Theorem": {
+      "start": 10,
+      "end": 10
+    },
+    "2.3 Estimators and Estimates": {
+      "start": 11,
+      "end": 11
+    }
+  },
+  "3 Mean-Variance Tradeoff, Method of Moment Estimator": {
+    "_range": {
+      "start": 12,
+      "end": 14
+    },
+    "3.1 Bias-Variance Tradeoff": {
+      "start": 12,
+      "end": 13
+    },
+    "3.2 Method of Moments": {
+      "start": 13,
+      "end": 14
+    }
+  },
+  "4 Maximum Likelihood Estimator (MLE)": {
+    "_range": {
+      "start": 15,
+      "end": 17
+    },
+    "4.1 Beyond MM Estimators": {
+      "start": 15,
+      "end": 15
+    },
+    "4.2 Maximum Likelihood Estimator": {
+      "start": 15,
+      "end": 17
+    }
+  },
+  "5 Fisher Information and Interval Estimators": {
+    "_range": {
+      "start": 18,
+      "end": 20
+    },
+    "5.1 Fisher Information": {
+      "start": 18,
+      "end": 20
+    },
+    "5.2 Cramer-Rao Lower Bound": {
+      "start": 20,
+      "end": 20
+    }
+  },
+  "6 Confidence Intervals": {
+    "_range": {
+      "start": 21,
+      "end": 23
+    },
+    "6.1 Properties of MLE Estimator:": {
+      "start": 21,
+      "end": 21
+    },
+    "6.2 Interval Estimation": {
+      "start": 21,
+      "end": 23
+    }
+  },
+  "7 Delta Method and Hypothesis Testing": {
+    "_range": {
+      "start": 24,
+      "end": 26
+    },
+    "7.1 The Delta Method": {
+      "start": 24,
+      "end": 25
+    },
+    "7.2 Some Remarks on the Estimators": {
+      "start": 25,
+      "end": 26
+    }
+  },
+  "8 Likelihood Ratio Tests": {
+    "_range": {
+      "start": 27,
+      "end": 31
+    },
+    "8.1 Hypothesis Testing": {
+      "start": 27,
+      "end": 29
+    },
+    "8.2 Statistical Tests": {
+      "start": 29,
+      "end": 30
+    },
+    "8.3 Two Simple Hypotheses": {
+      "start": 30,
+      "end": 30
+    },
+    "8.4 Neyman-Pearson Lemma": {
+      "start": 30,
+      "end": 31
+    }
+  },
+  "9 Likelihood Ratio Statistics and p-Values": {
+    "_range": {
+      "start": 32,
+      "end": 35
+    },
+    "9.1 Likelihood Ratio Tests": {
+      "start": 32,
+      "end": 34
+    },
+    "9.2 Likelihood Ratio Statistics and Asymptotic Distribution": {
+      "start": 34,
+      "end": 35
+    }
+  },
+  "10 Goodness of Fit Test and QQ Plots": {
+    "_range": {
+      "start": 36,
+      "end": 39
+    },
+    "10.1 p-Values": {
+      "start": 36,
+      "end": 36
+    },
+    "10.2 Goodness of Fit Tests": {
+      "start": 36,
+      "end": 39
+    }
+  },
+  "11 Normal QQ Plots, Probability Distribution Tests": {
+    "_range": {
+      "start": 40,
+      "end": 42
+    },
+    "11.1 Quantile to Quantile (QQ) Plot": {
+      "start": 40,
+      "end": 41
+    },
+    "11.2 Statistical Distribution Tests": {
+      "start": 41,
+      "end": 42
+    }
+  },
+  "12 Bayesian Statistics": {
+    "_range": {
+      "start": 43,
+      "end": 46
+    },
+    "12.1 Bayesian Statistics": {
+      "start": 43,
+      "end": 46
+    }
+  },
+  "13 Linear Regression": {
+    "_range": {
+      "start": 47,
+      "end": 51
+    },
+    "13.1 How to choose priors in Bayesian analysis?": {
+      "start": 47,
+      "end": 48
+    },
+    "13.2 Simple Linear Regression": {
+      "start": 48,
+      "end": 50
+    },
+    "13.3 Hypothesis Testing and Confidence Intervals for Simple Linear Regression": {
+      "start": 50,
+      "end": 51
+    }
+  },
+  "14 Simple and Multiple Linear Regression": {
+    "_range": {
+      "start": 52,
+      "end": 54
+    },
+    "14.1 Simple Linear Regression": {
+      "start": 52,
+      "end": 53
+    },
+    "14.2 Multiple Linear Regression": {
+      "start": 54,
+      "end": 54
+    }
+  },
+  "15 Multiple Linear Regression": {
+    "_range": {
+      "start": 55,
+      "end": 57
+    },
+    "15.1 Least Square Estimators and Residual: A Projection View": {
+      "start": 55,
+      "end": 57
+    }
+  },
+  "16 BLUE Estimator, and R2 Coefficient, and Model Building": {
+    "_range": {
+      "start": 58,
+      "end": 63
+    },
+    "16.1 Best Linear Unbiased Estimator (BLUE)": {
+      "start": 58,
+      "end": 58
+    },
+    "16.2 The R2 Coefficient": {
+      "start": 58,
+      "end": 59
+    },
+    "16.3 Model Building": {
+      "start": 59,
+      "end": 63
+    }
+  },
+  "17 Principal Component Analysis": {
+    "_range": {
+      "start": 64,
+      "end": 66
+    },
+    "17.1 Principal Component Analysis": {
+      "start": 64,
+      "end": 66
+    }
+  },
+  "18 PCA and Linear Time Series Analysis": {
+    "_range": {
+      "start": 67,
+      "end": 69
+    },
+    "18.1 Principal Component Analysis": {
+      "start": 67,
+      "end": 69
+    },
+    "18.2 Principal Component Regression": {
+      "start": 69,
+      "end": 69
+    }
+  },
+  "19 Autoregressive Linear Models": {
+    "_range": {
+      "start": 70,
+      "end": 74
+    },
+    "19.1 Linear Time Series Analysis": {
+      "start": 70,
+      "end": 72
+    },
+    "19.2 Randomness of a Time Series": {
+      "start": 72,
+      "end": 72
+    },
+    "19.3 AR(1) Model": {
+      "start": 73,
+      "end": 74
+    }
+  },
+  "20 AR(p) Models and Identification of AR Models": {
+    "_range": {
+      "start": 75,
+      "end": 77
+    },
+    "20.1 AR(p) Model": {
+      "start": 75,
+      "end": 76
+    },
+    "20.2 Identification of AR Models": {
+      "start": 76,
+      "end": 77
+    }
+  },
+  "21 Root of Characteristic Polynomial of AR Models and Moving Average Models": {
+    "_range": {
+      "start": 78,
+      "end": 80
+    },
+    "21.1 Interpreting Roots of Characteristic Polynomial": {
+      "start": 78,
+      "end": 80
+    },
+    "21.2 Moving Average Models": {
+      "start": 80,
+      "end": 80
+    }
+  },
+  "22 MA Models and Forecasting": {
+    "_range": {
+      "start": 81,
+      "end": 83
+    },
+    "22.1 Moving Average Models": {
+      "start": 81,
+      "end": 82
+    },
+    "22.2 Estimation of MA(q) models": {
+      "start": 82,
+      "end": 83
+    }
+  },
+  "23 ARMA Models": {
+    "_range": {
+      "start": 84,
+      "end": 86
+    },
+    "23.1 ARMA Model": {
+      "start": 84,
+      "end": 84
+    },
+    "23.2 MA Representation of ARMA(p,q) models": {
+      "start": 85,
+      "end": 86
+    }
+  },
+  "24 Trend and Seasonality of Time Series Models and ARCH Models": {
+    "_range": {
+      "start": 87,
+      "end": 89
+    },
+    "24.1 Estimation and Forecasting with ARMA Models": {
+      "start": 87,
+      "end": 88
+    },
+    "24.2 Unit Root Test and Stationarity": {
+      "start": 88,
+      "end": 89
+    }
+  },
+  "25 ARCH Models": {
+    "_range": {
+      "start": 90,
+      "end": 91
+    },
+    "25.1 Dealing with nonstationarity of a time series": {
+      "start": 90,
+      "end": 90
+    },
+    "25.2 Trend and Seasonality": {
+      "start": 90,
+      "end": 91
+    },
+    "25.3 ARCH Models and Stochastic Volatility": {
+      "start": 91,
+      "end": 91
+    }
+  },
+  "26 GARCH Models": {
+    "_range": {
+      "start": 92,
+      "end": 99
+    },
+    "26.1 ARCH Models": {
+      "start": 92,
+      "end": 93
+    },
+    "26.2 Leptokurtic Feature of ARCH Models": {
+      "start": 93,
+      "end": 96
+    },
+    "26.3 Pro and Cons of ARCH model": {
+      "start": 96,
+      "end": 96
+    },
+    "26.4 GARCH Model": {
+      "start": 96,
+      "end": 98
+    },
+    "26.5 Relation to Stochastic Volatility Models": {
+      "start": 98,
+      "end": 99
+    }
+  },
+  "27 Kalman Filter (Optional)": {
+    "_range": {
+      "start": 100,
+      "end": 104
+    },
+    "27.1 State Space Models": {
+      "start": 100,
+      "end": 102
+    },
+    "27.2 Kalman Filter": {
+      "start": 102,
+      "end": 103
+    },
+    "27.3 Properties of the Forecast Error and Maximum Likelihood estimation (not included in the final exam)": {
+      "start": 103,
+      "end": 104
+    }
+  }
+}

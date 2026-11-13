@@ -55,11 +55,20 @@ describe("book registry", () => {
     expect(builtinBookOptions()).toEqual([
       { id: "focs", linkLabel: "FOCS" },
       { id: "lathi", linkLabel: "Signals" },
+      { id: "ieor4709", linkLabel: "IEOR 4709" },
     ]);
   });
 
   it("carries FOCS's starter prompts in the registry, so other books show none", () => {
     expect(BOOKS.focs.chatExamples?.map((e) => e.id)).toEqual(["induction", "problem-5-1"]);
     expect(BOOKS.lathi.chatExamples).toBeUndefined();
+  });
+
+  it("registers the IEOR 4709 lecture notes as a chapter-anchored course", () => {
+    const c = BOOKS.ieor4709;
+    expect(c.shortLabel).toBe("IEOR 4709");
+    expect(c.practiceAnchor).toEqual({ kind: "chapter" });
+    expect(Object.keys(c.tree)[0]).toBe("0 Course Introduction");
+    expect(Object.keys(c.tree)).toHaveLength(28);
   });
 });

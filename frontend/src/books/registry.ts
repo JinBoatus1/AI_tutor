@@ -1,5 +1,6 @@
 import focsTree from "../data/focsTree.json";
 import lathiTree from "../data/lathiTree.json";
+import ieor4709Tree from "../data/ieor4709Tree.json";
 import { FOCS_SECTION_NOTES } from "../data/focsSectionNotes";
 import { FOCS_PRACTICE_SETS } from "../data/practice/focsSets";
 import { INDUCTION_GUIDE } from "../guide/inductionGuide";
@@ -76,6 +77,26 @@ export const BOOKS: Record<string, BookDef> = {
     tree: lathiTree as TextbookTreeRoot,
     sectionNotes: {},
     practiceSets: {},
+  },
+  ieor4709: {
+    id: "ieor4709",
+    shortLabel: "IEOR 4709",
+    practiceAnchor: { kind: "chapter" },
+    tree: ieor4709Tree as TextbookTreeRoot,
+    sectionNotes: {},
+    practiceSets: {},
+    chatExamples: [
+      {
+        id: "ieor4709-mle",
+        label: "What is a maximum likelihood estimator?",
+        sendText: "What is a maximum likelihood estimator?",
+      },
+      {
+        id: "ieor4709-ar1",
+        label: "When is an AR(1) model stationary?",
+        sendText: "When is an AR(1) model stationary?",
+      },
+    ],
   },
 };
 

@@ -21,6 +21,7 @@ describe("learningTextbooks", () => {
     expect(builtinBookOptions()).toEqual([
       { id: "focs", linkLabel: "FOCS" },
       { id: "lathi", linkLabel: "Signals" },
+      { id: "ieor4709", linkLabel: "IEOR 4709" },
     ]);
   });
 
@@ -89,7 +90,7 @@ describe("server catalog filtering", () => {
       { id: "user_abcd1234" },
     ]);
     await fetchTextbookOptionsFromServer("tok");
-    expect(readTextbookOptionList().map((x) => x.id)).toEqual(["focs", "lathi", "user_abcd1234"]);
+    expect(readTextbookOptionList().map((x) => x.id)).toEqual(["focs", "lathi", "ieor4709", "user_abcd1234"]);
   });
 
   it("shows a lathi row from the server exactly once, labelled from the registry", async () => {
@@ -101,7 +102,7 @@ describe("server catalog filtering", () => {
     await fetchTextbookOptionsFromServer("tok");
     const list = readTextbookOptionList();
     expect(list.filter((x) => x.id === "lathi")).toEqual([{ id: "lathi", linkLabel: "Signals" }]);
-    expect(list.map((x) => x.id)).toEqual(["focs", "lathi", "user_abcd1234"]);
+    expect(list.map((x) => x.id)).toEqual(["focs", "lathi", "ieor4709", "user_abcd1234"]);
   });
 
   it("resets a selected upload that the server no longer lists", async () => {

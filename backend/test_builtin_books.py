@@ -38,7 +38,7 @@ def test_focs_pdf_loads_as_a_pdf():
 
 def test_list_builtin_returns_focs_spelled_correctly():
     rows = bb.list_builtin()
-    assert {r["id"] for r in rows} == {"focs", "lathi"}
+    assert {r["id"] for r in rows} == {"focs", "ieor4709", "lathi"}
     assert rows[0]["label"] == "FOCS"
 
 
