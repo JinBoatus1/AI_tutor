@@ -64,11 +64,11 @@ describe("book registry", () => {
     expect(BOOKS.lathi.chatExamples).toBeUndefined();
   });
 
-  it("registers the IEOR 4709 lecture notes as a chapter-anchored course", () => {
+  it("registers the IEOR 4709 lecture notes as 27 lectures", () => {
     const c = BOOKS.ieor4709;
     expect(c.shortLabel).toBe("IEOR 4709");
     expect(c.practiceAnchor).toEqual({ kind: "chapter" });
-    expect(Object.keys(c.tree)[0]).toBe("0 Course Introduction");
-    expect(Object.keys(c.tree)).toHaveLength(28);
+    expect(Object.keys(c.tree)[0]).toBe("1 Overview");
+    expect(Object.keys(c.tree)).toHaveLength(27);
   });
 });
