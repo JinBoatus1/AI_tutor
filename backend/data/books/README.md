@@ -47,8 +47,9 @@ The PDF has a text layer, so nothing is split, OCR'd or sent to a model. From `b
 ## IEOR E4709 (Capponi lecture notes)
 
 No textbook: the course is the 27 lecture PDFs plus the course intro in
-`Capponi_tutor_demo/IEOR4709_Lecture_Notes/`, merged into one `book.pdf` (one lecture per
-chapter, `pdf_page_offset` 0). Sections are each lecture's numbered headings. From `backend/`:
+`Capponi_tutor_demo/IEOR4709_Lecture_Notes/`, merged into one `book.pdf` (`pdf_page_offset` 0). The outline is
+the 27 lectures with no sections, so opening a lecture shows all its pages; the intro is part of
+lecture 1. From `backend/`:
 
     python -m book_pipeline.ieor4709    # writes data/books/ieor4709/book.pdf and outline.json
     cd ../frontend && npm run sync-focs  # copies the outline into src/data/ieor4709Tree.json
