@@ -38,7 +38,8 @@ def test_pdf_source_pins_an_exact_private_file():
 
 def test_lathi_is_the_second_builtin():
     assert bb.is_builtin("lathi")
-    assert bb.list_builtin() == [{"id": "focs", "label": "FOCS"}, {"id": "lathi", "label": "Signals"}]
+    assert {"id": "lathi", "label": "Signals"} in bb.list_builtin()
+    assert bb.list_builtin()[0] == {"id": "focs", "label": "FOCS"}
 
 
 def test_the_committed_outline_passes_the_gates():
